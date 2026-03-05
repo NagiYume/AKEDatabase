@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AKEData · 全局设置按钮</title>
+    <!-- 主题样式：完全由 theme/ 下的 CSS 控制，无内联样式 -->
+    <link rel="stylesheet" id="theme-style" href="theme/light.css">
+</head>
+<body>
+    <div class="app">
+        <!-- 左侧模块栏 -->
+        <div class="sidebar">
+            <div class="brand" id="brandHome" title="返回起始页">
+                AKEData
+                <span>plugin</span>
+            </div>
+            <div class="module-list" id="moduleListContainer">
+                <div style="color:#7f8c9f; text-align:center; padding:20px;">加载模块清单...</div>
+            </div>
+            <!-- 左下角设置按钮（悬浮于侧边栏底部） -->
+            <div class="settings-button" id="settingsButton" title="全局设置">⚙️</div>
+        </div>
+
+        <!-- 右侧主内容区 -->
+        <div class="main-content">
+            <div class="content-area" id="contentArea">
+                <!-- 起始页由JS渲染 -->
+            </div>
+            <div class="footer-note">
+                ⚡ 动态读取 <code>plugin/manifest.json</code> · 按优先级排序 · 主题存放在 <code>theme/</code>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置弹窗（模态框） - 初始隐藏 -->
+    <div class="settings-modal" id="settingsModal">
+        <div class="modal-content">
+            <span class="close-button" id="closeSettings">&times;</span>
+            <h3>⚙️ 全局设置</h3>
+            <div class="settings-item">
+                <label for="modalThemeSelect">页面样式：</label>
+                <select id="modalThemeSelect">
+                    <option value="light">亮色模式</option>
+                    <option value="dark">暗色模式</option>
+                </select>
+            </div>
+            <div class="settings-item">
+                <label for="modalShowHiddenCheck">显示隐藏模块：</label>
+                <input type="checkbox" id="modalShowHiddenCheck">
+            </div>
+            <div class="about-box">
+                <p>AKEData 动态模块演示 · 版本 1.0</p>
+                <p>所有样式由 theme/ 文件夹中的 CSS 提供。</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ---------- 起始页内容 ----------
+            const HOME_CONTENT = `
+                <div class="welcome-home">
+                    <h2>🔍 数据查询可视化</h2>
+                    <p>👈 从左侧选择模块开始 · 当前为起始页</p>
+                    <div style="margin-top: 50px; color:#a3b6cc; font-size:1rem;">
+                        模块按优先级排序（数字小靠前）<br>
+                        左下角 ⚙️ 按钮可打开全局设置
+                    </div>
+                </div>
+            `;
+
+            // ---------- 全局状态 ----------
+            let config = {
+                theme: 'light',          // 当前主题 'light' 或 'dark'
+                showHidden: false        // 是否显示隐藏模块
+            };
+
+            let allModules = [];          // 从 manifest 读取的原始模块（未经过滤）
+            let activeModuleId = null;    // 当前选中模块id
+
+            // DOM 元素
+            const moduleListEl = document.getElementById('moduleListContainer');
+            const contentArea = document.getElementById('contentArea');
+            const brandHome = document.getElementById('brandHome');
+            const themeLink = document.getElementById('theme-style');
+            const settingsButton = document.getElementById('settingsButton');
+            const settingsModal = document.getElementById('settingsModal');
+            const closeSettings = document.getElementById('closeSettings');
+            const modalThemeSelect = document.getElementById('modalThemeSelect');
+            const modalShowHiddenCheck = document.getElementById('modalShowHiddenCheck');
+
+            // ---------- 工具函数 ----------
+            function setContent(html) {
+                contentArea.innerHTML = html;
+            }
+
+            function showHomePage() {
+                setContent(HOME_CONTENT);
+                document.querySelectorAll('.module-item').forEach(item => item.classList.remove('active'));
+                activeModuleId = null;
+            }
+
+            // 加载模块内容并显示
+            async function loadModuleContent(module) {
+                if (!module || !module.contentFile) {
+                    setContent(`<div class="error-message">模块内容文件未指定</div>`);
+                    return;
+                }
+            
+                setContent(`<div class="loader">⏳ 加载模块内容...</div>`);
+            
+                try {
+                    const response = await fetch(module.contentFile, { cache: "no-cache" });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const html = await response.text();
+                
+                    // 清空内容区域
+                    contentArea.innerHTML = '';
+                
+                    // 使用 insertAdjacentHTML 插入 HTML
+                    contentArea.insertAdjacentHTML('beforeend', html);
+                
+                    // 手动执行所有 script 标签
+                    const scripts = contentArea.querySelectorAll('script');
+                    console.log(`找到 ${scripts.length} 个脚本待执行`); // 添加日志
+                    scripts.forEach(oldScript => {
+                        const newScript = document.createElement('script');
+                        Array.from(oldScript.attributes).forEach(attr => {
+                            newScript.setAttribute(attr.name, attr.value);
+                        });
+                        if (oldScript.textContent) {
+                            newScript.textContent = oldScript.textContent;
+                        }
+                        if (oldScript.src) {
+                            newScript.src = oldScript.src;
+                        }
+                        oldScript.parentNode.replaceChild(newScript, oldScript);
+                    });
+                
+                } catch (err) {
+                    setContent(`<div class="error-message">❌ 无法加载模块内容：${err.message}</div>`);
+                }
+            }
+
+            // 按优先级排序
+            function sortModulesByPriority(modulesArray) {
+                return modulesArray.sort((a, b) => {
+                    const pa = a.priority !== undefined ? Number(a.priority) : 999;
+                    const pb = b.priority !== undefined ? Number(b.priority) : 999;
+                    return pa - pb;
+                });
+            }
+
+            // 根据 config.showHidden 过滤模块（同时排除设置模块，因为设置已改为全局按钮）
+            function filterModules(modules) {
+                let filtered = modules.filter(m => m.id !== 'settings'); // 排除旧设置模块（如有）
+                if (!config.showHidden) {
+                    filtered = filtered.filter(m => !m.hidden);
+                }
+                return filtered;
+            }
+
+            // 应用过滤并重新渲染左侧列表
+            function applyFilterAndRender() {
+                const visibleModules = filterModules(allModules);
+                renderModuleList(visibleModules);
+
+                // 如果当前激活的模块被隐藏或排除，则返回起始页
+                if (activeModuleId) {
+                    const stillVisible = visibleModules.some(m => m.id === activeModuleId);
+                    if (!stillVisible) {
+                        showHomePage();
+                    } else {
+                        // 确保高亮仍在
+                        const activeItem = document.querySelector(`.module-item[data-id="${activeModuleId}"]`);
+                        if (activeItem) activeItem.classList.add('active');
+                    }
+                }
+            }
+
+            // 渲染左侧模块列表
+            function renderModuleList(modulesArray) {
+                if (!modulesArray || modulesArray.length === 0) {
+                    moduleListEl.innerHTML = `<div style="padding:20px; color:#999; text-align:center;">📭 暂无可见模块</div>`;
+                    return;
+                }
+
+                const sorted = sortModulesByPriority(modulesArray);
+
+                let html = '';
+                sorted.forEach(mod => {
+                    const icon = mod.icon || '📦';
+                    const desc = mod.description || '无描述';
+                    const priority = mod.priority !== undefined ? mod.priority : 999;
+                    const hiddenMarker = mod.hidden ? '🔒' : '';
+                    html += `
+                        <div class="module-item" data-id="${mod.id}">
+                            <div class="module-title">
+                                <span>${icon}</span> ${mod.title} ${hiddenMarker}
+                                <span class="tag">plugin</span>
+                                <span class="priority-tag">P:${priority}</span>
+                            </div>
+                            <div class="module-desc">${desc}</div>
+                        </div>
+                    `;
+                });
+                moduleListEl.innerHTML = html;
+
+                document.querySelectorAll('.module-item').forEach(item => {
+                    item.addEventListener('click', async (e) => {
+                        const id = item.dataset.id;
+                        const module = allModules.find(m => m.id === id);
+                        if (!module) return;
+
+                        document.querySelectorAll('.module-item').forEach(el => el.classList.remove('active'));
+                        item.classList.add('active');
+                        activeModuleId = id;
+
+                        await loadModuleContent(module);
+                    });
+                });
+
+                if (activeModuleId) {
+                    const activeItem = document.querySelector(`.module-item[data-id="${activeModuleId}"]`);
+                    if (activeItem) activeItem.classList.add('active');
+                }
+            }
+
+            // 切换主题
+            function setTheme(themeName) {
+                const lowerTheme = themeName.toLowerCase();
+                config.theme = lowerTheme;
+                themeLink.href = `theme/${lowerTheme}.css`;
+                localStorage.setItem('akedata-theme', lowerTheme);
+                // 同步下拉框选中值（如果弹窗打开）
+                if (modalThemeSelect) modalThemeSelect.value = lowerTheme;
+            }
+
+            // 初始化主题
+            function initTheme() {
+                const savedTheme = localStorage.getItem('akedata-theme') || 'light';
+                setTheme(savedTheme);
+            }
+
+            // ---------- 弹窗控制 ----------
+            function openSettings() {
+                // 同步当前配置到弹窗控件
+                modalThemeSelect.value = config.theme;
+                modalShowHiddenCheck.checked = config.showHidden;
+                settingsModal.style.display = 'flex';
+            }
+
+            function closeSettingsModal() {
+                settingsModal.style.display = 'none';
+            }
+
+            // ---------- 从 plugin/manifest.json 加载模块清单 ----------
+            async function loadModulesFromManifest() {
+                try {
+                    const response = await fetch(`plugin/manifest.json?t=${Date.now()}`);
+                    if (!response.ok) {
+                        console.warn('manifest.json 加载失败，状态码:', response.status);
+                        return [];
+                    }
+                    const manifest = await response.json();
+                    if (!Array.isArray(manifest)) {
+                        console.warn('manifest.json 格式错误：应为数组');
+                        return [];
+                    }
+                    const validModules = manifest
+                        .filter(m => m.id && m.title && m.contentFile)
+                        .map(m => ({
+                            ...m,
+                            priority: m.priority !== undefined ? m.priority : 999,
+                            hidden: m.hidden === true
+                        }));
+                    console.log(`✅ 从 manifest 加载到 ${validModules.length} 个模块`);
+                    return validModules;
+                } catch (err) {
+                    console.warn('读取 manifest 失败:', err.message);
+                    moduleListEl.innerHTML = `<div style="color:#b0003a; padding:20px; text-align:center;">
+                        ❌ 无法读取模块清单。<br>请通过本地服务器访问。
+                    </div>`;
+                    return [];
+                }
+            }
+
+            // ---------- 初始化 ----------
+            async function initApp() {
+                showHomePage();
+                initTheme();
+
+                allModules = await loadModulesFromManifest();
+                applyFilterAndRender();
+
+                // 设置按钮事件
+                settingsButton.addEventListener('click', openSettings);
+                closeSettings.addEventListener('click', closeSettingsModal);
+                // 点击模态框外部关闭
+                window.addEventListener('click', (e) => {
+                    if (e.target === settingsModal) {
+                        closeSettingsModal();
+                    }
+                });
+
+                // 弹窗内控件事件
+                modalThemeSelect.addEventListener('change', (e) => {
+                    setTheme(e.target.value);
+                });
+                modalShowHiddenCheck.addEventListener('change', (e) => {
+                    config.showHidden = e.target.checked;
+                    applyFilterAndRender();
+                    localStorage.setItem('akedata-showHidden', config.showHidden);
+                    // 触发全局配置变化事件，通知所有模块
+                    window.dispatchEvent(new CustomEvent('globalConfigChanged', { detail: { showHidden: config.showHidden } }));
+                });
+
+                // 读取保存的隐藏开关状态
+                const savedShowHidden = localStorage.getItem('akedata-showHidden');
+                if (savedShowHidden !== null) {
+                    config.showHidden = savedShowHidden === 'true';
+                    applyFilterAndRender();
+                }
+            }
+
+            brandHome.addEventListener('click', showHomePage);
+
+            initApp();
+
+            // 暴露全局 API（供调试或扩展）
+            window.akeData = {
+                setTheme,
+                toggleShowHidden: (val) => {
+                    config.showHidden = val;
+                    applyFilterAndRender();
+                    localStorage.setItem('akedata-showHidden', val);
+                    if (modalShowHiddenCheck) modalShowHiddenCheck.checked = val;
+                },
+                getConfig: () => ({ ...config }),
+                showHomePage
+            };
+        })();
+    </script>
+
+    <!-- ================= 使用说明 ================= -->
+    <!--
+        1. 所有样式必须放在 theme/ 文件夹下，例如：
+            - theme/light.css
+            - theme/dark.css
+           这些 CSS 文件应包含完整页面样式（包括侧边栏、模块项、设置弹窗等）。
+
+        2. 示例 theme/light.css 内容（仅供参考）：
+            body, .main-content, .content-area { background: #fafafa; color: #1e2b3c; }
+            .sidebar { background: #f2f4f8; border-right: 1px solid #d9e0e8; }
+            .module-item { background: white; border: 1px solid #e2e7f0; }
+            .settings-button { background: #e0e8f0; color: #1e2b3c; }
+            .settings-modal { background: rgba(0,0,0,0.4); }
+            .modal-content { background: white; border-radius: 12px; }
+            /* ... 其他样式自行补充 */
+
+        3. 设置按钮位于侧边栏左下角，点击弹出模态框，所有交互实时生效。
+        4. manifest.json 中若包含 id 为 "settings" 的模块将被自动过滤，不会显示在左侧。
+    -->
+</body>
+</html>
