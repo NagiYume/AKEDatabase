@@ -309,10 +309,19 @@
                     setTheme(e.target.value);
                 });
                 modalShowHiddenCheck.addEventListener('change', (e) => {
+                    // 如果是从未选中变为选中，则弹出确认框
+                    if (e.target.checked) {
+                        const confirmed = confirm('是否确认开启隐藏内容？隐藏内容中包含开发中内容，可能存在bug');
+                        if (!confirmed) {
+                            // 用户取消，将复选框恢复为未选中状态
+                            e.target.checked = false;
+                            return;
+                        }
+                    }
+                    // 用户取消勾选（不弹框）或确认开启后，更新配置
                     config.showHidden = e.target.checked;
                     applyFilterAndRender();
                     localStorage.setItem('akedata-showHidden', config.showHidden);
-                    // 触发全局配置变化事件，通知所有模块
                     window.dispatchEvent(new CustomEvent('globalConfigChanged', { detail: { showHidden: config.showHidden } }));
                 });
 
