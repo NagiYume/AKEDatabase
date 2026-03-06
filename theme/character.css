@@ -1,0 +1,471 @@
+/* theme/character.css */
+.character-module {
+    display: flex;
+    gap: 20px;
+    height: 100%;
+    min-height: 500px;
+    margin: 0;
+    padding: 0;
+}
+
+.character-list {
+    width: 260px;
+    background: var(--sidebar-bg, #f2f4f8);
+    border-radius: 16px;
+    padding: 16px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color, #d9e0e8);
+    flex-shrink: 0;
+    margin-left: 0;
+}
+
+.character-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    margin-bottom: 8px;
+    background: var(--module-bg, white);
+    border-radius: 12px;
+    border: 1px solid var(--border-color, #e2e7f0);
+    cursor: pointer;
+    transition: all 0.2s;
+    gap: 10px;
+}
+.character-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    border-color: #b8c5d9;
+}
+.character-item.active {
+    background: var(--active-bg, #e2eaf9);
+    border-left: 5px solid #1e6f9f;
+}
+
+.character-icon {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: #eef3fa;
+}
+
+.character-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.character-name {
+    font-weight: 600;
+    color: var(--text-color, #1e2b3c);
+    font-size: 1rem;
+}
+
+.rarity-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+.rarity-3 { background-color: #3b7eff; }
+.rarity-4 { background-color: #a335ee; }
+.rarity-5 { background-color: #ffcc00; }
+.rarity-6 { background-color: #ff3333; }
+
+.character-detail {
+    flex: 1;
+    background: var(--content-bg, #ffffff);
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid var(--border-color, #f0f3f9);
+    overflow-y: auto;
+}
+
+/* 详情头部 */
+.detail-header {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+.detail-icon img {
+    width: 120px;
+    height: 120px;
+    object-fit: contain;
+    background: #eef3fa;
+    border-radius: 20px;
+    padding: 10px;
+}
+.detail-text {
+    flex: 1;
+}
+.detail-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.detail-name {
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--text-color, #1e2b3c);
+}
+.detail-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+.detail-tags .tag {
+    background: var(--tag-bg, #e0e8f2);
+    color: var(--tag-text, #2c4b6e);
+    padding: 4px 10px;
+    border-radius: 30px;
+    font-size: 0.85rem;
+}
+.detail-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+    margin-bottom: 15px;
+    color: var(--desc-color, #5b6f86);
+}
+.meta-label {
+    font-weight: 600;
+    color: var(--text-color, #1e2b3c);
+}
+.detail-profile, .detail-feature {
+    margin-top: 10px;
+    line-height: 1.6;
+    color: var(--text-color, #1e2b3c);
+}
+
+/* 区块标题 */
+.section {
+    margin-top: 30px;
+}
+.section h3 {
+    font-size: 1.5rem;
+    border-bottom: 2px solid var(--border-color, #d9e0e8);
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+}
+
+/* 属性成长网格 */
+.growth-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+}
+.growth-table-container {
+    background: var(--module-bg, #f8fafd);
+    border-radius: 12px;
+    padding: 10px;
+    border: 1px solid var(--border-color, #e2e7f0);
+}
+.growth-table-container h4 {
+    margin-bottom: 10px;
+    color: var(--text-color, #1e2b3c);
+}
+.table-scroll {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color, #d9e0e8);
+    border-radius: 8px;
+}
+.growth-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+.growth-table th {
+    background: var(--table-header-bg, #eef3fa);
+    padding: 6px;
+    text-align: center;
+    border: 1px solid var(--border-color, #d9e0e8);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+.growth-table td {
+    padding: 4px 6px;
+    border: 1px solid var(--border-color, #e2e7f0);
+    text-align: center;
+}
+
+/* 天赋/潜能条目 */
+.talent-item, .potential-item, .attr-node-item {
+    background: var(--module-bg, #f8fafd);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border-color, #e2e7f0);
+}
+.talent-name, .potential-name, .attr-node-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+    color: var(--text-color, #1e2b3c);
+}
+.talent-desc, .potential-desc, .attr-node-desc {
+    color: var(--desc-color, #5b6f86);
+    line-height: 1.6;
+}
+.attr-node-modifier {
+    margin-top: 8px;
+    color: var(--accent-color, #1e6f9f);
+    font-weight: 500;
+}
+
+/* 技能 */
+.skill-item {
+    background: var(--module-bg, #f8fafd);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color, #e2e7f0);
+}
+.skill-name {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-color, #1e2b3c);
+}
+.skill-desc {
+    color: var(--desc-color, #5b6f86);
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+.skill-detail {
+    background: var(--content-bg, #ffffff);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 10px;
+    border: 1px solid var(--border-color, #e2e7f0);
+}
+.skill-detail-name {
+    font-weight: 600;
+    color: var(--text-color, #1e2b3c);
+}
+.skill-detail-desc {
+    color: var(--desc-color, #5b6f86);
+    margin: 5px 0 10px;
+}
+.skill-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+.skill-table th, .skill-table td {
+    border: 1px solid var(--border-color, #d9e0e8);
+    padding: 4px;
+    text-align: center;
+}
+.skill-table th {
+    background: var(--table-header-bg, #eef3fa);
+}
+
+/* 档案 */
+.profile-record {
+    background: var(--module-bg, #f5f9ff);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border-color, #d0d9e5);
+}
+.profile-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+    color: var(--text-color, #1e2b3c);
+}
+.profile-desc {
+    white-space: pre-wrap;
+    line-height: 1.6;
+    color: var(--desc-color, #5b6f86);
+}
+
+/* 语音 */
+.voice-item {
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color, #e2e7f0);
+}
+.voice-title {
+    font-weight: 600;
+    color: var(--text-color, #1e2b3c);
+}
+.voice-desc {
+    color: var(--desc-color, #5b6f86);
+    margin-top: 4px;
+}
+
+/* 超链接浮窗（复用武器模块样式） */
+.hyperlink-tooltip {
+    display: none;
+    position: absolute;
+    background: var(--tooltip-bg, #ffffff);
+    color: var(--tooltip-text, #1e2b3c);
+    border: 1px solid var(--border-color, #d9e0e8);
+    padding: 12px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    z-index: 1000;
+    max-width: 320px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+.hyperlink-tooltip .tooltip-name {
+    font-weight: 600;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border-color, #e2e7f0);
+    padding-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.hyperlink-tooltip .tooltip-desc {
+    white-space: pre-wrap;
+}
+.tag-hyperlink {
+    cursor: pointer;
+    color: var(--link-color, #1e6f9f);
+    text-decoration: underline dotted;
+}
+.inline-icon {
+    display: inline-block;
+    vertical-align: middle;
+    width: auto;
+    height: 1em;
+    object-fit: contain;
+}
+.textstyle-icon-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.textstyle-icon-text img {
+    width: 1em;
+    height: 1em;
+    object-fit: contain;
+    transform-origin: center;
+    vertical-align: middle;
+}
+
+.loader {
+    text-align: center;
+    padding: 40px;
+    color: var(--desc-color, #60758b);
+    font-style: italic;
+}
+.error-message {
+    color: #b0003a;
+    background: #ffe8f0;
+    padding: 20px;
+    border-radius: 20px;
+    border: 1px solid #ffb3c6;
+}
+
+/* 属性成长表格 */
+.growth-table-container {
+    max-height: 500px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color, #d9e0e8);
+    border-radius: 8px;
+    margin: 20px 0;
+}
+.growth-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+.growth-table th {
+    background: var(--table-header-bg, #eef3fa);
+    padding: 8px;
+    text-align: center;
+    border: 1px solid var(--border-color, #d9e0e8);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+.growth-table td {
+    padding: 4px 8px;
+    border: 1px solid var(--border-color, #e2e7f0);
+    text-align: center;
+}
+
+/* 技能详情表格 */
+.skill-detail {
+    margin-top: 15px;
+    background: var(--content-bg, #ffffff);
+    border-radius: 8px;
+    padding: 10px;
+    border: 1px solid var(--border-color, #e2e7f0);
+}
+.skill-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+.skill-table th, .skill-table td {
+    border: 1px solid var(--border-color, #d9e0e8);
+    padding: 4px;
+    text-align: center;
+}
+.skill-table th {
+    background: var(--table-header-bg, #eef3fa);
+}
+
+/* 属性节点网格布局（四项并排） */
+.attr-nodes-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+@media (max-width: 768px) {
+    .attr-nodes-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+.attr-node-item {
+    background: var(--module-bg, #f8fafd);
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid var(--border-color, #e2e7f0);
+}
+.attr-node-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+    color: var(--text-color, #1e2b3c);
+}
+.attr-node-desc {
+    color: var(--desc-color, #5b6f86);
+    line-height: 1.6;
+    margin-bottom: 8px;
+}
+.attr-node-modifier {
+    color: var(--accent-color, #1e6f9f);
+    font-weight: 500;
+}
+
+/* 语音记录样式（与档案类似） */
+.voice-record {
+    background: var(--module-bg, #f5f9ff);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border-color, #d0d9e5);
+}
+.voice-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+    color: var(--text-color, #1e2b3c);
+}
+.voice-desc {
+    color: var(--desc-color, #5b6f86);
+    line-height: 1.6;
+}
