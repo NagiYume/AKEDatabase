@@ -1,0 +1,614 @@
+{
+  "adv.electricFence": {
+    "name": "高压阻拦网",
+    "desc": "在激活状态下的高压阻拦网是无法通过的。\n沿着电线找到其对应的开关，即可关闭高压阻拦网，通过其封锁的路段。",
+    "iconPath": "",
+    "styleid": "gd.key"
+  },
+  "adv.eswitch": {
+    "name": "受击装置",
+    "desc": "受击装置在受到攻击或是爆炸冲击后，会改变运行状态。\n一般用来关闭<#adv.electricFence>高压阻拦网</>或启用<#adv.jumpMachine>弹射装置</>。",
+    "iconPath": "",
+    "styleid": "gd.key"
+  },
+  "ba.spellinflict": {
+    "name": "法术附着",
+    "desc": "<@ba.key>法术附着</>是一种附着在敌人身上的法术标记，包括<#ba.fireinflict>灼热附着</>、<#ba.pulseinflict>电磁附着</>、<#ba.crystinflict>寒冷附着</>、<#ba.naturalinflict>自然附着</>。\n同类型的<@ba.key>法术附着</>可以叠加，最多4层。",
+    "iconPath": "",
+    "styleid": "ba.key"
+  },
+  "adv.jumpMachine": {
+    "name": "弹射装置",
+    "desc": "主控干员可使用弹射装置进行一次长距离的跳跃，能够抵达普通跳跃无法触达的高处。\n在通电时，弹射装置为可用状态。此时操控主控干员站立在装置上方并进行跳跃即可使用。",
+    "iconPath": "",
+    "styleid": "gd.key"
+  },
+  "ba.physicalstatus": {
+    "name": "物理异常",
+    "desc": "物理异常是通过物理方式对敌人施加的异常效果，包含<#ba.airborne>击飞</>、<#ba.knockdown>倒地</>、<#ba.crush>猛击</>、<#ba.fracture>碎甲</>。",
+    "iconPath": "",
+    "styleid": "ba.phy"
+  },
+  "adv.powerTerminal": {
+    "name": "供电终端",
+    "desc": "作为电路末端的终端设备，可接入电网为其他设备供电。\n供电终端通常为大门、开关等设备供电。使用中继器为供电终端运输电力后，即可控制大门或开关。",
+    "iconPath": "",
+    "styleid": "gd.key"
+  },
+  "ba.airborne": {
+    "name": "物理异常 - 击飞",
+    "desc": "对敌人造成<#ba.noguard>破防</>，如果敌人已经<#ba.noguard>破防</>，则叠加一层<#ba.noguard>破防</>，造成<@ba.phy>物理伤害</>并累积<@ba.poise>失衡值</>。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_airborne.png",
+    "styleid": "ba.phy"
+  },
+  "ba.vulnerable": {
+    "name": "脆弱",
+    "desc": "一定时间内目标受到的特定属性伤害提高（数值代表提高的幅度）。同类效果可以叠加。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_vulnerable.png",
+    "styleid": "ba.key"
+  },
+  "item.bbflowerSeed": {
+    "name": "酮化树种",
+    "desc": "由<#item.bbflower>酮化灌木</>通过工业设备采种得到的种子。\n在工业设备中种植酮化树种，可获得酮化灌木。\n将酮化树种与<#item.carbonMtl>碳块</>一起进行<#sys.manualCraftField>种植调配</>，可以获得<#item.portSoilBbflower>酮化灌木田块</>。",
+    "iconPath": "public/images/TermIcon/icon_term_item_bbflowerSeed.png",
+    "styleid": "gd.key"
+  },
+  "ba.burning": {
+    "name": "法术异常 - 燃烧",
+    "desc": "<@ba.burning>燃烧</>状态下，敌人持续受到<@ba.fire>灼热伤害</>。\n<@ba.burning>燃烧</> = 其他<#ba.spellinflict>法术附着</>（<image=\"BuffIcon/icon_energy_fusion_pulse\" scale=1.25>/<image=\"BuffIcon/icon_energy_fusion_cryst\" scale=1.25>/<image=\"BuffIcon/icon_infliction_nature\" scale=1.25>）+ <@ba.fireinflict>灼热附着</>",
+    "iconPath": "public/images/TermIcon/icon_term_ba_burning.png",
+    "styleid": "ba.fire"
+  },
+  "ba.guard": {
+    "name": "庇护",
+    "desc": "一定时间内目标受到的伤害降低（数值代表降低的幅度）。同类效果会取效果最高值。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_guard.png",
+    "styleid": "ba.key"
+  },
+  "ba.burningonchar": {
+    "name": "干员受到燃烧",
+    "desc": "一些敌人的技能会给干员施加<@ba.fireinflict>灼热附着</>。\n达到4层时，干员会进入<@ba.burning>燃烧</>状态：一段时间内，持续受到无视防御力的<@ba.fire>灼热伤害</>。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_burning.png",
+    "styleid": "ba.fire"
+  },
+  "ba.combo": {
+    "name": "连击",
+    "desc": "全队的下个战技或终结技的伤害提高，对战技的提高幅度更大，触发后效果清空。同类效果可以叠加，但效果有衰减。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_combo.png",
+    "styleid": "ba.key"
+  },
+  "ba.knockdown": {
+    "name": "物理异常 - 倒地",
+    "desc": "对敌人造成<#ba.noguard>破防</>，如果敌人已经<#ba.noguard>破防</>，则叠加一层<#ba.noguard>破防</>，造成<@ba.phy>物理伤害</>并累积<@ba.poise>失衡值</>。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_knockdown.png",
+    "styleid": "ba.phy"
+  },
+  "ba.conduct": {
+    "name": "法术异常 - 导电",
+    "desc": "<@ba.conduct>导电</>状态下，敌人受到的<#ba.spelldmg>法术伤害</>提高。\n<@ba.conduct>导电</> = 其他<#ba.spellinflict>法术附着</>（<image=\"BuffIcon/icon_energy_fusion_fire\" scale=1.25>/<image=\"BuffIcon/icon_energy_fusion_cryst\" scale=1.25>/<image=\"BuffIcon/icon_infliction_nature\" scale=1.25>）+ <@ba.pulseinflict>电磁附着</>",
+    "iconPath": "public/images/TermIcon/icon_term_ba_conduct.png",
+    "styleid": "ba.pulse"
+  },
+  "ba.conductonchar": {
+    "name": "干员受到导电",
+    "desc": "一些敌人的技能会给干员施加<@ba.pulseinflict>电磁附着</>。\n达到4层时，干员会进入<@ba.conduct>导电</>状态：短暂眩晕，且一段时间内，受到的<#ba.spelldmg>法术伤害</>提高。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_conduct.png",
+    "styleid": "ba.pulse"
+  },
+  "ba.dispel": {
+    "name": "净化",
+    "desc": "清除干员的特定异常状态。",
+    "iconPath": "",
+    "styleid": "ba.key"
+  },
+  "ba.consume": {
+    "name": "状态消耗",
+    "desc": "状态以特殊的方式提前结束（如<#ba.crush>猛击</>消耗<#ba.noguard>破防</>状态，<#ba.burning>燃烧</>消耗<#ba.spellinflict>法术附着</>状态）。",
+    "iconPath": "",
+    "styleid": ""
+  },
+  "ba.corrupt": {
+    "name": "法术异常 - 腐蚀",
+    "desc": "<@ba.corrupt>腐蚀</>状态下，敌人的所有抗性逐渐下降。\n<@ba.corrupt>腐蚀</> = 其他<#ba.spellinflict>法术附着</>（<image=\"BuffIcon/icon_energy_fusion_fire\" scale=1.25>/<image=\"BuffIcon/icon_energy_fusion_pulse\" scale=1.25>/<image=\"BuffIcon/icon_energy_fusion_cryst\" scale=1.25>）+ <@ba.naturalinflict>自然附着</>",
+    "iconPath": "public/images/TermIcon/icon_term_ba_corrupt.png",
+    "styleid": "ba.natur"
+  },
+  "ba.corruptonchar": {
+    "name": "干员受到腐蚀",
+    "desc": "一些敌人的技能会给干员施加<@ba.naturalinflict>自然附着</>。\n达到4层时，干员会进入<@ba.corrupt>腐蚀</>状态：一段时间内无法冲刺，且移动速度降低。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_corrupt.png",
+    "styleid": "ba.natur"
+  },
+  "item.portSoilSp1": {
+    "name": "灰芦麦田块",
+    "desc": "可以在生态种植园中进行进行精细化培育以收获<#item.plantSp1>灰芦麦</>的田块。\n由<#item.plantSpSeed1>灰芦麦种子</>与<#item.carbonMtl>碳块</>一起进行种植调配获得。\n收获时可获得大量灰芦麦。",
+    "iconPath": "public/images/TermIcon/icon_term_item_portSoilSp1.png",
+    "styleid": "gd.key"
+  },
+  "ba.crush": {
+    "name": "物理异常 - 猛击",
+    "desc": "对敌人造成<#ba.noguard>破防</>，如果敌人已经<#ba.noguard>破防</>，则会<#ba.consume>消耗</>所有<#ba.noguard>破防</>层数并造成大量<@ba.phy>物理伤害</>。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_crush.png",
+    "styleid": "ba.phy"
+  },
+  "item.quartzGlass": {
+    "name": "紫晶纤维",
+    "desc": "由<#item.quartzSand>紫晶矿</>通过工业设备精炼后得到的纤维。\n可用于其他材料合成。",
+    "iconPath": "public/images/TermIcon/icon_term_item_quartzGlass.png",
+    "styleid": "gd.key"
+  },
+  "item.quartzSand": {
+    "name": "紫晶矿",
+    "desc": "一种可在野外紫晶矿矿点采集的矿石。\n可使用工业设备对其进行加工，比如在精炼后得到<#item.quartzGlass>紫晶纤维</>。",
+    "iconPath": "public/images/TermIcon/icon_term_item_quartzSand.png",
+    "styleid": "gd.key"
+  },
+  "ba.crystbreak": {
+    "name": "碎冰",
+    "desc": "对处于<#ba.frozen>冻结</>状态的敌人施加<#ba.noguard>破防</>或<#ba.physicalstatus>物理异常</>时触发，<#ba.consume>消耗</>目标的<#ba.frozen>冻结</>状态，并对其造成大量<@ba.pd>物理伤害</>。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_crystbreak.png",
+    "styleid": "ba.cryst"
+  },
+  "ba.return": {
+    "name": "返还技力",
+    "desc": "消耗技力后，满足一定条件时，重新获得的一部分技力。\n返还技力并不算作“恢复技力”，不会触发恢复技力时触发的效果，且这部分技力消耗时不会获得终结技能量。",
+    "iconPath": "",
+    "styleid": ""
+  },
+  "ba.crystburst": {
+    "name": "法术爆发 - 寒冷",
+    "desc": "<#ba.crystinflict>寒冷附着</> + <#ba.crystinflict>寒冷附着</>会触发<@ba.cryst>寒冷爆发</>，对敌人造成一定<@ba.cryst>寒冷伤害</>。",
+    "iconPath": "",
+    "styleid": "ba.cryst"
+  },
+  "ba.crystenhance": {
+    "name": "寒冷增幅",
+    "desc": "一定时间内目标造成的<@ba.cryst>寒冷伤害</>提高（数值代表提高的幅度）。同类效果可以叠加。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_crystenhance.png",
+    "styleid": "ba.cryst"
+  },
+  "ba.crystinflict": {
+    "name": "法术附着 - 寒冷",
+    "desc": "<@ba.crystinflict>寒冷附着</>是一种<#ba.spellinflict>法术附着</>。\n<@ba.crystinflict>寒冷附着</>最多叠加4层，叠加时会触发<#ba.crystburst>寒冷爆发</>。\n其他<#ba.spellinflict>法术附着</>（<image=\"BuffIcon/icon_energy_fusion_fire\" scale=1.25>/<image=\"BuffIcon/icon_energy_fusion_pulse\" scale=1.25>/<image=\"BuffIcon/icon_infliction_nature\" scale=1.25>）+ <@ba.crystinflict>寒冷附着</> = <#ba.frozen>冻结</>",
+    "iconPath": "public/images/TermIcon/icon_term_ba_crystinflict.png",
+    "styleid": "ba.cryst"
+  },
+  "ba.crystonchar": {
+    "name": "干员受到寒冷附着",
+    "desc": "一些敌人的技能会给干员施加<@ba.crystinflict>寒冷附着</>。\n达到4层时，干员会进入<@ba.frozen>冻结</>状态：一段时间内无法行动。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_crystinflict.png",
+    "styleid": "ba.cryst"
+  },
+  "ba.frozen": {
+    "name": "法术异常 - 冻结",
+    "desc": "<@ba.frozen>冻结</>状态下，敌人无法行动，此时若受到<#ba.noguard>破防</>或<#ba.physicalstatus>物理异常</>，会触发<#ba.crystbreak>碎冰</>。\n<@ba.frozen>冻结</> = 其他<#ba.spellinflict>法术附着</>（<image=\"BuffIcon/icon_energy_fusion_fire\" scale=1.25>/<image=\"BuffIcon/icon_energy_fusion_pulse\" scale=1.25>/<image=\"BuffIcon/icon_infliction_nature\" scale=1.25>）+ <@ba.crystinflict>寒冷附着</>",
+    "iconPath": "public/images/TermIcon/icon_term_ba_frozen.png",
+    "styleid": "ba.cryst"
+  },
+  "ba.naturalonchar": {
+    "name": "干员受到自然附着",
+    "desc": "一些敌人的技能会给干员施加<@ba.naturalinflict>自然附着</>。\n达到4层时，干员会进入<@ba.corrupt>腐蚀</>状态：一段时间内无法冲刺，且移动速度降低。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_naturalinflict.png",
+    "styleid": "ba.natur"
+  },
+  "ba.crystvul": {
+    "name": "寒冷脆弱",
+    "desc": "一定时间内目标受到的<@ba.cryst>寒冷伤害</>提高（数值代表提高的幅度）。同类效果可以叠加。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_crystvul.png",
+    "styleid": "ba.cryst"
+  },
+  "ba.fireburst": {
+    "name": "法术爆发 - 灼热",
+    "desc": "<#ba.fireinflict>灼热附着</> + <#ba.fireinflict>灼热附着</>会触发<@ba.fire>灼热爆发</>，对敌人造成一定<@ba.fire>灼热伤害</>。",
+    "iconPath": "",
+    "styleid": "ba.fire"
+  },
+  "ba.dot": {
+    "name": "持续伤害",
+    "desc": "持续伤害无法触发暴击。",
+    "iconPath": "",
+    "styleid": ""
+  },
+  "ba.enhance": {
+    "name": "增幅",
+    "desc": "一定时间内目标造成的特定属性伤害提高（数值代表提高的幅度）。同类效果可以叠加。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_enhance.png",
+    "styleid": "ba.key"
+  },
+  "item.carbonMtl": {
+    "name": "碳块",
+    "desc": "由<#item.plantMoss1>荞花</>通过工业设备精炼得来的碳材料。\n是<#sys.manualCraftField>种植调配</>田块必不可少的材料，也可用于其他材料的合成。",
+    "iconPath": "public/images/TermIcon/icon_term_item_carbonMtl.png",
+    "styleid": "gd.key"
+  },
+  "sys.manualCraftField": {
+    "name": "种植调配",
+    "desc": "在<#sys.manualCraft>简易制作</>中，可将一些植物的种子与<#item.carbonMtl>碳块</>调配成对应植物的田块。\n可以进一步在生态种植区中对田块种植培育。",
+    "iconPath": "",
+    "styleid": "gd.key"
+  },
+  "ba.fireenhance": {
+    "name": "灼热增幅",
+    "desc": "一定时间内目标造成的<@ba.fire>灼热伤害</>提高（数值代表提高的幅度）。同类效果可以叠加。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_fireenhance.png",
+    "styleid": "ba.fire"
+  },
+  "item.plantMossSpc1": {
+    "name": "映火荞花",
+    "desc": "映火荞花是一种可在野外采集的特殊艳丽花朵。\n在采集<#item.plantMoss1>荞花</>时有概率额外获得映火荞花。\n可用于<#sys.tacticalItem>战术物品</>制作。",
+    "iconPath": "public/images/TermIcon/icon_term_item_plantMossSpc1.png",
+    "styleid": "gd.key"
+  },
+  "ba.fireinflict": {
+    "name": "法术附着 - 灼热",
+    "desc": "<@ba.fireinflict>灼热附着</>是一种<#ba.spellinflict>法术附着</>。\n<@ba.fireinflict>灼热附着</>最多叠加4层，叠加时会触发<#ba.fireburst>灼热爆发</>。\n其他<#ba.spellinflict>法术附着</>（<image=\"BuffIcon/icon_energy_fusion_pulse\" scale=1.25>/<image=\"BuffIcon/icon_energy_fusion_cryst\" scale=1.25>/<image=\"BuffIcon/icon_infliction_nature\" scale=1.25>）+ <@ba.fireinflict>灼热附着</> = <#ba.burning>燃烧</>",
+    "iconPath": "public/images/TermIcon/icon_term_ba_fireinflict.png",
+    "styleid": "ba.fire"
+  },
+  "item.originiumEnrPowder": {
+    "name": "致密源石粉末",
+    "desc": "由<#item.originiumPowder>源石粉末</>与<#item.plantMossPowder3>砂叶粉末</>通过工业设备研磨后得到的细粉。\n可用于其他材料合成。",
+    "iconPath": "public/images/TermIcon/icon_term_item_originiumEnrPowder.png",
+    "styleid": "gd.key"
+  },
+  "item.portSoilBbflower": {
+    "name": "酮化灌木田块",
+    "desc": "可以在生态种植园中进行进行精细化培育以收获<#item.bbflower>酮化灌木</>的田块。\n由<#item.bbflowerSeed>酮化树种</>与<#item.carbonMtl>碳块</>一起进行种植调配获得。\n收获时可获得大量酮化灌木。",
+    "iconPath": "public/images/TermIcon/icon_term_item_portSoilBbflower.png",
+    "styleid": "gd.key"
+  },
+  "item.portSoilMoss1": {
+    "name": "荞花田块",
+    "desc": "可以在生态种植园中进行精细化培育以收获<#item.plantMoss1>荞花</>的田块\n由<#item.plantMossSeed1>荞花种子</>与<#item.carbonMtl>碳块</>一起进行<#sys.manualCraftField>种植调配</>获得。\n收获时可获得大量荞花，且有较高概率额外获得<#item.plantMossSpc1>映火荞花</>。",
+    "iconPath": "public/images/TermIcon/icon_term_item_portSoilMoss1.png",
+    "styleid": "gd.key"
+  },
+  "ba.fireonchar": {
+    "name": "干员受到灼热附着",
+    "desc": "一些敌人的技能会给干员施加<@ba.fireinflict>灼热附着</>。\n达到4层时，干员会进入<@ba.burning>燃烧</>状态：一段时间内，持续受到无视防御力的<@ba.fire>灼热伤害</>。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_fireinflict.png",
+    "styleid": "ba.fire"
+  },
+  "sys.manualCraftTonic": {
+    "name": "应急食药",
+    "desc": "应急食药可以作为<#sys.tacticalItem>战术物品</>使用。\n可以通过<#sys.manualCraft>简易制作</>或工业设备生产获取。",
+    "iconPath": "",
+    "styleid": "gd.key"
+  },
+  "ba.firevul": {
+    "name": "灼热脆弱",
+    "desc": "一定时间内目标受到的<@ba.fire>灼热伤害</>提高（数值代表提高的幅度）。同类效果可以叠加。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_firevul.png",
+    "styleid": "ba.fire"
+  },
+  "ba.fracture": {
+    "name": "物理异常 - 碎甲",
+    "desc": "对敌人造成<#ba.noguard>破防</>，如果敌人已经<#ba.noguard>破防</>，则会<#ba.consume>消耗</>所有<#ba.noguard>破防</>层数，造成<@ba.phy>物理伤害</>，并使其在一段时间内受到的<@ba.pd>物理伤害</>提高。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_fracture.png",
+    "styleid": "ba.phy"
+  },
+  "ba.pulseonchar": {
+    "name": "干员受到电磁附着",
+    "desc": "一些敌人的技能会给干员施加<@ba.pulseinflict>电磁附着</>。\n达到4层时，干员会进入<@ba.conduct>导电</>状态：短暂眩晕，且一段时间内，受到的<#ba.spelldmg>法术伤害</>提高。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_pulseinflict.png",
+    "styleid": "ba.pulse"
+  },
+  "item.crystalShell": {
+    "name": "晶体外壳",
+    "desc": "由<#item.originium>源矿</>通过工业设备精炼后得到的外壳。\n可用于其他材料合成。\n",
+    "iconPath": "public/images/TermIcon/icon_term_item_crystalShell.png",
+    "styleid": "gd.key"
+  },
+  "ba.frozenonchar": {
+    "name": "干员受到冻结",
+    "desc": "一些敌人的技能会给干员施加<@ba.crystinflict>寒冷附着</>。\n达到4层时，干员会进入<@ba.frozen>冻结</>状态：一段时间内无法行动。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_frozen.png",
+    "styleid": "ba.cryst"
+  },
+  "item.bottledRecHp1": {
+    "name": "荞愈胶囊",
+    "desc": "由<#item.plantMossPowder1>荞花粉末</>与<#item.glassBottle>紫晶质瓶</>通过<#sys.manualCraft>简易制作</>或工业设备灌装得到的胶囊。\n使用后，可以回复干员的生命值。也可作为<#sys.tacticalItem>战术物品</>进行装备。\n",
+    "iconPath": "public/images/TermIcon/icon_term_item_bottledRecHp1.png",
+    "styleid": "gd.key"
+  },
+  "item.plantMossSeed3": {
+    "name": "砂叶种子",
+    "desc": "由<#item.plantMoss3>砂叶</>通过工业设备采种得到的种子。\n在工业设备中种植砂叶种子，可获得砂叶。\n将砂叶种子与<#item.carbonMtl>碳块</>一起进行<#sys.manualCraftField>种植调配</>，可以获得<#item.portSoilMoss3>砂叶田块</>。",
+    "iconPath": "public/images/TermIcon/icon_term_item_item_plantMossSeed3.png",
+    "styleid": "gd.key"
+  },
+  "ba.lastcombo": {
+    "name": "重击",
+    "desc": "重击是干员普通攻击的最后一段。主控干员的重击命中敌人时，会额外累积<@ba.poise>失衡值</>，并恢复一定技力。",
+    "iconPath": "",
+    "styleid": ""
+  },
+  "ba.naturalburst": {
+    "name": "法术爆发 - 自然",
+    "desc": "<#ba.naturalinflict>自然附着</> + <#ba.naturalinflict>自然附着</>会触发<@ba.natur>自然爆发</>，对敌人造成一定<@ba.natur>自然伤害</>。",
+    "iconPath": "",
+    "styleid": "ba.natur"
+  },
+  "ba.naturalenhance": {
+    "name": "自然增幅",
+    "desc": "一定时间内目标造成的<@ba.natur>自然伤害</>提高（数值代表提高的幅度）。同类效果可以叠加。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_naturalenhance.png",
+    "styleid": "ba.natur"
+  },
+  "ba.naturalinflict": {
+    "name": "法术附着 - 自然",
+    "desc": "<@ba.naturalinflict>自然附着</>是一种<#ba.spellinflict>法术附着</>。\n<@ba.naturalinflict>自然附着</>最多叠加4层，叠加时会触发<#ba.naturalburst>自然爆发</>。\n其他<#ba.spellinflict>法术附着</>（<image=\"BuffIcon/icon_energy_fusion_fire\" scale=1.25>/<image=\"BuffIcon/icon_energy_fusion_pulse\" scale=1.25>/<image=\"BuffIcon/icon_energy_fusion_cryst\" scale=1.25>）+ <@ba.naturalinflict>自然附着</> = <#ba.corrupt>腐蚀</>",
+    "iconPath": "public/images/TermIcon/icon_term_ba_naturalinflict.png",
+    "styleid": "ba.natur"
+  },
+  "item.ironNugget": {
+    "name": "蓝铁块",
+    "desc": "由<#item.ironOre>蓝铁矿</>通过工业设备精炼后得到的金属块。\n可用于其他材料合成。",
+    "iconPath": "public/images/TermIcon/icon_term_item_ironNugget.png",
+    "styleid": "gd.key"
+  },
+  "ba.naturalvul": {
+    "name": "自然脆弱",
+    "desc": "一定时间内目标受到的<@ba.natur>自然伤害</>提高（数值代表提高的幅度）。同类效果可以叠加。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_naturalvul.png",
+    "styleid": "ba.natur"
+  },
+  "item.glassBottle": {
+    "name": "紫晶质瓶",
+    "desc": "由<#item.quartzGlass>紫晶纤维</>通过工业设备塑形后得到的瓶子。\n可用于其他材料合成。",
+    "iconPath": "public/images/TermIcon/icon_term_item_glassBottle.png",
+    "styleid": "gd.key"
+  },
+  "ba.noguard": {
+    "name": "破防",
+    "desc": "当敌人首次受到<#ba.physicalstatus>物理异常</>时，不会直接触发异常效果，而是进入<@ba.noguard>破防</>状态。\n<@ba.phy>破防</>状态可以被<#ba.airborne>击飞</>和<#ba.knockdown>倒地</>叠加（最多4层），且会被<#ba.crush>猛击</>和<#ba.fracture>碎甲</><#ba.consume>消耗</>。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_noguard.png",
+    "styleid": "ba.phy"
+  },
+  "ba.statuslevel": {
+    "name": "异常等级",
+    "desc": "异常等级等于触发<#ba.physicalstatus>物理异常</>或<#ba.spellstatus>法术异常</>时<#ba.consume>消耗</>的<#ba.noguard>破防</>或<#ba.spellinflict>法术附着</>层数（最高4级）。<#ba.statuslevel>异常等级</>越高，<#ba.physicalstatus>物理异常</>和<#ba.spellstatus>法术异常</>的效果就越强。",
+    "iconPath": "",
+    "styleid": "ba.key"
+  },
+  "ba.originium": {
+    "name": "源石结晶",
+    "desc": "管理员的连携技会对敌人附着源石结晶，使敌人无法行动。",
+    "iconPath": "",
+    "styleid": "ba.key"
+  },
+  "ba.physicalenhance": {
+    "name": "物理增幅",
+    "desc": "一定时间内目标造成的<@ba.pd>物理伤害</>提高（数值代表提高的幅度）。同类效果可以叠加。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_physicalenhance.png",
+    "styleid": "ba.phy"
+  },
+  "ba.physicalvul": {
+    "name": "物理脆弱",
+    "desc": "一定时间内目标受到的<@ba.pd>物理伤害</>提高（数值代表提高的幅度）。同类效果可以叠加。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_physicalvul.png",
+    "styleid": "ba.phy"
+  },
+  "item.plantMoss1": {
+    "name": "荞花",
+    "desc": "荞花是一种可在野外采集的艳丽花朵。\n可使用工业设备培育获得，或在<#item.portSoilMoss1>荞花田块</>中种植获得。\n可用于<#sys.tacticalItem>战术物品</>制作或其他材料合成。",
+    "iconPath": "public/images/TermIcon/icon_term_item_plantMoss1.png",
+    "styleid": "gd.key"
+  },
+  "ba.poiseknot": {
+    "name": "失衡节点",
+    "desc": "部分强大的敌人存在<@ba.poise>失衡节点</>。<@ba.poise>失衡值</>累积到<@ba.poise>失衡节点</>时，会打断敌人行动并让敌人踉跄。",
+    "iconPath": "",
+    "styleid": "ba.poise"
+  },
+  "ba.pulseburst": {
+    "name": "法术爆发 - 电磁",
+    "desc": "<#ba.pulseinflict>电磁附着</> + <#ba.pulseinflict>电磁附着</>会触发<@ba.pulse>电磁爆发</>，对敌人造成一定<@ba.pulse>电磁伤害</>。",
+    "iconPath": "",
+    "styleid": "ba.pulse"
+  },
+  "item.ironPowder": {
+    "name": "蓝铁粉末",
+    "desc": "由<#item.ironNugget>蓝铁块</>通过工业设备粉碎后得到的粉末。\n可用于其他材料合成。",
+    "iconPath": "public/images/TermIcon/icon_term_item_ironPowder.png",
+    "styleid": "gd.key"
+  },
+  "item.plantMossPowder1": {
+    "name": "荞花粉末",
+    "desc": "由<#item.plantMoss1>荞花</>通过<#sys.manualCraft>简易制作</>或工业设备粉碎后得到的粉末。\n使用后，可以回复干员的生命值。也可作为<#sys.tacticalItem>战术物品</>进行装备。",
+    "iconPath": "public/images/TermIcon/icon_term_item_plantMossPowder1.png",
+    "styleid": "gd.key"
+  },
+  "ba.pulseenhance": {
+    "name": "电磁增幅",
+    "desc": "一定时间内目标造成的<@ba.pulse>电磁伤害</>提高（数值代表提高的幅度）。同类效果可以叠加。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_pulseenhance.png",
+    "styleid": "ba.pulse"
+  },
+  "ba.pulseinflict": {
+    "name": "法术附着 - 电磁",
+    "desc": "<@ba.pulseinflict>电磁附着</>是一种<#ba.spellinflict>法术附着</>。\n<@ba.pulseinflict>电磁附着</>最多叠加4层，叠加时会触发<#ba.pulseburst>电磁爆发</>。\n其他<#ba.spellinflict>法术附着</>（<image=\"BuffIcon/icon_energy_fusion_fire\" scale=1.25>/<image=\"BuffIcon/icon_energy_fusion_cryst\" scale=1.25>/<image=\"BuffIcon/icon_infliction_nature\" scale=1.25>）+ <@ba.pulseinflict>电磁附着</> = <#ba.conduct>导电</>",
+    "iconPath": "public/images/TermIcon/icon_term_ba_pulseinflict.png",
+    "styleid": "ba.pulse"
+  },
+  "item.procBomb": {
+    "name": "工业爆炸物",
+    "desc": "工业爆炸物是一种可生产的爆炸物。\n由<#item.glassCmpt>紫晶零件</>与<#item.bbflowerPowder>酮化灌木粉末</>通过工业设备封装后获得。\n使用工业爆炸物，可对爆炸范围内的敌人造成伤害，也可对范围内可被爆破的物体造成破坏。",
+    "iconPath": "public/images/TermIcon/icon_term_item_procBomb.png",
+    "styleid": "gd.key"
+  },
+  "ba.pulsevul": {
+    "name": "电磁脆弱",
+    "desc": "一定时间内目标受到的<@ba.pulse>电磁伤害</>提高（数值代表提高的幅度）。同类效果可以叠加。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_pulsevul.png",
+    "styleid": "ba.pulse"
+  },
+  "ba.shield": {
+    "name": "护盾",
+    "desc": "护盾可以在持续时间内吸收伤害。部分护盾只会吸收特定类型的伤害。",
+    "iconPath": "",
+    "styleid": "ba.key"
+  },
+  "ba.slow": {
+    "name": "缓速",
+    "desc": "一定时间内目标的移动速度降低（数值代表降低的幅度）。同类效果会取效果最高值。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_slow.png",
+    "styleid": "ba.key"
+  },
+  "item.bbflower": {
+    "name": "酮化灌木",
+    "desc": "一种可在野外采集的植物，内含易燃易爆成分。\n可使用工业设备培育获得，或在<#item.portSoilBbflower>酮化灌木田块</>中种植获得。\n也可使用工业设备对其进行加工，比如在粉碎后得到<#item.bbflowerPowder>酮化灌木粉末</>。",
+    "iconPath": "public/images/TermIcon/icon_term_item_bbflower.png",
+    "styleid": "gd.key"
+  },
+  "ba.spellburst": {
+    "name": "法术爆发",
+    "desc": "<@ba.key>法术爆发</>是同类型的<#ba.spellinflict>法术附着</>叠加时产生的伤害效果，包含<#ba.fireburst>灼热爆发</>、<#ba.pulseburst>电磁爆发</>、<#ba.crystburst>寒冷爆发</>、<#ba.naturalburst>自然爆发</>。",
+    "iconPath": "",
+    "styleid": "ba.key"
+  },
+  "ba.spellinflictonchar": {
+    "name": "干员受到法术附着/异常",
+    "desc": "一些敌人的技能会给干员施加<#ba.burningonchar>灼热附着</>、<#ba.conductonchar>电磁附着</>、<#ba.frozenonchar>寒冷附着</>或<#ba.corruptonchar>自然附着</>。\n达到4层时，会分别让干员受到<#ba.burningonchar>燃烧</>、<#ba.conductonchar>导电</>、<#ba.frozenonchar>冻结</>或<#ba.corruptonchar>腐蚀</>。",
+    "iconPath": "",
+    "styleid": "ba.key"
+  },
+  "ba.spellstatus": {
+    "name": "法术异常",
+    "desc": "<@ba.key>法术异常</>是通过法术方式对敌人施加的异常效果，包含<#ba.burning>燃烧</>、<#ba.conduct>导电</>、<#ba.frozen>冻结</>、<#ba.corrupt>腐蚀</>。",
+    "iconPath": "",
+    "styleid": "ba.key"
+  },
+  "ba.spelldmg": {
+    "name": "伤害类型",
+    "desc": "伤害分为<@ba.pd>物理伤害</>、<@ba.key>法术伤害</>、<@ba.ether>超域伤害</>。\n其中，<@ba.key>法术伤害</>又分为<@ba.fire>灼热伤害</>、<@ba.pulse>电磁伤害</>、<@ba.cryst>寒冷伤害</>、<@ba.natur>自然伤害</>。",
+    "iconPath": "",
+    "styleid": "ba.key"
+  },
+  "ba.spellenhance": {
+    "name": "法术增幅",
+    "desc": "一定时间内目标造成的<#ba.spelldmg>法术伤害</>提高（数值代表提高的幅度）。同类效果可以叠加。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_spellenhance.png",
+    "styleid": "ba.key"
+  },
+  "ba.spellvul": {
+    "name": "法术脆弱",
+    "desc": "一定时间内目标受到的<#ba.spelldmg>法术伤害</>提高（数值代表提高的幅度）。同类效果可以叠加。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_spellvul.png",
+    "styleid": "ba.key"
+  },
+  "item.plantMossSeed1": {
+    "name": "荞花种子",
+    "desc": "由<#item.plantMoss1>荞花</>通过工业设备采种得到的种子。\n在工业设备中种植荞花种子，可获得荞花。或将荞花种子与<#item.carbonMtl>碳块</>一起进行<#sys.manualCraftField>种植调配</>，可以获得<#item.portSoilMoss1>荞花田块</>。",
+    "iconPath": "public/images/TermIcon/icon_term_item_plantMossSeed1.png",
+    "styleid": "gd.key"
+  },
+  "ba.weak": {
+    "name": "虚弱",
+    "desc": "一定时间内目标造成的伤害降低（数值代表降低的幅度）。同类效果会以非线性方式叠加。",
+    "iconPath": "public/images/TermIcon/icon_term_ba_weak.png",
+    "styleid": "ba.key"
+  },
+  "item.originiumPowder": {
+    "name": "源石粉末",
+    "desc": "由<#item.originium>源矿</>通过工业设备粉碎后得到的粉末。\n可用于其他材料合成。",
+    "iconPath": "public/images/TermIcon/icon_term_item_originiumPowder.png",
+    "styleid": "gd.key"
+  },
+  "item.procBattery1": {
+    "name": "低容谷地电池",
+    "desc": "由<#item.glassCmpt>紫晶零件</>与<#item.originiumPowder>源石粉末</>通过工业设备封装得到的电池。\n可用于发电、设备充能或与据点进行交易。",
+    "iconPath": "public/images/TermIcon/icon_term_item_procBattery1.png",
+    "styleid": "gd.key"
+  },
+  "item.quartzPowder": {
+    "name": "紫晶粉末",
+    "desc": "由<#item.quartzGlass>紫晶纤维</>通过工业设备粉碎后得到的粉末。\n可用于其他材料合成。",
+    "iconPath": "public/images/TermIcon/icon_term_item_quartzPowder.png",
+    "styleid": "gd.key"
+  },
+  "fac.hub": {
+    "name": "协议核心",
+    "desc": "协议核心是集成工业系统的中枢设备，承担了诸多功能，是进行工业建设的核心。\n在协议核心所在的集成核心区域内，可以进行仓储管理。",
+    "iconPath": "",
+    "styleid": "gd.key"
+  },
+  "item.bbflowerPowder": {
+    "name": "酮化灌木粉末",
+    "desc": "由<#item.bbflower>酮化灌木</>通过工业设备粉碎后得到的粉末。\n可用于其他材料合成。",
+    "iconPath": "public/images/TermIcon/icon_term_item_bbflowerPowder.png",
+    "styleid": "gd.key"
+  },
+  "item.glassCmpt": {
+    "name": "紫晶零件",
+    "desc": "由<#item.quartzGlass>紫晶纤维</>通过工业设备配件后得到的零件。\n可用于其他材料合成。",
+    "iconPath": "public/images/TermIcon/icon_term_item_glassCmpt.png",
+    "styleid": "gd.key"
+  },
+  "item.ironEnrPowder": {
+    "name": "致密蓝铁粉末",
+    "desc": "由<#item.ironPowder>蓝铁粉末</>与<#item.plantMossPowder3>砂叶粉末</>通过工业设备研磨后得到的细粉。\n可用于其他材料合成。",
+    "iconPath": "public/images/TermIcon/icon_term_item_ironEnrPowder.png",
+    "styleid": "gd.key"
+  },
+  "item.ironOre": {
+    "name": "蓝铁矿",
+    "desc": "一种可在野外蓝铁矿矿点采集的矿石。\n可使用工业设备对其进行加工，比如在精炼后得到<#item.ironNugget>蓝铁块</>。",
+    "iconPath": "public/images/TermIcon/icon_term_item_ironOre.png",
+    "styleid": "gd.key"
+  },
+  "item.originium": {
+    "name": "源矿",
+    "desc": "一种可在野外源矿矿点采集的矿石，可用于集成工业系统发电。\n可使用工业设备对其进行加工，比如在精炼后得到<#item.crystalShell>晶体外壳</>。",
+    "iconPath": "public/images/TermIcon/icon_term_item_originium.png",
+    "styleid": "gd.key"
+  },
+  "item.plantMoss3": {
+    "name": "砂叶",
+    "desc": "一种可在野外采集的叶片粗粝的植物。\n可使用工业设备培育获得，或在<#item.portSoilMoss3>砂叶田块</>中种植获得。\n也可使用工业设备对其进行加工，比如在粉碎后得到<#item.plantMossPowder3>砂叶粉末</>。",
+    "iconPath": "public/images/TermIcon/icon_term_item_plantMoss3.png",
+    "styleid": "gd.key"
+  },
+  "item.plantMossPowder3": {
+    "name": "砂叶粉末",
+    "desc": "由<#item.plantMoss3>砂叶</>通过工业设备粉碎后得到的粉末。\n可用于其他材料合成，常用于研磨。",
+    "iconPath": "public/images/TermIcon/icon_term_item_plantMossPowder3.png",
+    "styleid": "gd.key"
+  },
+  "item.plantSp1": {
+    "name": "灰芦麦",
+    "desc": "灰芦麦是一种可在野外采集的作物，也可在<#item.portSoilSp1>灰芦麦田块</>中种植获得。\n可直接用于<#sys.manualCraftDish>精制食药</>的制作。",
+    "iconPath": "public/images/TermIcon/icon_term_item_plantSp1.png",
+    "styleid": "gd.key"
+  },
+  "item.plantSpSeed1": {
+    "name": "灰芦麦种子",
+    "desc": "由<#item.plantSp1>灰芦麦</>通过工业设备采种后得到的种子。\n将灰芦麦种子与<#item.carbonMtl>碳块</>一起进行<#sys.manualCraftField>种植调配</>，可以获得<#item.portSoilSp1>灰芦麦田块</>。",
+    "iconPath": "public/images/TermIcon/icon_term_item_plantSpSeed1.png",
+    "styleid": "gd.key"
+  },
+  "item.portSoilMoss3": {
+    "name": "砂叶田块",
+    "desc": "可以在生态种植园中进行进行精细化培育以收获<#item.plantMoss3>砂叶</>的田块。\n由<#item.plantMossSeed3>砂叶种子</>与<#item.carbonMtl>碳块</>一起进行种植调配获得。\n收获时可获得大量砂叶。",
+    "iconPath": "public/images/TermIcon/icon_term_item_item_portSoilMoss3.png",
+    "styleid": "gd.key"
+  },
+  "sys.manualCraft": {
+    "name": "简易制作",
+    "desc": "可在背包中进行简易制作，将不同的原材料制作成各种可用的物品。\n例如可通过简易制作，将<#item.plantMoss1>荞花</>制作成能够回复生命值的<#item.plantMossSeed1>荞花粉末</>。",
+    "iconPath": "",
+    "styleid": "gd.key"
+  },
+  "sys.manualCraftDish": {
+    "name": "精制食药",
+    "desc": "精制食药可以作为<#sys.tacticalItem>战术物品</>使用。\n不同于<#sys.manualCraftTonic>应急食药</>，精致食药只能通过<#sys.manualCraft>简易制作</>获取。",
+    "iconPath": "",
+    "styleid": "gd.key"
+  },
+  "sys.tacticalItem": {
+    "name": "战术物品",
+    "desc": "战术物品可以为战斗带来增益效果，每种战术物品都有不同的生效条件及使用次数上限。\n战斗前，可为每名干员装备一种战术物品。战斗中，当符合其生效条件时，干员会自动使用已装备的战术物品。\n当战术物品的使用次数在单次战斗中耗尽后，会在一段时间后恢复一次使用次数。",
+    "iconPath": "",
+    "styleid": "gd.key"
+  }
+}

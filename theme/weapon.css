@@ -1,4 +1,4 @@
-/* theme/weapon.css */
+/* plugin/weapon.css */
 .weapon-module {
     display: flex;
     gap: 20px;
@@ -178,20 +178,20 @@
     background: var(--table-row-alt, #f9fbfd);
 }
 
-/* 技能容器：使用 flex-wrap 实现并排或堆叠 */
-.skills-container {
+/* 技能区域 - 默认纵向排列 */
+.skill-section {
+    margin-top: 30px;
+}
+.skill-list {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 20px;
-    margin: 20px 0;
 }
 .skill-item {
-    flex: 1 1 300px; /* 基础宽度300px，允许增长和收缩 */
     background: var(--module-bg, #f8fafd);
     border-radius: 16px;
     padding: 20px;
     border: 1px solid var(--border-color, #e2e7f0);
-    min-width: 250px; /* 最小宽度，防止过窄 */
 }
 .skill-name {
     font-size: 1.3rem;
@@ -220,6 +220,18 @@
     color: var(--text-color, #1e2b3c);
 }
 
+/* 当宽度足够时，三个技能并排显示 */
+@media (min-width: 1200px) {
+    .skill-list {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+    .skill-item {
+        flex: 1 1 calc(33.333% - 14px); /* 三列，减去 gap */
+        min-width: 280px;
+    }
+}
+
 .weapon-desc {
     margin-top: 30px;
     padding: 20px;
@@ -237,6 +249,62 @@
     color: #60758b;
 }
 
-/* 特殊标签颜色（由主题 CSS 提供，但此处也可作为后备） */
-.ba-vup { color: #9eb7ff; }
-.ba-info { color: #999999; }
+/* 图标+文字组合样式 */
+.textstyle-icon-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.textstyle-icon-text img {
+    width: 1em;
+    height: 1em;
+    object-fit: contain;
+    transform-origin: center;
+    vertical-align: middle;
+}
+
+/* 超链接浮窗 */
+.hyperlink-tooltip {
+    display: none;
+    position: absolute;
+    background: var(--tooltip-bg, #ffffff);
+    color: var(--tooltip-text, #1e2b3c);
+    border: 1px solid var(--border-color, #d9e0e8);
+    padding: 12px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    z-index: 1000;
+    max-width: 320px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+.hyperlink-tooltip .tooltip-name {
+    font-weight: 600;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border-color, #e2e7f0);
+    padding-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.hyperlink-tooltip .tooltip-desc {
+    white-space: pre-wrap;
+}
+.hyperlink-tooltip .tooltip-desc .tag-hyperlink {
+    cursor: pointer;
+    text-decoration: underline dotted;
+}
+.tag-hyperlink {
+    cursor: pointer;
+    color: var(--link-color, #1e6f9f);
+    text-decoration: underline dotted;
+}
+
+/* 行内图片（用于 <image> 标签） */
+.inline-icon {
+    display: inline-block;
+    vertical-align: middle;
+    width: auto;
+    height: 1em;
+    object-fit: contain;
+}
