@@ -198,13 +198,16 @@
                 const res = await fetch('/public/CH/weapon/manifest.json?t=' + Date.now());
                 if (!res.ok) throw new Error('无法加载武器清单');
                 const allWeapons = await res.json();
-                return showHidden ? allWeapons : allWeapons.filter(w => !w.hidden);
+                let weapons = showHidden ? allWeapons : allWeapons.filter(w => !w.hidden);
+                // 按 priority 升序排序（缺失时默认为 999）
+                weapons.sort((a, b) => (a.priority || 999) - (b.priority || 999));
+                return weapons;
             } catch (err) {
                 console.error('加载武器清单失败:', err);
                 return [];
             }
         }
-
+        
         // ---------- 渲染左侧武器列表 ----------
         function renderWeaponList(weapons, container) {
             container.innerHTML = '';
