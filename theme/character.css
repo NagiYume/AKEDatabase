@@ -469,3 +469,67 @@
     color: var(--desc-color, #5b6f86);
     line-height: 1.6;
 }
+
+/* 详情头部：左侧信息 + 右侧大图（各占50%） */
+.detail-header {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+.detail-left {
+    flex: 1; /* 左侧占据剩余空间 */
+    display: flex;
+    gap: 20px;
+    min-width: 0; /* 防止内容溢出 */
+}
+.detail-pic {
+    width: 30%; /* 右侧固定宽度50% */
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+.detail-pic img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    background: #eef3fa;
+    border-radius: 16px;
+    padding: 8px;
+}
+
+/* 潜能图片：垂直排列，每张一行 */
+.potential-pics {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center; /* 可选：水平居中 */
+}
+.potential-pics img {
+    width: 70%;
+    max-width: 70%;    /* 保证图片撑满容器宽度 */
+    height: auto;
+    object-fit: contain;
+    border-radius: 12px;
+    border: 1px solid var(--border-color, #d9e0e8);
+    background: #f8fafd;
+    padding: 8px;
+}
+
+/* 为元数据区域添加边框 */
+.detail-meta {
+    border: 1px solid var(--border-color, #d9e0e8);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 10px 0;
+    background: var(--module-bg, #f8fafd);
+}
+
+/* 为 profile 和 feature 添加边框 */
+.detail-profile,
+.detail-feature {
+    border: 1px solid var(--border-color, #d9e0e8);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 10px 0;
+    background: var(--module-bg, #f8fafd);
+}
