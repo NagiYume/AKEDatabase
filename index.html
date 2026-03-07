@@ -348,9 +348,9 @@
                                                 if (!styleDef) {
                                                     tagResult = tagName.includes('info') ? `<span style="color: #999999;">${renderedInner}</span>` : renderedInner;
                                                 } else {
-                                                    const color = styleDef.color?.[0] || null;
-                                                    const image = styleDef.image?.[0] || null;
-                                                    const scale = styleDef.scale?.[0] || 1;
+                                                    const color = styleDef.color?.[1] ?? styleDef.color?.[0] ?? null;
+                                                    const image = styleDef.image?.[1] ?? styleDef.image?.[0] ?? null;
+                                                    const scale = styleDef.scale?.[1] ?? styleDef.scale?.[0] ?? 1;
                                                     if (image) {
                                                         tagResult = `<span class="textstyle-icon-text"><img src="/${image}" style="transform: scale(${scale});" alt=""><span style="${color ? `color: ${color};` : ''}">${renderedInner}</span></span>`;
                                                     } else {
@@ -369,9 +369,9 @@
                                                         let styleColor = '';
                                                         if (styleid && textstyleCfg?.[styleid]) {
                                                             const styleDef = textstyleCfg[styleid];
-                                                            const color = styleDef.color?.[0] || null;
-                                                            const image = styleDef.image?.[0] || null;
-                                                            const scale = styleDef.scale?.[0] || 1;
+                                                            const color = styleDef.color?.[1] ?? styleDef.color?.[0] ?? null;
+                                                            const image = styleDef.image?.[1] ?? styleDef.image?.[0] ?? null;
+                                                            const scale = styleDef.scale?.[1] ?? styleDef.scale?.[0] ?? 1;
                                                             if (image) {
                                                                 tagResult = `<span class="textstyle-icon-text">
                                                                     <img src="/${image}" style="transform: scale(${scale});" alt="">

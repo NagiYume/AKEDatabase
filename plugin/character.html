@@ -8,8 +8,6 @@
     </div>
 </div>
 
-<!-- 超链接浮窗已由主页面统一管理 -->
-
 <script>
     (function() {
         // ---------- 模块内部状态 ----------
@@ -19,17 +17,24 @@
 
         const IMAGE_BASE_PATH = '/public/images/bufficon/';
 
+        // 属性类型映射
+        const TYPE_CLASS_MAP = {
+            '物理': 'physical',
+            '自然': 'nature',
+            '寒冷': 'cold',
+            '灼热': 'hot',
+            '电磁': 'electro'
+        };
+
         // ---------- 辅助函数 ----------
         function getCurrentShowHidden() {
             return window.akeData?.getConfig().showHidden ?? false;
         }
 
-        // 使用全局 parseText，传入角色模块的图片路径
         function parseText(text) {
             return window.parseText(text, IMAGE_BASE_PATH);
         }
 
-        // 替换描述中的占位符 {表达式:格式}，支持加减乘除运算
         function replacePlaceholders(desc, valueMap) {
             return desc.replace(/\{([^}]+)\}/g, (match, p1) => {
                 const parts = p1.split(':');
@@ -38,9 +43,7 @@
 
                 const varNames = expr.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
                 const missingVar = varNames.find(name => !(name in valueMap));
-                if (missingVar) {
-                    return match;
-                }
+                if (missingVar) return match;
 
                 let evalExpr = expr;
                 for (const name of varNames) {
@@ -55,16 +58,13 @@
                     return match;
                 }
 
-                if (format.includes('%')) {
-                    return (result * 100).toFixed(1) + '%';
-                } else if (format.includes('.')) {
+                if (format.includes('%')) return (result * 100).toFixed(1) + '%';
+                if (format.includes('.')) {
                     const precision = format.split('.')[1]?.length || 1;
                     return result.toFixed(precision);
-                } else if (format.includes('0')) {
-                    return Math.round(result);
-                } else {
-                    return result.toFixed(2);
                 }
+                if (format.includes('0')) return Math.round(result);
+                return result.toFixed(2);
             });
         }
 
@@ -97,26 +97,40 @@
                 item.dataset.charId = char.charId;
                 item.dataset.contentFile = char.contentFile;
 
+                // 稀有度竖条
+                const rarityBar = document.createElement('span');
+                rarityBar.className = `rarity-bar rarity-${char.rarity}`;
+                rarityBar.title = `稀有度 ${char.rarity}`;
+
+                // 头像
                 const icon = document.createElement('img');
                 icon.className = 'character-icon';
                 icon.src = char.icon || '';
                 icon.onerror = () => icon.src = '';
 
-                const info = document.createElement('div');
-                info.className = 'character-info';
+                // 文本区域（两行）
+                const textContainer = document.createElement('div');
+                textContainer.className = 'character-info';
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'character-name';
+                nameDiv.textContent = char.name;
+                const idDiv = document.createElement('div');
+                idDiv.className = 'character-id';
+                idDiv.textContent = char.charId;
+                textContainer.appendChild(nameDiv);
+                textContainer.appendChild(idDiv);
 
-                const name = document.createElement('span');
-                name.className = 'character-name';
-                name.textContent = char.name;
+                // 属性圆点
+                const typeClass = TYPE_CLASS_MAP[char.charType] || 'unknown';
+                const typeDot = document.createElement('span');
+                typeDot.className = `char-type-dot type-${typeClass}`;
+                typeDot.title = char.charType || '未知';
 
-                const rarityDot = document.createElement('span');
-                rarityDot.className = `rarity-dot rarity-${char.rarity}`;
-                rarityDot.title = `稀有度 ${char.rarity}`;
-
-                info.appendChild(name);
+                // 组装
+                item.appendChild(rarityBar);
                 item.appendChild(icon);
-                item.appendChild(info);
-                item.appendChild(rarityDot);
+                item.appendChild(textContainer);
+                item.appendChild(typeDot);
 
                 item.addEventListener('click', () => {
                     document.querySelectorAll('.character-item').forEach(el => el.classList.remove('active'));
@@ -153,9 +167,9 @@
             }
         }
 
-        // ---------- 渲染详情 ----------
+        // ---------- 渲染详情（完整版）----------
         function renderDetail(data) {
-            // 基础信息：左侧 icon，右侧 pic 大图
+            // 基础信息
             const basicHtml = `
                 <div class="detail-header">
                     <div class="detail-left">
@@ -187,7 +201,7 @@
                 </div>
             `;
 
-            // 属性成长：汇总为一张表格，列名已更新
+            // 属性成长
             const growth = data.growth || {};
             const attributes = ['力量', '敏捷', '智识', '意志', '生命值', '攻击力', '法术异常伤害系数', '物理异常伤害系数'];
             const firstAttr = attributes.find(attr => growth[attr] && growth[attr].length);
@@ -243,7 +257,7 @@
                 `;
             }).join('');
 
-            // 属性节点（四项并排）
+            // 属性节点
             const attrNodes = data.attributeNodes || [];
             const attrNodesHtml = `
                 <div class="section">
@@ -260,40 +274,47 @@
                 </div>
             `;
 
-            // 技能大类
+            // 技能大类（关键部分）
             const skillsGroups = data.skills || [];
             const skillsHtml = skillsGroups.map(group => {
                 const groupDesc = parseText(group.description);
-                const skillDetails = (group.skillIds || [])
-                    .map(id => data.skill?.[id])
-                    .filter(Boolean);
-                const skillTables = skillDetails.map(detail => {
-                    const values = detail.values || {};
-                    const columns = Object.keys(values).filter(k => Array.isArray(values[k]));
-                    if (columns.length === 0) return '';
-                    const levelCount = values[columns[0]].length;
-                    const rows = [];
-                    for (let lv = 1; lv <= levelCount; lv++) {
-                        const cells = columns.map(col => {
-                            const arr = values[col];
-                            let val = arr[lv-1] !== undefined ? arr[lv-1] : arr[arr.length-1];
-                            if (typeof val === 'number') {
-                                val = val.toFixed(2);
-                            }
-                            return `<td>${val}</td>`;
-                        }).join('');
-                        rows.push(`<tr><td>Lv.${lv}</td>${cells}</tr>`);
-                    }
-                    const header = `<tr><th>等级</th>${columns.map(col => `<th>${col}</th>`).join('')}</tr>`;
-                    return `
-                        <div class="skill-detail">
-                            <table class="skill-table">
-                                <thead>${header}</thead>
-                                <tbody>${rows.join('')}</tbody>
-                            </table>
-                        </div>
-                    `;
-                }).join('');
+                // 根据组名找到对应的技能详情对象
+                const skillDetail = Object.values(data.skill || {}).find(s => s.name === group.name);
+                if (!skillDetail) {
+                    console.warn(`未找到与组名 "${group.name}" 匹配的技能详情`);
+                    return ''; // 跳过此组
+                }
+            
+                const values = skillDetail.values || {};
+                // 提取所有数组类型的字段作为表格列
+                const columns = Object.keys(values).filter(k => Array.isArray(values[k]));
+                if (columns.length === 0) return '';
+            
+                const levelCount = values[columns[0]].length;
+                const rows = [];
+                for (let lv = 1; lv <= levelCount; lv++) {
+                    const cells = columns.map(col => {
+                        const arr = values[col];
+                        let val = arr[lv-1] !== undefined ? arr[lv-1] : arr[arr.length-1];
+                        // 如果是数字则保留两位小数，否则原样输出（如百分比字符串）
+                        if (typeof val === 'number') {
+                            val = val.toFixed(2);
+                        }
+                        return `<td>${val}</td>`;
+                    }).join('');
+                    rows.push(`<tr><td>Lv.${lv}</td>${cells}</tr>`);
+                }
+            
+                const header = `<tr><th>等级</th>${columns.map(col => `<th>${col}</th>`).join('')}</tr>`;
+                const skillTables = `
+                    <div class="skill-detail">
+                        <table class="skill-table">
+                            <thead>${header}</thead>
+                            <tbody>${rows.join('')}</tbody>
+                        </table>
+                    </div>
+                `;
+                
                 return `
                     <div class="skill-item">
                         <div class="skill-name">${group.name}</div>
@@ -303,7 +324,7 @@
                 `;
             }).join('');
 
-            // 潜能图片（新增）
+            // 潜能图片
             const potentialPics = [];
             if (data.potentialpic1) potentialPics.push(data.potentialpic1);
             if (data.potentialpic2) potentialPics.push(data.potentialpic2);
@@ -378,9 +399,7 @@
             if (isInitialized) return;
             isInitialized = true;
 
-            // 等待主页面配置加载完成
             if (window.configLoaded) await window.configLoaded;
-
             window.addEventListener('globalConfigChanged', refreshModule);
             await refreshModule();
         }
