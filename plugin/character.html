@@ -35,36 +35,56 @@
             return window.parseText(text, IMAGE_BASE_PATH);
         }
 
+        // 替换描述中的占位符 {表达式:格式}，支持加减乘除运算，变量名不区分大小写
         function replacePlaceholders(desc, valueMap) {
+            // 将 valueMap 的键统一转为小写，用于不区分大小写查找
+            const lowerValueMap = {};
+            for (const [key, val] of Object.entries(valueMap)) {
+                lowerValueMap[key.toLowerCase()] = val;
+            }
+        
             return desc.replace(/\{([^}]+)\}/g, (match, p1) => {
                 const parts = p1.split(':');
-                const expr = parts[0].replace(/\s+/g, '');
+                const expr = parts[0].replace(/\s+/g, ''); // 移除空格
                 const format = parts[1] ? parts[1].trim() : '';
-
+            
+                // 提取表达式中的所有变量名（字母、数字、下划线）
                 const varNames = expr.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
-                const missingVar = varNames.find(name => !(name in valueMap));
-                if (missingVar) return match;
-
+                // 检查所有变量名的小写形式是否在 lowerValueMap 中存在
+                const missingVar = varNames.find(name => !(name.toLowerCase() in lowerValueMap));
+                if (missingVar) {
+                    // 有变量未定义，保留原占位符
+                    return match;
+                }
+            
+                // 构建可求值表达式：将每个变量名替换为带括号的数值，防止运算符粘连
                 let evalExpr = expr;
                 for (const name of varNames) {
-                    const val = Number(valueMap[name]);
-                    evalExpr = evalExpr.replace(new RegExp(`\\b${name}\\b`, 'g'), val);
+                    const value = lowerValueMap[name.toLowerCase()];
+                    // 使用正则替换整个单词（原样变量名，不区分大小写）
+                    const regex = new RegExp(`\\b${name}\\b`, 'g');
+                    evalExpr = evalExpr.replace(regex, `(${value})`);
                 }
-
+            
                 let result;
                 try {
                     result = new Function('return ' + evalExpr)();
                 } catch (e) {
+                    console.warn('表达式计算失败:', evalExpr, e);
                     return match;
                 }
-
-                if (format.includes('%')) return (result * 100).toFixed(1) + '%';
-                if (format.includes('.')) {
+            
+                // 根据格式输出
+                if (format.includes('%')) {
+                    return (result * 100).toFixed(1) + '%';
+                } else if (format.includes('.')) {
                     const precision = format.split('.')[1]?.length || 1;
                     return result.toFixed(precision);
+                } else if (format.includes('0')) {
+                    return Math.round(result);
+                } else {
+                    return result.toFixed(2);
                 }
-                if (format.includes('0')) return Math.round(result);
-                return result.toFixed(2);
             });
         }
 
@@ -277,7 +297,6 @@
             // 技能大类（关键部分）
             const skillsGroups = data.skills || [];
             const skillsHtml = skillsGroups.map(group => {
-                const groupDesc = parseText(group.description);
                 // 根据组名找到对应的技能详情对象
                 const skillDetail = Object.values(data.skill || {}).find(s => s.name === group.name);
                 if (!skillDetail) {
@@ -285,36 +304,52 @@
                     return ''; // 跳过此组
                 }
             
+                // 构建一级值映射：取 values 中每个数组的第一个元素
+                const level1Values = {};
                 const values = skillDetail.values || {};
-                // 提取所有数组类型的字段作为表格列
-                const columns = Object.keys(values).filter(k => Array.isArray(values[k]));
-                if (columns.length === 0) return '';
-            
-                const levelCount = values[columns[0]].length;
-                const rows = [];
-                for (let lv = 1; lv <= levelCount; lv++) {
-                    const cells = columns.map(col => {
-                        const arr = values[col];
-                        let val = arr[lv-1] !== undefined ? arr[lv-1] : arr[arr.length-1];
-                        // 如果是数字则保留两位小数，否则原样输出（如百分比字符串）
-                        if (typeof val === 'number') {
-                            val = val.toFixed(2);
-                        }
-                        return `<td>${val}</td>`;
-                    }).join('');
-                    rows.push(`<tr><td>Lv.${lv}</td>${cells}</tr>`);
+                for (const [key, val] of Object.entries(values)) {
+                    if (Array.isArray(val) && val.length > 0) {
+                        level1Values[key] = val[0]; // 取第一个元素（1级时的值）
+                    } else {
+                        level1Values[key] = val; // 非数组或空数组直接赋值
+                    }
                 }
             
-                const header = `<tr><th>等级</th>${columns.map(col => `<th>${col}</th>`).join('')}</tr>`;
-                const skillTables = `
-                    <div class="skill-detail">
-                        <table class="skill-table">
-                            <thead>${header}</thead>
-                            <tbody>${rows.join('')}</tbody>
-                        </table>
-                    </div>
-                `;
+                // 先替换描述中的占位符（使用一级值），再解析标签
+                let groupDesc = group.description || '';
+                groupDesc = replacePlaceholders(groupDesc, level1Values);
+                groupDesc = parseText(groupDesc);
+            
+                // 生成技能表格（使用所有等级的数据）
+                const skillTables = (() => {
+                    const values = skillDetail.values || {};
+                    const columns = Object.keys(values).filter(k => Array.isArray(values[k]));
+                    if (columns.length === 0) return '';
                 
+                    const levelCount = values[columns[0]].length;
+                    const rows = [];
+                    for (let lv = 1; lv <= levelCount; lv++) {
+                        const cells = columns.map(col => {
+                            const arr = values[col];
+                            let val = arr[lv-1] !== undefined ? arr[lv-1] : arr[arr.length-1];
+                            if (typeof val === 'number') {
+                                val = val.toFixed(2);
+                            }
+                            return `<td>${val}</td>`;
+                        }).join('');
+                        rows.push(`<tr><td>Lv.${lv}</td>${cells}</tr>`);
+                    }
+                    const header = `<tr><th>等级</th>${columns.map(col => `<th>${col}</th>`).join('')}</tr>`;
+                    return `
+                        <div class="skill-detail">
+                            <table class="skill-table">
+                                <thead>${header}</thead>
+                                <tbody>${rows.join('')}</tbody>
+                            </table>
+                        </div>
+                    `;
+                })();
+            
                 return `
                     <div class="skill-item">
                         <div class="skill-name">${group.name}</div>
