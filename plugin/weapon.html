@@ -8,8 +8,7 @@
     </div>
 </div>
 
-<!-- 超链接浮窗容器 -->
-<div id="hyperlink-tooltip" class="hyperlink-tooltip"></div>
+<!-- 超链接浮窗已由主页面统一管理，此处不再需要容器 -->
 
 <script>
     (function() {
@@ -17,10 +16,6 @@
         let currentWeapons = [];
         let activeWeaponId = null;
         let isInitialized = false;
-        let textstyleConfig = null;
-        let hyperlinkConfig = null;
-        let textstylePromise = null;
-        let hyperlinkPromise = null;
 
         const IMAGE_BASE_PATH = '/public/images/';
 
@@ -29,167 +24,9 @@
             return window.akeData?.getConfig().showHidden ?? false;
         }
 
-        async function loadTextStyleConfig() {
-            if (textstyleConfig) return textstyleConfig;
-            if (textstylePromise) return textstylePromise;
-            textstylePromise = (async () => {
-                try {
-                    const res = await fetch('/theme/textstyle.json?t=' + Date.now());
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                    textstyleConfig = await res.json();
-                    return textstyleConfig;
-                } catch (err) {
-                    console.warn('加载 textstyle.json 失败', err);
-                    textstyleConfig = {};
-                    return textstyleConfig;
-                } finally {
-                    textstylePromise = null;
-                }
-            })();
-            return textstylePromise;
-        }
-
-        async function loadHyperlinkConfig() {
-            if (hyperlinkConfig) return hyperlinkConfig;
-            if (hyperlinkPromise) return hyperlinkPromise;
-            hyperlinkPromise = (async () => {
-                try {
-                    const res = await fetch('/theme/hyperlink.json?t=' + Date.now());
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                    hyperlinkConfig = await res.json();
-                    return hyperlinkConfig;
-                } catch (err) {
-                    console.warn('加载 hyperlink.json 失败', err);
-                    hyperlinkConfig = {};
-                    return hyperlinkConfig;
-                } finally {
-                    hyperlinkPromise = null;
-                }
-            })();
-            return hyperlinkPromise;
-        }
-
-        // ---------- 递归解析文本（支持嵌套标签）----------
-        function parseText(text, hyperlinkCfg, textstyleCfg) {
-            if (!text) return '';
-            let result = '';
-            let i = 0;
-            const len = text.length;
-
-            while (i < len) {
-                if (text[i] === '<') {
-                    // 检查 <image...> 自闭合标签
-                    if (text.substr(i, 6) === '<image') {
-                        const endIdx = text.indexOf('>', i);
-                        if (endIdx === -1) { result += text[i]; i++; continue; }
-                        const tagContent = text.substring(i + 1, endIdx);
-                        const imgMatch = tagContent.match(/image="([^"]+)"\s*scale=([0-9.]+)/);
-                        if (imgMatch) {
-                            let path = imgMatch[1];
-                            const scale = imgMatch[2];
-                            if (!path.includes('.')) path += '.png';
-                            result += `<img src="${IMAGE_BASE_PATH}${path}" style="transform: scale(${scale}); width: auto; height: 1em; display: inline-block; vertical-align: middle;" class="inline-icon">`;
-                        }
-                        i = endIdx + 1;
-                        continue;
-                    }
-                    // 检查 <@tag> 或 <#tag>
-                    else if (text[i+1] === '@' || text[i+1] === '#') {
-                        const prefix = text[i+1];
-                        const tagNameEnd = text.indexOf('>', i);
-                        if (tagNameEnd === -1) { result += text[i]; i++; continue; }
-                        const tagName = text.substring(i+2, tagNameEnd);
-
-                        // 寻找匹配的闭合标签 </> (处理嵌套)
-                        let depth = 1;
-                        let pos = tagNameEnd + 1;
-                        while (pos < len) {
-                            if (text[pos] === '<') {
-                                if (text.substr(pos, 3) === '</>') {
-                                    depth--;
-                                    if (depth === 0) {
-                                        // 找到匹配闭合
-                                        const innerContent = text.substring(tagNameEnd + 1, pos);
-                                        // 递归解析内部内容
-                                        const renderedInner = parseText(innerContent, hyperlinkCfg, textstyleCfg);
-
-                                        let tagResult = '';
-                                        if (prefix === '@') {
-                                            const styleDef = textstyleCfg?.[tagName];
-                                            if (!styleDef) {
-                                                // 默认处理：若标签含 info 则灰色
-                                                tagResult = tagName.includes('info') ? `<span style="color: #999999;">${renderedInner}</span>` : renderedInner;
-                                            } else {
-                                                const color = styleDef.color?.[0] || null;
-                                                const image = styleDef.image?.[0] || null;
-                                                const scale = styleDef.scale?.[0] || 1;
-                                                if (image) {
-                                                    tagResult = `<span class="textstyle-icon-text"><img src="/${image}" style="transform: scale(${scale});" alt=""><span style="${color ? `color: ${color};` : ''}">${renderedInner}</span></span>`;
-                                                } else {
-                                                    tagResult = color ? `<span style="color: ${color};">${renderedInner}</span>` : renderedInner;
-                                                }
-                                            }
-                                        } else if (prefix === '#') {
-                                            const hyperDef = hyperlinkCfg?.[tagName];
-                                            if (hyperDef) {
-                                                const styleid = hyperDef.styleid;
-                                                let styleAttr = '';
-                                                if (styleid && textstyleCfg?.[styleid]) {
-                                                    const styleDef = textstyleCfg[styleid];
-                                                    const color = styleDef.color?.[0] || null;
-                                                    const image = styleDef.image?.[0] || null;
-                                                    const scale = styleDef.scale?.[0] || 1;
-                                                    if (image) {
-                                                        // 带图标的超链接
-                                                        tagResult = `<span class="textstyle-icon-text">
-                                                            <img src="/${image}" style="transform: scale(${scale});" alt="">
-                                                            <span class="tag-hyperlink" data-tag-id="${tagName}" style="${color ? `color: ${color};` : ''}">${renderedInner}</span>
-                                                        </span>`;
-                                                    } else if (color) {
-                                                        // 仅有颜色
-                                                        tagResult = `<span class="tag-hyperlink" data-tag-id="${tagName}" style="color: ${color};">${renderedInner}</span>`;
-                                                    } else {
-                                                        // 无样式，普通超链接
-                                                        tagResult = `<span class="tag-hyperlink" data-tag-id="${tagName}">${renderedInner}</span>`;
-                                                    }
-                                                } else {
-                                                    // 无 styleid 或样式未找到，普通超链接
-                                                    tagResult = `<span class="tag-hyperlink" data-tag-id="${tagName}">${renderedInner}</span>`;
-                                                }
-                                            } else {
-                                                tagResult = renderedInner;
-                                            }
-                                        }
-                                        result += tagResult;
-                                        i = pos + 3; // 跳过 </> 
-                                        break;
-                                    }
-                                    pos += 3;
-                                } else if (text[pos+1] === '@' || text[pos+1] === '#' || text.substr(pos, 6) === '<image') {
-                                    depth++;
-                                    pos++;
-                                } else {
-                                    pos++;
-                                }
-                            } else {
-                                pos++;
-                            }
-                        }
-                        if (pos >= len) { // 未找到匹配闭合，原样输出
-                            result += text.substring(i, tagNameEnd + 1);
-                            i = tagNameEnd + 1;
-                        }
-                        continue;
-                    } else {
-                        result += text[i];
-                        i++;
-                    }
-                } else {
-                    result += text[i];
-                    i++;
-                }
-            }
-            return result;
+        // 使用全局 parseText，传入武器模块的图片路径
+        function parseText(text) {
+            return window.parseText(text, IMAGE_BASE_PATH);
         }
 
         // ---------- 武器数据加载 ----------
@@ -199,7 +36,6 @@
                 if (!res.ok) throw new Error('无法加载武器清单');
                 const allWeapons = await res.json();
                 let weapons = showHidden ? allWeapons : allWeapons.filter(w => !w.hidden);
-                // 按 priority 升序排序（缺失时默认为 999）
                 weapons.sort((a, b) => (a.priority || 999) - (b.priority || 999));
                 return weapons;
             } catch (err) {
@@ -271,19 +107,15 @@
         async function loadWeaponDetail(weapon, container) {
             container.innerHTML = '<div class="loader">加载武器数据...</div>';
             try {
-                const [data, hyperCfg, styleCfg] = await Promise.all([
-                    fetch(weapon.contentFile + '?t=' + Date.now()).then(r => r.json()),
-                    loadHyperlinkConfig(),
-                    loadTextStyleConfig()
-                ]);
-                container.innerHTML = renderDetail(data, hyperCfg, styleCfg);
+                const data = await fetch(weapon.contentFile + '?t=' + Date.now()).then(r => r.json());
+                container.innerHTML = renderDetail(data);
             } catch (err) {
                 container.innerHTML = `<div class="error-message">加载失败: ${err.message}</div>`;
             }
         }
 
         // ---------- 渲染详情 ----------
-        function renderDetail(data, hyperCfg, styleCfg) {
+        function renderDetail(data) {
             // 基础攻击力表格
             const atkRows = [];
             for (let i = 0; i < 90; i++) {
@@ -311,55 +143,42 @@
                     // 先替换占位符 {key:format}
                     desc = desc.replace(/\{([^}]+)\}/g, (match, p1) => {
                         const parts = p1.split(':');
-                        const expr = parts[0].trim();                // 表达式部分
-                        const format = parts[1] ? parts[1].trim() : ''; // 格式部分
-                    
-                        // 提取表达式中所有变量名（字母数字下划线）
+                        const expr = parts[0].trim();
+                        const format = parts[1] ? parts[1].trim() : '';
+
                         const varNames = expr.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
-                        // 检查变量是否都存在
                         const missingVar = varNames.find(name => !(name in replaceMap));
                         if (missingVar) {
-                            console.warn(`占位符变量 ${missingVar} 未定义，保留原样`);
                             return match;
                         }
-                    
-                        // 构建可求值的算术表达式：将变量替换为实际数值
+
                         let evalExpr = expr;
                         for (const name of varNames) {
                             const value = replaceMap[name];
-                            // 使用正则替换整个单词
                             evalExpr = evalExpr.replace(new RegExp(`\\b${name}\\b`, 'g'), value);
                         }
-                    
-                        // 计算表达式结果
+
                         let result;
                         try {
-                            // 使用 Function 代替 eval（更安全，但本质相同）
                             result = new Function('return ' + evalExpr)();
                         } catch (e) {
-                            console.warn('表达式计算失败:', evalExpr, e);
                             return match;
                         }
-                    
-                        // 根据格式输出
+
                         if (format.includes('%')) {
-                            // 百分比：数值乘以100，保留一位小数
                             return (result * 100).toFixed(1) + '%';
                         } else if (format.includes('0')) {
-                            // 取整（例如 {key:0}）
                             return Math.round(result);
                         } else if (format.includes('.')) {
-                            // 保留小数位数（如 {key:0.0} 表示一位小数）
                             const precision = format.split('.')[1]?.length || 0;
                             return result.toFixed(precision);
                         } else {
-                            // 无格式，直接返回数值
                             return result;
                         }
                     });
 
-                    // 递归解析所有标签（支持嵌套）
-                    desc = parseText(desc, hyperCfg, styleCfg);
+                    // 递归解析所有标签（使用全局 parseText）
+                    desc = parseText(desc);
 
                     rows.push(`
                         <div class="skill-level-row">
@@ -426,56 +245,14 @@
             renderWeaponList(weapons, weaponList);
         }
 
-        // ---------- 超链接点击处理 ----------
-        function setupHyperlinkTooltip() {
-            const tooltip = document.getElementById('hyperlink-tooltip');
-            if (!tooltip) return;
-
-            document.addEventListener('click', (e) => {
-                const target = e.target.closest('.tag-hyperlink');
-                if (!target) {
-                    tooltip.style.display = 'none';
-                    return;
-                }
-                e.preventDefault();
-                const tagId = target.dataset.tagId;
-                if (!tagId) return;
-                const hyperDef = hyperlinkConfig?.[tagId];
-                if (!hyperDef) return;
-
-                const name = hyperDef.name || '';
-                let desc = hyperDef.desc || '';
-                desc = parseText(desc, hyperlinkConfig, textstyleConfig);
-
-                let iconHtml = '';
-                if (hyperDef.iconPath) {
-                    const iconFullPath = hyperDef.iconPath.includes('.') ? hyperDef.iconPath : hyperDef.iconPath + '.png';
-                    iconHtml = `<img src="/${iconFullPath}" style="width: 1.2em; height: 1.2em; vertical-align: middle; margin-right: 4px;">`;
-                }
-
-                tooltip.innerHTML = `
-                    <div class="tooltip-name">${iconHtml}${name}</div>
-                    <div class="tooltip-desc">${desc}</div>
-                `;
-
-                const rect = target.getBoundingClientRect();
-                const scrollX = window.scrollX || window.pageXOffset;
-                const scrollY = window.scrollY || window.pageYOffset;
-                tooltip.style.left = (rect.left + scrollX) + 'px';
-                tooltip.style.top = (rect.bottom + scrollY + 5) + 'px';
-                tooltip.style.display = 'block';
-            });
-
-            tooltip.addEventListener('click', (e) => e.stopPropagation());
-        }
-
         // ---------- 初始化 ----------
         async function initWeaponModule() {
             if (isInitialized) return;
             isInitialized = true;
 
-            await Promise.all([loadTextStyleConfig(), loadHyperlinkConfig()]);
-            setupHyperlinkTooltip();
+            // 等待主页面配置加载完成（可选）
+            if (window.configLoaded) await window.configLoaded;
+
             window.addEventListener('globalConfigChanged', async () => {
                 await refreshWeaponModule();
             });

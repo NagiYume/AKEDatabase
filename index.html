@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AKEData · 全局设置按钮</title>
+    <title>AKEData · Endfield Database</title>
     <!-- 主题样式：完全由 theme/ 下的 CSS 控制，无内联样式 -->
     <link rel="stylesheet" id="theme-style" href="theme/light.css">
 </head>
@@ -56,6 +56,10 @@
         </div>
     </div>
 
+    <!-- 两个超链接浮窗容器，由主页面统一管理 -->
+    <div id="hyperlink-tooltip-1" class="hyperlink-tooltip"></div>
+    <div id="hyperlink-tooltip-2" class="hyperlink-tooltip"></div>
+
     <script>
         (function() {
             // ---------- 起始页内容 ----------
@@ -89,6 +93,8 @@
             const closeSettings = document.getElementById('closeSettings');
             const modalThemeSelect = document.getElementById('modalThemeSelect');
             const modalShowHiddenCheck = document.getElementById('modalShowHiddenCheck');
+            const tooltip1 = document.getElementById('hyperlink-tooltip-1');
+            const tooltip2 = document.getElementById('hyperlink-tooltip-2');
 
             // ---------- 工具函数 ----------
             function setContent(html) {
@@ -123,7 +129,7 @@
                 
                     // 手动执行所有 script 标签
                     const scripts = contentArea.querySelectorAll('script');
-                    console.log(`找到 ${scripts.length} 个脚本待执行`); // 添加日志
+                    console.log(`找到 ${scripts.length} 个脚本待执行`);
                     scripts.forEach(oldScript => {
                         const newScript = document.createElement('script');
                         Array.from(oldScript.attributes).forEach(attr => {
@@ -152,7 +158,7 @@
                 });
             }
 
-            // 根据 config.showHidden 过滤模块（同时排除设置模块，因为设置已改为全局按钮）
+            // 根据 config.showHidden 过滤模块
             function filterModules(modules) {
                 let filtered = modules.filter(m => m.id !== 'settings'); // 排除旧设置模块（如有）
                 if (!config.showHidden) {
@@ -166,13 +172,11 @@
                 const visibleModules = filterModules(allModules);
                 renderModuleList(visibleModules);
 
-                // 如果当前激活的模块被隐藏或排除，则返回起始页
                 if (activeModuleId) {
                     const stillVisible = visibleModules.some(m => m.id === activeModuleId);
                     if (!stillVisible) {
                         showHomePage();
                     } else {
-                        // 确保高亮仍在
                         const activeItem = document.querySelector(`.module-item[data-id="${activeModuleId}"]`);
                         if (activeItem) activeItem.classList.add('active');
                     }
@@ -233,7 +237,6 @@
                 config.theme = lowerTheme;
                 themeLink.href = `theme/${lowerTheme}.css`;
                 localStorage.setItem('akedata-theme', lowerTheme);
-                // 同步下拉框选中值（如果弹窗打开）
                 if (modalThemeSelect) modalThemeSelect.value = lowerTheme;
             }
 
@@ -245,7 +248,6 @@
 
             // ---------- 弹窗控制 ----------
             function openSettings() {
-                // 同步当前配置到弹窗控件
                 modalThemeSelect.value = config.theme;
                 modalShowHiddenCheck.checked = config.showHidden;
                 settingsModal.style.display = 'flex';
@@ -286,6 +288,267 @@
                 }
             }
 
+            // ---------- 全局超链接相关 ----------
+            // 加载超链接和文本样式配置
+            window.hyperlinkConfig = {};
+            window.textstyleConfig = {};
+            window.configLoaded = Promise.all([
+                fetch('/theme/hyperlink.json?t=' + Date.now()).then(r => r.json()).then(cfg => window.hyperlinkConfig = cfg).catch(() => {}),
+                fetch('/theme/textstyle.json?t=' + Date.now()).then(r => r.json()).then(cfg => window.textstyleConfig = cfg).catch(() => {})
+            ]);
+
+            // 全局 parseText 函数，支持嵌套深度限制（最大2层）
+            window.parseText = function(text, baseImagePath = '/public/images/', depth = 0) {
+                if (!text) return '';
+                let result = '';
+                let i = 0;
+                const len = text.length;
+                const hyperlinkCfg = window.hyperlinkConfig || {};
+                const textstyleCfg = window.textstyleConfig || {};
+
+                while (i < len) {
+                    if (text[i] === '<') {
+                        // 检查 <image...> 自闭合标签
+                        if (text.substr(i, 6) === '<image') {
+                            const endIdx = text.indexOf('>', i);
+                            if (endIdx === -1) { result += text[i]; i++; continue; }
+                            const tagContent = text.substring(i + 1, endIdx);
+                            const imgMatch = tagContent.match(/image="([^"]+)"\s*scale=([0-9.]+)/);
+                            if (imgMatch) {
+                                let path = imgMatch[1];
+                                const scale = imgMatch[2];
+                                if (!path.includes('.')) path += '.png';
+                                result += `<img src="${baseImagePath}${path}" style="transform: scale(${scale}); width: auto; height: 1em; display: inline-block; vertical-align: middle;" class="inline-icon">`;
+                            }
+                            i = endIdx + 1;
+                            continue;
+                        }
+                        // 检查 <@tag> 或 <#tag>
+                        else if (text[i+1] === '@' || text[i+1] === '#') {
+                            const prefix = text[i+1];
+                            const tagNameEnd = text.indexOf('>', i);
+                            if (tagNameEnd === -1) { result += text[i]; i++; continue; }
+                            const tagName = text.substring(i+2, tagNameEnd);
+
+                            // 寻找匹配的闭合标签 </>
+                            let depthCounter = 1;
+                            let pos = tagNameEnd + 1;
+                            while (pos < len) {
+                                if (text[pos] === '<') {
+                                    if (text.substr(pos, 3) === '</>') {
+                                        depthCounter--;
+                                        if (depthCounter === 0) {
+                                            const innerContent = text.substring(tagNameEnd + 1, pos);
+                                            // 递归解析内部内容，传入 depth+1
+                                            const renderedInner = window.parseText(innerContent, baseImagePath, depth + 1);
+
+                                            let tagResult = '';
+                                            if (prefix === '@') {
+                                                const styleDef = textstyleCfg?.[tagName];
+                                                if (!styleDef) {
+                                                    tagResult = tagName.includes('info') ? `<span style="color: #999999;">${renderedInner}</span>` : renderedInner;
+                                                } else {
+                                                    const color = styleDef.color?.[0] || null;
+                                                    const image = styleDef.image?.[0] || null;
+                                                    const scale = styleDef.scale?.[0] || 1;
+                                                    if (image) {
+                                                        tagResult = `<span class="textstyle-icon-text"><img src="/${image}" style="transform: scale(${scale});" alt=""><span style="${color ? `color: ${color};` : ''}">${renderedInner}</span></span>`;
+                                                    } else {
+                                                        tagResult = color ? `<span style="color: ${color};">${renderedInner}</span>` : renderedInner;
+                                                    }
+                                                }
+                                            } else { // prefix === '#'
+                                                // 深度限制：超过2层则不再生成超链接
+                                                if (depth >= 2) {
+                                                    tagResult = renderedInner; // 直接输出内部内容，不包装为超链接
+                                                } else {
+                                                    const hyperDef = hyperlinkCfg?.[tagName];
+                                                    if (hyperDef) {
+                                                        const styleid = hyperDef.styleid;
+                                                        let extraClass = '';
+                                                        let styleColor = '';
+                                                        if (styleid && textstyleCfg?.[styleid]) {
+                                                            const styleDef = textstyleCfg[styleid];
+                                                            const color = styleDef.color?.[0] || null;
+                                                            const image = styleDef.image?.[0] || null;
+                                                            const scale = styleDef.scale?.[0] || 1;
+                                                            if (image) {
+                                                                tagResult = `<span class="textstyle-icon-text">
+                                                                    <img src="/${image}" style="transform: scale(${scale});" alt="">
+                                                                    <span class="tag-hyperlink" data-tag-id="${tagName}" style="${color ? `color: ${color};` : ''}">${renderedInner}</span>
+                                                                </span>`;
+                                                            } else if (color) {
+                                                                styleColor = `color: ${color};`;
+                                                                tagResult = `<span class="tag-hyperlink" data-tag-id="${tagName}" style="${styleColor}">${renderedInner}</span>`;
+                                                            } else {
+                                                                tagResult = `<span class="tag-hyperlink" data-tag-id="${tagName}">${renderedInner}</span>`;
+                                                            }
+                                                        } else {
+                                                            tagResult = `<span class="tag-hyperlink" data-tag-id="${tagName}">${renderedInner}</span>`;
+                                                        }
+                                                    } else {
+                                                        // 无定义，仅输出内部内容（不包装）
+                                                        tagResult = renderedInner;
+                                                    }
+                                                }
+                                            }
+                                            result += tagResult;
+                                            i = pos + 3;
+                                            break;
+                                        }
+                                        pos += 3;
+                                    } else if (text[pos+1] === '@' || text[pos+1] === '#' || text.substr(pos, 6) === '<image') {
+                                        depthCounter++;
+                                        pos++;
+                                    } else {
+                                        pos++;
+                                    }
+                                } else {
+                                    pos++;
+                                }
+                            }
+                            if (pos >= len) { // 未找到匹配闭合，原样输出
+                                result += text.substring(i, tagNameEnd + 1);
+                                i = tagNameEnd + 1;
+                            }
+                            continue;
+                        } else {
+                            result += text[i];
+                            i++;
+                        }
+                    } else {
+                        result += text[i];
+                        i++;
+                    }
+                }
+                return result;
+            };
+
+            // ---------- 双层浮窗管理 ----------
+            let activeTooltipLevel = 0; // 0:无, 1:第一层显示, 2:第二层显示
+            let anchor1 = null;          // 第一层锚点元素
+            let anchor2 = null;          // 第二层锚点元素
+
+            function closeTooltip(level) {
+                if (level === 1) {
+                    tooltip1.style.display = 'none';
+                    anchor1 = null;
+                    if (activeTooltipLevel === 1) {
+                        activeTooltipLevel = 0;
+                    } else if (activeTooltipLevel === 2) {
+                        tooltip2.style.display = 'none';
+                        anchor2 = null;
+                        activeTooltipLevel = 0;
+                    }
+                } else if (level === 2) {
+                    tooltip2.style.display = 'none';
+                    anchor2 = null;
+                    if (activeTooltipLevel === 2) {
+                        activeTooltipLevel = 1;
+                    }
+                }
+            }
+
+            function closeAllTooltips() {
+                tooltip1.style.display = 'none';
+                tooltip2.style.display = 'none';
+                anchor1 = null;
+                anchor2 = null;
+                activeTooltipLevel = 0;
+            }
+
+            function showTooltip(level, anchorElement, hyperDef) {
+                if (!hyperDef) return;
+
+                const name = hyperDef.name || '';
+                let desc = hyperDef.desc || '';
+                desc = window.parseText(desc, '/public/images/'); // 解析描述中的标签
+
+                let iconHtml = '';
+                if (hyperDef.iconPath) {
+                    const iconFullPath = hyperDef.iconPath.includes('.') ? hyperDef.iconPath : hyperDef.iconPath + '.png';
+                    iconHtml = `<img src="/${iconFullPath}" style="width: 1.2em; height: 1.2em; vertical-align: middle; margin-right: 4px;">`;
+                }
+
+                const content = `
+                    <div class="tooltip-name">${iconHtml}${name}</div>
+                    <div class="tooltip-desc">${desc}</div>
+                `;
+
+                const tooltip = level === 1 ? tooltip1 : tooltip2;
+                tooltip.innerHTML = content;
+
+                const rect = anchorElement.getBoundingClientRect();
+                const scrollX = window.scrollX || window.pageXOffset;
+                const scrollY = window.scrollY || window.pageYOffset;
+                tooltip.style.left = (rect.left + scrollX) + 'px';
+                tooltip.style.top = (rect.bottom + scrollY + 5) + 'px';
+                tooltip.style.display = 'block';
+
+                if (level === 1) {
+                    anchor1 = anchorElement;
+                    activeTooltipLevel = 1;
+                } else {
+                    anchor2 = anchorElement;
+                    activeTooltipLevel = 2;
+                }
+            }
+
+            // 全局点击监听
+            document.addEventListener('click', (e) => {
+                const target = e.target;
+                const hyperlink = target.closest('.tag-hyperlink');
+
+                const inTooltip1 = tooltip1.contains(target);
+                const inTooltip2 = tooltip2.contains(target);
+
+                // 如果点击在浮窗内且不是超链接，不关闭浮窗
+                if (!hyperlink && (inTooltip1 || inTooltip2)) {
+                    return;
+                }
+
+                // 处理点击超链接
+                if (hyperlink) {
+                    e.preventDefault();
+                    const tagId = hyperlink.dataset.tagId;
+                    if (!tagId) return;
+                    const hyperDef = window.hyperlinkConfig?.[tagId];
+                    if (!hyperDef) return;
+
+                    if (inTooltip2) {
+                        // 在第二层浮窗内点击超链接：更新第二层浮窗内容
+                        showTooltip(2, hyperlink, hyperDef);
+                    } else if (inTooltip1) {
+                        // 在第一层浮窗内点击超链接：显示/更新第二层浮窗
+                        showTooltip(2, hyperlink, hyperDef);
+                    } else {
+                        // 在页面主体点击超链接：关闭所有，显示第一层
+                        closeAllTooltips();
+                        showTooltip(1, hyperlink, hyperDef);
+                    }
+                    return;
+                }
+
+                // 点击非超链接：根据点击位置关闭浮窗
+                if (inTooltip2) {
+                    // 点击在第二层浮窗内（非超链接），不关闭
+                    return;
+                }
+                if (inTooltip1) {
+                    // 点击在第一层浮窗内（非超链接），关闭第二层（如果存在）
+                    if (activeTooltipLevel === 2) {
+                        closeTooltip(2);
+                    }
+                    return;
+                }
+                // 点击在浮窗外，关闭所有
+                closeAllTooltips();
+            });
+
+            // 阻止浮窗上的点击事件冒泡（可选，但避免干扰）
+            //tooltip1.addEventListener('click', (e) => e.stopPropagation());
+            tooltip2.addEventListener('click', (e) => e.stopPropagation());
+
             // ---------- 初始化 ----------
             async function initApp() {
                 showHomePage();
@@ -294,38 +557,31 @@
                 allModules = await loadModulesFromManifest();
                 applyFilterAndRender();
 
-                // 设置按钮事件
                 settingsButton.addEventListener('click', openSettings);
                 closeSettings.addEventListener('click', closeSettingsModal);
-                // 点击模态框外部关闭
                 window.addEventListener('click', (e) => {
                     if (e.target === settingsModal) {
                         closeSettingsModal();
                     }
                 });
 
-                // 弹窗内控件事件
                 modalThemeSelect.addEventListener('change', (e) => {
                     setTheme(e.target.value);
                 });
                 modalShowHiddenCheck.addEventListener('change', (e) => {
-                    // 如果是从未选中变为选中，则弹出确认框
                     if (e.target.checked) {
                         const confirmed = confirm('是否确认开启隐藏内容？隐藏内容中包含开发中内容，可能存在bug');
                         if (!confirmed) {
-                            // 用户取消，将复选框恢复为未选中状态
                             e.target.checked = false;
                             return;
                         }
                     }
-                    // 用户取消勾选（不弹框）或确认开启后，更新配置
                     config.showHidden = e.target.checked;
                     applyFilterAndRender();
                     localStorage.setItem('akedata-showHidden', config.showHidden);
                     window.dispatchEvent(new CustomEvent('globalConfigChanged', { detail: { showHidden: config.showHidden } }));
                 });
 
-                // 读取保存的隐藏开关状态
                 const savedShowHidden = localStorage.getItem('akedata-showHidden');
                 if (savedShowHidden !== null) {
                     config.showHidden = savedShowHidden === 'true';
@@ -337,7 +593,6 @@
 
             initApp();
 
-            // 暴露全局 API（供调试或扩展）
             window.akeData = {
                 setTheme,
                 toggleShowHidden: (val) => {
@@ -351,25 +606,5 @@
             };
         })();
     </script>
-
-    <!-- ================= 使用说明 ================= -->
-    <!--
-        1. 所有样式必须放在 theme/ 文件夹下，例如：
-            - theme/light.css
-            - theme/dark.css
-           这些 CSS 文件应包含完整页面样式（包括侧边栏、模块项、设置弹窗等）。
-
-        2. 示例 theme/light.css 内容（仅供参考）：
-            body, .main-content, .content-area { background: #fafafa; color: #1e2b3c; }
-            .sidebar { background: #f2f4f8; border-right: 1px solid #d9e0e8; }
-            .module-item { background: white; border: 1px solid #e2e7f0; }
-            .settings-button { background: #e0e8f0; color: #1e2b3c; }
-            .settings-modal { background: rgba(0,0,0,0.4); }
-            .modal-content { background: white; border-radius: 12px; }
-            /* ... 其他样式自行补充 */
-
-        3. 设置按钮位于侧边栏左下角，点击弹出模态框，所有交互实时生效。
-        4. manifest.json 中若包含 id 为 "settings" 的模块将被自动过滤，不会显示在左侧。
-    -->
 </body>
 </html>

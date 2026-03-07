@@ -8,8 +8,7 @@
     </div>
 </div>
 
-<!-- 超链接浮窗容器 -->
-<div id="hyperlink-tooltip" class="hyperlink-tooltip"></div>
+<!-- 超链接浮窗已由主页面统一管理 -->
 
 <script>
     (function() {
@@ -17,10 +16,6 @@
         let currentCharacters = [];
         let activeCharId = null;
         let isInitialized = false;
-        let textstyleConfig = null;
-        let hyperlinkConfig = null;
-        let textstylePromise = null;
-        let hyperlinkPromise = null;
 
         const IMAGE_BASE_PATH = '/public/images/bufficon/';
 
@@ -29,154 +24,9 @@
             return window.akeData?.getConfig().showHidden ?? false;
         }
 
-        async function loadTextStyleConfig() {
-            if (textstyleConfig) return textstyleConfig;
-            if (textstylePromise) return textstylePromise;
-            textstylePromise = (async () => {
-                try {
-                    const res = await fetch('/theme/textstyle.json?t=' + Date.now());
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                    textstyleConfig = await res.json();
-                    return textstyleConfig;
-                } catch (err) {
-                    console.warn('加载 textstyle.json 失败', err);
-                    textstyleConfig = {};
-                    return textstyleConfig;
-                } finally {
-                    textstylePromise = null;
-                }
-            })();
-            return textstylePromise;
-        }
-
-        async function loadHyperlinkConfig() {
-            if (hyperlinkConfig) return hyperlinkConfig;
-            if (hyperlinkPromise) return hyperlinkPromise;
-            hyperlinkPromise = (async () => {
-                try {
-                    const res = await fetch('/theme/hyperlink.json?t=' + Date.now());
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                    hyperlinkConfig = await res.json();
-                    return hyperlinkConfig;
-                } catch (err) {
-                    console.warn('加载 hyperlink.json 失败', err);
-                    hyperlinkConfig = {};
-                    return hyperlinkConfig;
-                } finally {
-                    hyperlinkPromise = null;
-                }
-            })();
-            return hyperlinkPromise;
-        }
-
-        // ---------- 递归解析文本（支持嵌套标签）----------
-        function parseText(text, hyperlinkCfg, textstyleCfg) {
-            if (!text) return '';
-            let result = '';
-            let i = 0;
-            const len = text.length;
-
-            while (i < len) {
-                if (text[i] === '<') {
-                    if (text.substr(i, 6) === '<image') {
-                        const endIdx = text.indexOf('>', i);
-                        if (endIdx === -1) { result += text[i]; i++; continue; }
-                        const tagContent = text.substring(i + 1, endIdx);
-                        const imgMatch = tagContent.match(/image="([^"]+)"\s*scale=([0-9.]+)/);
-                        if (imgMatch) {
-                            let path = imgMatch[1];
-                            const scale = imgMatch[2];
-                            if (!path.includes('.')) path += '.png';
-                            result += `<img src="${IMAGE_BASE_PATH}${path}" style="transform: scale(${scale}); width: auto; height: 1em; display: inline-block; vertical-align: middle;" class="inline-icon">`;
-                        }
-                        i = endIdx + 1;
-                        continue;
-                    }
-                    else if (text[i+1] === '@' || text[i+1] === '#') {
-                        const prefix = text[i+1];
-                        const tagNameEnd = text.indexOf('>', i);
-                        if (tagNameEnd === -1) { result += text[i]; i++; continue; }
-                        const tagName = text.substring(i+2, tagNameEnd);
-
-                        let depth = 1;
-                        let pos = tagNameEnd + 1;
-                        while (pos < len) {
-                            if (text[pos] === '<') {
-                                if (text.substr(pos, 3) === '</>') {
-                                    depth--;
-                                    if (depth === 0) {
-                                        const innerContent = text.substring(tagNameEnd + 1, pos);
-                                        const renderedInner = parseText(innerContent, hyperlinkCfg, textstyleCfg);
-
-                                        let tagResult = '';
-                                        if (prefix === '@') {
-                                            const styleDef = textstyleCfg?.[tagName];
-                                            if (!styleDef) {
-                                                tagResult = tagName.includes('info') ? `<span style="color: #999999;">${renderedInner}</span>` : renderedInner;
-                                            } else {
-                                                const color = styleDef.color?.[0] || null;
-                                                const image = styleDef.image?.[0] || null;
-                                                const scale = styleDef.scale?.[0] || 1;
-                                                if (image) {
-                                                    tagResult = `<span class="textstyle-icon-text"><img src="/${image}" style="transform: scale(${scale});" alt=""><span style="${color ? `color: ${color};` : ''}">${renderedInner}</span></span>`;
-                                                } else {
-                                                    tagResult = color ? `<span style="color: ${color};">${renderedInner}</span>` : renderedInner;
-                                                }
-                                            }
-                                        } else { // prefix === '#'
-                                            const hyperDef = hyperlinkCfg?.[tagName];
-                                            if (hyperDef) {
-                                                const styleid = hyperDef.styleid;
-                                                let styleAttr = '';
-                                                if (styleid && textstyleCfg?.[styleid]) {
-                                                    const styleDef = textstyleCfg[styleid];
-                                                    const color = styleDef.color?.[0] || null;
-                                                    const image = styleDef.image?.[0] || null;
-                                                    const scale = styleDef.scale?.[0] || 1;
-                                                    if (image) {
-                                                        tagResult = `<span class="textstyle-icon-text"><img src="/${image}" style="transform: scale(${scale});" alt=""><span class="tag-hyperlink" data-tag-id="${tagName}" style="${color ? `color: ${color};` : ''}">${renderedInner}</span></span>`;
-                                                    } else if (color) {
-                                                        tagResult = `<span class="tag-hyperlink" data-tag-id="${tagName}" style="color: ${color};">${renderedInner}</span>`;
-                                                    } else {
-                                                        tagResult = `<span class="tag-hyperlink" data-tag-id="${tagName}">${renderedInner}</span>`;
-                                                    }
-                                                } else {
-                                                    tagResult = `<span class="tag-hyperlink" data-tag-id="${tagName}">${renderedInner}</span>`;
-                                                }
-                                            } else {
-                                                tagResult = renderedInner;
-                                            }
-                                        }
-                                        result += tagResult;
-                                        i = pos + 3;
-                                        break;
-                                    }
-                                    pos += 3;
-                                } else if (text[pos+1] === '@' || text[pos+1] === '#' || text.substr(pos, 6) === '<image') {
-                                    depth++;
-                                    pos++;
-                                } else {
-                                    pos++;
-                                }
-                            } else {
-                                pos++;
-                            }
-                        }
-                        if (pos >= len) {
-                            result += text.substring(i, tagNameEnd + 1);
-                            i = tagNameEnd + 1;
-                        }
-                        continue;
-                    } else {
-                        result += text[i];
-                        i++;
-                    }
-                } else {
-                    result += text[i];
-                    i++;
-                }
-            }
-            return result;
+        // 使用全局 parseText，传入角色模块的图片路径
+        function parseText(text) {
+            return window.parseText(text, IMAGE_BASE_PATH);
         }
 
         // 替换描述中的占位符 {表达式:格式}，支持加减乘除运算
@@ -296,19 +146,15 @@
         async function loadCharacterDetail(character, container) {
             container.innerHTML = '<div class="loader">加载干员数据...</div>';
             try {
-                const [data, hyperCfg, styleCfg] = await Promise.all([
-                    fetch(character.contentFile + '?t=' + Date.now()).then(r => r.json()),
-                    loadHyperlinkConfig(),
-                    loadTextStyleConfig()
-                ]);
-                container.innerHTML = renderDetail(data, hyperCfg, styleCfg);
+                const data = await fetch(character.contentFile + '?t=' + Date.now()).then(r => r.json());
+                container.innerHTML = renderDetail(data);
             } catch (err) {
                 container.innerHTML = `<div class="error-message">加载失败: ${err.message}</div>`;
             }
         }
 
         // ---------- 渲染详情 ----------
-        function renderDetail(data, hyperCfg, styleCfg) {
+        function renderDetail(data) {
             // 基础信息：左侧 icon，右侧 pic 大图
             const basicHtml = `
                 <div class="detail-header">
@@ -331,8 +177,8 @@
                                 <div><span class="meta-label">副属性</span> ${data.subAttrType || '-'}</div>
                                 <div><span class="meta-label">CV</span> ${(data.cvName || []).join(' / ')}</div>
                             </div>
-                            <div class="detail-profile">${parseText(data.profile || '', hyperCfg, styleCfg)}</div>
-                            <div class="detail-feature">${parseText(data.feature || '', hyperCfg, styleCfg)}</div>
+                            <div class="detail-profile">${parseText(data.profile || '')}</div>
+                            <div class="detail-feature">${parseText(data.feature || '')}</div>
                         </div>
                     </div>
                     <div class="detail-pic">
@@ -343,7 +189,6 @@
 
             // 属性成长：汇总为一张表格，列名已更新
             const growth = data.growth || {};
-            // 注意列名改为：法术异常伤害系数、物理异常伤害系数
             const attributes = ['力量', '敏捷', '智识', '意志', '生命值', '攻击力', '法术异常伤害系数', '物理异常伤害系数'];
             const firstAttr = attributes.find(attr => growth[attr] && growth[attr].length);
             const levelCount = firstAttr ? growth[firstAttr].length : 0;
@@ -376,7 +221,7 @@
             const talentsHtml = (data.talents || []).map(talent => {
                 const valueMap = talent.values || {};
                 let desc = replacePlaceholders(talent.description, valueMap);
-                desc = parseText(desc, hyperCfg, styleCfg);
+                desc = parseText(desc);
                 return `
                     <div class="talent-item">
                         <div class="talent-name">${talent.name}</div>
@@ -389,7 +234,7 @@
             const potentialsHtml = (data.potentials || []).map(pot => {
                 const valueMap = pot.values || {};
                 let desc = replacePlaceholders(pot.description, valueMap);
-                desc = parseText(desc, hyperCfg, styleCfg);
+                desc = parseText(desc);
                 return `
                     <div class="potential-item">
                         <div class="potential-name">${pot.name}</div>
@@ -418,13 +263,13 @@
             // 技能大类
             const skillsGroups = data.skills || [];
             const skillsHtml = skillsGroups.map(group => {
-                const groupDesc = parseText(group.description, hyperCfg, styleCfg);
+                const groupDesc = parseText(group.description);
                 const skillDetails = (group.skillIds || [])
                     .map(id => data.skill?.[id])
                     .filter(Boolean);
                 const skillTables = skillDetails.map(detail => {
                     const values = detail.values || {};
-                    const columns = Object.keys(values).filter(k => Array.isArray(values[k])); // 只取数组字段
+                    const columns = Object.keys(values).filter(k => Array.isArray(values[k]));
                     if (columns.length === 0) return '';
                     const levelCount = values[columns[0]].length;
                     const rows = [];
@@ -476,7 +321,7 @@
             const profileRecordsHtml = (data.profileRecord || []).map(rec => `
                 <div class="profile-record">
                     <div class="profile-title">${rec.title}</div>
-                    <div class="profile-desc">${parseText(rec.desc, hyperCfg, styleCfg)}</div>
+                    <div class="profile-desc">${parseText(rec.desc)}</div>
                 </div>
             `).join('');
 
@@ -528,56 +373,14 @@
             renderCharacterList(chars, list);
         }
 
-        // ---------- 超链接点击处理 ----------
-        function setupHyperlinkTooltip() {
-            const tooltip = document.getElementById('hyperlink-tooltip');
-            if (!tooltip) return;
-
-            document.addEventListener('click', (e) => {
-                const target = e.target.closest('.tag-hyperlink');
-                if (!target) {
-                    tooltip.style.display = 'none';
-                    return;
-                }
-                e.preventDefault();
-                const tagId = target.dataset.tagId;
-                if (!tagId) return;
-                const hyperDef = hyperlinkConfig?.[tagId];
-                if (!hyperDef) return;
-
-                const name = hyperDef.name || '';
-                let desc = hyperDef.desc || '';
-                desc = parseText(desc, hyperlinkConfig, textstyleConfig);
-
-                let iconHtml = '';
-                if (hyperDef.iconPath) {
-                    const iconFullPath = hyperDef.iconPath.includes('.') ? hyperDef.iconPath : hyperDef.iconPath + '.png';
-                    iconHtml = `<img src="/${iconFullPath}" style="width: 1.2em; height: 1.2em; vertical-align: middle; margin-right: 4px;">`;
-                }
-
-                tooltip.innerHTML = `
-                    <div class="tooltip-name">${iconHtml}${name}</div>
-                    <div class="tooltip-desc">${desc}</div>
-                `;
-
-                const rect = target.getBoundingClientRect();
-                const scrollX = window.scrollX || window.pageXOffset;
-                const scrollY = window.scrollY || window.pageYOffset;
-                tooltip.style.left = (rect.left + scrollX) + 'px';
-                tooltip.style.top = (rect.bottom + scrollY + 5) + 'px';
-                tooltip.style.display = 'block';
-            });
-
-            tooltip.addEventListener('click', (e) => e.stopPropagation());
-        }
-
         // ---------- 初始化 ----------
         async function initModule() {
             if (isInitialized) return;
             isInitialized = true;
 
-            await Promise.all([loadTextStyleConfig(), loadHyperlinkConfig()]);
-            setupHyperlinkTooltip();
+            // 等待主页面配置加载完成
+            if (window.configLoaded) await window.configLoaded;
+
             window.addEventListener('globalConfigChanged', refreshModule);
             await refreshModule();
         }
