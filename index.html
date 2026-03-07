@@ -6,6 +6,13 @@
     <title>AKEData · Endfield Database</title>
     <!-- 主题样式：完全由 theme/ 下的 CSS 控制，无内联样式 -->
     <link rel="stylesheet" id="theme-style" href="theme/light.css">
+    <script>
+        // 提前定义全局 parseText 占位，确保任何时刻 window.parseText 都是函数
+        window.parseText = function(text, baseImagePath, depth) {
+            console.warn('parseText 的完整定义尚未加载，返回原文本');
+            return text || '';
+        };
+    </script>
 </head>
 <body>
     <div class="app">
@@ -297,7 +304,7 @@
                 fetch('/theme/textstyle.json?t=' + Date.now()).then(r => r.json()).then(cfg => window.textstyleConfig = cfg).catch(() => {})
             ]);
 
-            // 全局 parseText 函数，支持嵌套深度限制（最大2层）
+            // 全局 parseText 函数，支持嵌套深度限制（最大2层），覆盖占位函数
             window.parseText = function(text, baseImagePath = '/public/images/', depth = 0) {
                 if (!text) return '';
                 let result = '';
