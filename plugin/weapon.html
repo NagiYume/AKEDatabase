@@ -51,44 +51,54 @@
                 container.innerHTML = '<div class="loader">暂无可用武器</div>';
                 return;
             }
-
+        
             weapons.forEach((weapon, index) => {
                 const item = document.createElement('div');
                 item.className = `weapon-item ${weapon.weaponId === activeWeaponId ? 'active' : (index === 0 && !activeWeaponId ? 'active' : '')}`;
                 item.dataset.weaponId = weapon.weaponId;
                 item.dataset.contentFile = weapon.contentFile;
-
+            
+                // 稀有度竖条（左侧）
+                const rarityBar = document.createElement('span');
+                rarityBar.className = `rarity-bar rarity-${weapon.rarity}`;
+                rarityBar.title = `稀有度 ${weapon.rarity}`;
+            
+                // 头像
                 const icon = document.createElement('img');
                 icon.className = 'weapon-icon';
                 icon.src = weapon.icon;
                 icon.onerror = () => icon.src = '';
-
+            
+                // 信息区域（两行文本）
                 const info = document.createElement('div');
                 info.className = 'weapon-info';
-
-                const title = document.createElement('span');
+            
+                const title = document.createElement('div');
                 title.className = 'weapon-title';
                 title.textContent = weapon.title;
-
-                const rarityDot = document.createElement('span');
-                rarityDot.className = `rarity-dot rarity-${weapon.rarity}`;
-                rarityDot.title = `稀有度 ${weapon.rarity}`;
-
+            
+                const idSpan = document.createElement('div');
+                idSpan.className = 'weapon-id';
+                idSpan.textContent = weapon.weaponId;
+            
                 info.appendChild(title);
+                info.appendChild(idSpan);
+            
+                // 按顺序添加：稀有度竖条、头像、信息区域
+                item.appendChild(rarityBar);
                 item.appendChild(icon);
                 item.appendChild(info);
-                item.appendChild(rarityDot);
-
+            
                 item.addEventListener('click', () => {
                     document.querySelectorAll('.weapon-item').forEach(el => el.classList.remove('active'));
                     item.classList.add('active');
                     activeWeaponId = weapon.weaponId;
                     loadWeaponDetail(weapon, document.getElementById('weaponDetail'));
                 });
-
+            
                 container.appendChild(item);
             });
-
+        
             const activeExists = weapons.some(w => w.weaponId === activeWeaponId);
             if (!activeExists && weapons.length > 0) {
                 activeWeaponId = weapons[0].weaponId;
@@ -123,7 +133,7 @@
                 const atk = data.baseAtk[i] || '-';
                 atkRows.push(`<tr><td>${level}</td><td>${atk}</td></tr>`);
             }
-
+        
             // 技能列表
             const skillHtml = data.skilllist.map(skill => {
                 const blackboard = skill.blackboard;
@@ -138,48 +148,41 @@
                         let val = (idx < arr.length) ? arr[idx] : arr[arr.length - 1];
                         replaceMap[key] = val;
                     });
-
+                
                     let desc = skill.description;
-                    // 先替换占位符 {key:format}
                     desc = desc.replace(/\{([^}]+)\}/g, (match, p1) => {
                         const parts = p1.split(':');
                         const expr = parts[0].trim();
                         const format = parts[1] ? parts[1].trim() : '';
-
+                    
                         const varNames = expr.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
                         const missingVar = varNames.find(name => !(name in replaceMap));
-                        if (missingVar) {
-                            return match;
-                        }
-
+                        if (missingVar) return match;
+                    
                         let evalExpr = expr;
                         for (const name of varNames) {
                             const value = replaceMap[name];
                             evalExpr = evalExpr.replace(new RegExp(`\\b${name}\\b`, 'g'), value);
                         }
-
+                    
                         let result;
                         try {
                             result = new Function('return ' + evalExpr)();
                         } catch (e) {
                             return match;
                         }
-
-                        if (format.includes('%')) {
-                            return (result * 100).toFixed(1) + '%';
-                        } else if (format.includes('0')) {
-                            return Math.round(result);
-                        } else if (format.includes('.')) {
+                    
+                        if (format.includes('%')) return (result * 100).toFixed(1) + '%';
+                        if (format.includes('0')) return Math.round(result);
+                        if (format.includes('.')) {
                             const precision = format.split('.')[1]?.length || 0;
                             return result.toFixed(precision);
-                        } else {
-                            return result;
                         }
+                        return result;
                     });
-
-                    // 递归解析所有标签（使用全局 parseText）
+                
                     desc = parseText(desc);
-
+                
                     rows.push(`
                         <div class="skill-level-row">
                             <span class="skill-level">Lv.${lv}</span>
@@ -187,7 +190,7 @@
                         </div>
                     `);
                 }
-
+            
                 return `
                     <div class="skill-item">
                         <div class="skill-name">${skill.skillName}</div>
@@ -195,44 +198,52 @@
                     </div>
                 `;
             }).join('');
-
+        
             return `
                 <div class="detail-header">
+                    <!-- 左侧容器：头像、文本、攻击力表格（底部） -->
                     <div class="detail-left">
-                        <div class="detail-icon">
-                            <img src="${data.iconbig || data.icon}" onerror="this.src=''">
-                        </div>
-                        <div class="detail-text">
-                            <div class="detail-title-row">
-                                <span class="detail-title">${data.title}</span>
-                                <span class="detail-rarity rarity-${data.rarity}" title="稀有度 ${data.rarity}"></span>
+                        <div class="detail-left-top">
+                            <div class="detail-icon">
+                                <img src="${data.iconbig || data.icon}" onerror="this.src=''">
                             </div>
-                            <div class="detail-desc">${data.desc}</div>
-                            <div class="detail-deco">${data.decoDesc || ''}</div>
+                            <div class="detail-text">
+                                <div class="detail-title-row">
+                                    <span class="detail-title">${data.title}</span>
+                                    <span class="detail-rarity rarity-${data.rarity}" title="稀有度 ${data.rarity}"></span>
+                                </div>
+                                <div class="detail-desc">${data.desc}</div>
+                                <div class="detail-deco">${data.decoDesc || ''}</div>
+                            </div>
+                        </div>
+                        <!-- 攻击力表格放在底部 -->
+                        <div class="detail-atk">
+                            <h3>基础攻击力 (1-90级)</h3>
+                            <div class="atk-table-container">
+                                <table class="atk-table">
+                                    <thead><tr><th>等级</th><th>攻击力</th></tr></thead>
+                                    <tbody>${atkRows.join('')}</tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
-                    <div class="detail-iconfull">
-                        <img src="${data.iconfull || ''}" onerror="this.style.display='none'">
+                    <!-- 右侧大图 -->
+                    <div class="detail-right">
+                        <div class="detail-iconfull">
+                            <img src="${data.iconfull || ''}" onerror="this.style.display='none'">
+                        </div>
                     </div>
                 </div>
-
-                <h3>基础攻击力 (1-90级)</h3>
-                <div class="atk-table-container">
-                    <table class="atk-table">
-                        <thead><tr><th>等级</th><th>攻击力</th></tr></thead>
-                        <tbody>${atkRows.join('')}</tbody>
-                    </table>
-                </div>
-
+            
                 <h3>技能数据</h3>
                 <div class="skill-list">
                     ${skillHtml}
                 </div>
-
+            
                 <div class="weapon-desc">${data.weaponDesc || ''}</div>
             `;
         }
-
+        
         // ---------- 刷新整个武器模块 ----------
         async function refreshWeaponModule() {
             const weaponList = document.getElementById('weaponList');

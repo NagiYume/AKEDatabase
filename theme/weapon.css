@@ -1,4 +1,5 @@
-/* plugin/weapon.css */
+/* theme/weapon.css */
+
 .weapon-module {
     display: flex;
     gap: 20px;
@@ -19,17 +20,18 @@
     margin-left: 0;
 }
 
+/* 武器列表项 */
 .weapon-item {
     display: flex;
     align-items: center;
-    padding: 12px;
+    padding: 12px 6px;
     margin-bottom: 8px;
     background: var(--module-bg, white);
     border-radius: 12px;
     border: 1px solid var(--border-color, #e2e7f0);
     cursor: pointer;
     transition: all 0.2s;
-    gap: 10px;
+    gap: 2px;
 }
 .weapon-item:hover {
     transform: translateY(-2px);
@@ -41,39 +43,56 @@
     border-left: 5px solid #1e6f9f;
 }
 
+/* 稀有度竖条 - 颜色与详情圆点一致 */
+.rarity-bar {
+    display: inline-block;
+    width: 5px;
+    height: 50px;
+    border-radius: 2px;
+    margin-right: 4px;
+    background-color: #ccc;
+    flex-shrink: 0;
+}
+.rarity-bar.rarity-1 { background-color: #808080; }
+.rarity-bar.rarity-2 { background-color: #00b300; }
+.rarity-bar.rarity-3 { background-color: #3b7eff; }
+.rarity-bar.rarity-4 { background-color: #a335ee; }
+.rarity-bar.rarity-5 { background-color: #ffcc00; }
+.rarity-bar.rarity-6 { background-color: #ff3333; }
+
+/* 武器头像 */
 .weapon-icon {
-    width: 48px;
-    height: 48px;
-    object-fit: contain;
-    border-radius: 8px;
+    width: 50px;
+    height: 50px;
+    border-radius: 4px;
+    object-fit: cover;
+    margin-right: 4px;
+    flex-shrink: 0;
     background: #eef3fa;
 }
 
+/* 信息区域（两行文本） */
 .weapon-info {
     flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    min-width: 0;
+    line-height: 1.2;
+    margin-right: 4px;
 }
-
 .weapon-title {
     font-weight: 600;
     color: var(--text-color, #1e2b3c);
     font-size: 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-
-.rarity-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    display: inline-block;
-    margin-left: auto;
-    flex-shrink: 0;
+.weapon-id {
+    font-size: 12px;
+    color: #999;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-.rarity-3 { background-color: #3b7eff; }
-.rarity-4 { background-color: #a335ee; }
-.rarity-5 { background-color: #ffcc00; }
-.rarity-6 { background-color: #ff3333; }
 
 .weapon-detail {
     flex: 1;
@@ -84,16 +103,30 @@
     overflow-y: auto;
 }
 
+/* ---------- 详情头部布局（Grid 方案）---------- */
 .detail-header {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr 20%; /* 左侧自动，右侧固定30% */
     gap: 20px;
     margin-bottom: 30px;
 }
+
+/* 左侧容器：高度由 grid 行高决定（即右侧高度），内部 flex 列布局 */
 .detail-left {
-    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;      /* 允许收缩 */
+    height: 100%;       /* 填满 grid 行高 */
+}
+
+/* 左侧顶部：头像和文本水平排列 */
+.detail-left-top {
     display: flex;
     gap: 20px;
+    margin-bottom: 20px;    /* 可根据需要调整，0 则表格紧贴 */
+    flex-shrink: 0;
 }
+
 .detail-icon img {
     width: 120px;
     height: 120px;
@@ -102,58 +135,69 @@
     border-radius: 20px;
     padding: 10px;
 }
+
 .detail-text {
     flex: 1;
-    display: flex;
-    flex-direction: column;
+    min-width: 0;
 }
+
 .detail-title-row {
     display: flex;
     align-items: center;
     gap: 10px;
     margin-bottom: 10px;
 }
+
 .detail-title {
     font-size: 2rem;
     font-weight: 600;
     color: var(--text-color, #1e2b3c);
 }
+
 .detail-rarity {
-    display: inline-block;
     width: 16px;
     height: 16px;
     border-radius: 50%;
+    display: inline-block;
 }
-.detail-desc {
-    color: var(--desc-color, #5b6f86);
-    line-height: 1.6;
-    margin-bottom: 10px;
-}
+.detail-rarity.rarity-3 { background-color: #3b7eff; }
+.detail-rarity.rarity-4 { background-color: #a335ee; }
+.detail-rarity.rarity-5 { background-color: #ffcc00; }
+.detail-rarity.rarity-6 { background-color: #ff3333; }
+
+/* 描述和装饰带边框 */
+.detail-desc,
 .detail-deco {
+    border: 1px solid var(--border-color, #d9e0e8);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 10px 0;
+    background: var(--module-bg, #f8fafd);
+    line-height: 1.6;
     color: var(--desc-color, #5b6f86);
-    font-size: 0.95rem;
 }
 
-.detail-iconfull {
-    width: 200px;
+/* 攻击力表格容器 - 填充剩余高度 */
+.detail-atk {
+    flex: 1;                /* 填充剩余高度 */
+    min-height: 0;          /* 允许收缩 */
     display: flex;
-    align-items: stretch;
+    flex-direction: column;
+}
+.detail-atk h3 {
+    font-size: 1.2rem;
+    margin-bottom: 8px;
+    color: var(--text-color, #1e2b3c);
     flex-shrink: 0;
 }
-.detail-iconfull img {
-    width: 100%;
-    object-fit: contain;
-    background: #eef3fa;
-    border-radius: 16px;
-    padding: 8px;
-}
-
 .atk-table-container {
-    max-height: 220px;
+    flex: 1;                /* 填充剩余高度，但会被下面的 max-height 限制 */
+    min-height: 0;
+    max-height: 500px;      /* 限制最大高度约为10行（含表头） */
     overflow-y: auto;
     border: 1px solid var(--border-color, #d9e0e8);
     border-radius: 8px;
-    margin: 20px 0;
+    background: var(--module-bg, #f8fafd);
 }
 .atk-table {
     width: 100%;
@@ -162,41 +206,69 @@
 }
 .atk-table th {
     background: var(--table-header-bg, #eef3fa);
-    padding: 10px;
-    text-align: center;
+    padding: 8px;
     border: 1px solid var(--border-color, #d9e0e8);
     position: sticky;
     top: 0;
     z-index: 1;
 }
 .atk-table td {
-    padding: 6px 10px;
+    padding: 4px 8px;
     border: 1px solid var(--border-color, #e2e7f0);
     text-align: center;
 }
-.atk-table tr:nth-child(even) {
-    background: var(--table-row-alt, #f9fbfd);
+
+/* 右侧容器：宽度由 grid 列定义，高度由图片决定 */
+.detail-right {
+    min-width: 0;
 }
 
-/* 技能区域 - 默认纵向排列 */
-.skill-section {
-    margin-top: 30px;
+.detail-iconfull {
+    width: 100%;
+    /* 图片加载失败时保留最小高度，防止高度塌陷 */
+    min-height: 200px;
+    background: #eef3fa;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
+
+.detail-iconfull img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    background: #eef3fa;
+    border-radius: 16px;
+    padding: 8px;
+    display: block;
+}
+/* 图片加载失败时隐藏错误图标，但容器仍保留占位 */
+.detail-iconfull img[onerror] {
+    min-height: 200px;
+    background: #eef3fa;
+}
+
+/* 技能列表 - 三列并排 */
 .skill-list {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 20px;
+    margin-top: 20px;
 }
 .skill-item {
+    flex: 1 1 calc(33.333% - 20px);
+    min-width: 280px;
     background: var(--module-bg, #f8fafd);
-    border-radius: 16px;
-    padding: 20px;
+    border-radius: 12px;
+    padding: 16px;
     border: 1px solid var(--border-color, #e2e7f0);
+    box-sizing: border-box;
 }
 .skill-name {
-    font-size: 1.3rem;
+    font-size: 1.2rem;
     font-weight: 600;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
     color: var(--text-color, #1e2b3c);
 }
 .skill-levels {
@@ -206,105 +278,76 @@
 }
 .skill-level-row {
     display: flex;
-    align-items: baseline;
+    align-items: flex-start;
+    gap: 10px;
     padding: 5px 0;
-    border-bottom: 1px dashed var(--border-color, #d0d9e5);
+    border-bottom: 1px dashed var(--border-color, #d9e0e8);
 }
 .skill-level {
-    width: 50px;
     font-weight: 600;
     color: var(--text-color, #1e2b3c);
+    min-width: 50px;
 }
 .skill-desc {
     flex: 1;
-    color: var(--text-color, #1e2b3c);
-}
-
-/* 当宽度足够时，三个技能并排显示 */
-@media (min-width: 1200px) {
-    .skill-list {
-        flex-direction: row;
-        flex-wrap: wrap;
-    }
-    .skill-item {
-        flex: 1 1 calc(33.333% - 14px); /* 三列，减去 gap */
-        min-width: 280px;
-    }
-}
-
-.weapon-desc {
-    margin-top: 30px;
-    padding: 20px;
-    background: var(--module-bg, #f5f9ff);
-    border-radius: 16px;
-    border: 1px solid var(--border-color, #d0d9e5);
-    font-style: italic;
-    white-space: pre-wrap;
+    color: var(--desc-color, #5b6f86);
     line-height: 1.6;
 }
 
+/* 武器背景故事 */
+.weapon-desc {
+    margin-top: 30px;
+    background: var(--module-bg, #f8fafd);
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid var(--border-color, #e2e7f0);
+    line-height: 1.8;
+    color: var(--text-color, #1e2b3c);
+}
+
+/* 响应式 */
+@media (max-width: 1000px) {
+    .detail-header {
+        grid-template-columns: 1fr; /* 改为单列 */
+        gap: 20px;
+    }
+    .detail-left, .detail-right {
+        width: 100%;
+    }
+    .detail-right {
+        text-align: center;
+    }
+    .detail-iconfull {
+        max-width: 300px;
+        margin: 0 auto;
+        min-height: auto;
+    }
+    .detail-left-top {
+        flex-wrap: wrap;
+    }
+}
+@media (max-width: 1200px) {
+    .skill-item {
+        flex: 1 1 calc(50% - 20px);
+    }
+}
+@media (max-width: 800px) {
+    .skill-item {
+        flex: 1 1 100%;
+    }
+}
+
+/* 通用加载/错误样式 */
 .loader {
     text-align: center;
     padding: 40px;
-    color: #60758b;
+    color: var(--desc-color, #60758b);
+    font-style: italic;
 }
-
-/* 图标+文字组合样式 */
-.textstyle-icon-text {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-}
-.textstyle-icon-text img {
-    width: 1em;
-    height: 1em;
-    object-fit: contain;
-    transform-origin: center;
-    vertical-align: middle;
-}
-
-/* 超链接浮窗 */
-.hyperlink-tooltip {
-    display: none;
-    position: absolute;
-    background: var(--tooltip-bg, #ffffff);
-    color: var(--tooltip-text, #1e2b3c);
-    border: 1px solid var(--border-color, #d9e0e8);
-    padding: 12px;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-    z-index: 1000;
-    max-width: 320px;
-    font-size: 0.95rem;
-    line-height: 1.5;
-}
-.hyperlink-tooltip .tooltip-name {
-    font-weight: 600;
-    margin-bottom: 8px;
-    border-bottom: 1px solid var(--border-color, #e2e7f0);
-    padding-bottom: 5px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-.hyperlink-tooltip .tooltip-desc {
-    white-space: pre-wrap;
-}
-.hyperlink-tooltip .tooltip-desc .tag-hyperlink {
-    cursor: pointer;
-    text-decoration: underline dotted;
-}
-.tag-hyperlink {
-    cursor: pointer;
-    color: var(--link-color, #1e6f9f);
-    text-decoration: underline dotted;
-}
-
-/* 行内图片（用于 <image> 标签） */
-.inline-icon {
-    display: inline-block;
-    vertical-align: middle;
-    width: auto;
-    height: 1em;
-    object-fit: contain;
+.error-message {
+    color: #b0003a;
+    background: #ffe8f0;
+    padding: 20px;
+    border-radius: 20px;
+    border: 1px solid #ffb3c6;
 }
