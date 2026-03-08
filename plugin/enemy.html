@@ -1,0 +1,279 @@
+<!-- plugin/enemy.html -->
+<link rel="stylesheet" href="/theme/enemy.css">
+
+<div class="enemy-module">
+    <div class="enemy-list" id="enemyList"></div>
+    <div class="enemy-detail" id="enemyDetail">
+        <div class="loader">加载敌人数据...</div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        let currentEnemies = [];
+        let activeEnemyId = null;
+        let isInitialized = false;
+
+        const IMAGE_BASE_PATH = '/public/images/';
+
+        function getCurrentShowHidden() {
+            return window.akeData?.getConfig().showHidden ?? false;
+        }
+
+        function parseText(text) {
+            return window.parseText(text, IMAGE_BASE_PATH);
+        }
+
+        // 加载敌人清单
+        async function loadEnemyManifest(showHidden) {
+            try {
+                const res = await fetch('/public/CH/enemy/manifest.json?t=' + Date.now());
+                if (!res.ok) throw new Error('无法加载敌人清单');
+                const all = await res.json();
+                let enemies = showHidden ? all : all.filter(e => !e.hidden);
+                enemies.sort((a, b) => (a.priority || 999) - (b.priority || 999));
+                return enemies;
+            } catch (err) {
+                console.error('加载敌人清单失败:', err);
+                return [];
+            }
+        }
+
+        // 渲染左侧列表
+        function renderEnemyList(enemies, container) {
+            container.innerHTML = '';
+            if (enemies.length === 0) {
+                container.innerHTML = '<div class="loader">暂无敌人</div>';
+                return;
+            }
+
+            enemies.forEach((enemy, index) => {
+                const item = document.createElement('div');
+                item.className = `enemy-item ${enemy.templateId === activeEnemyId ? 'active' : (index === 0 && !activeEnemyId ? 'active' : '')}`;
+                item.dataset.enemyId = enemy.templateId;
+                item.dataset.contentFile = enemy.contentFile;
+
+                // 稀有度竖条
+                const rarityBar = document.createElement('span');
+                rarityBar.className = `rarity-bar rarity-${enemy.rarity}`;
+                rarityBar.title = `稀有度 ${enemy.rarity}`;
+
+                // 头像（修复无限循环）
+                const icon = document.createElement('img');
+                icon.className = 'enemy-icon';
+                icon.src = enemy.icon || '';
+                icon.onerror = function() {
+                    this.onerror = null;
+                    this.src = '';
+                };
+
+                // 文本区域
+                const textContainer = document.createElement('div');
+                textContainer.className = 'enemy-info';
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'enemy-name';
+                nameDiv.textContent = enemy.name;
+                const idDiv = document.createElement('div');
+                idDiv.className = 'enemy-id';
+                idDiv.textContent = enemy.templateId;
+                textContainer.appendChild(nameDiv);
+                textContainer.appendChild(idDiv);
+
+                item.appendChild(rarityBar);
+                item.appendChild(icon);
+                item.appendChild(textContainer);
+
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.enemy-item').forEach(el => el.classList.remove('active'));
+                    item.classList.add('active');
+                    activeEnemyId = enemy.templateId;
+                    loadEnemyDetail(enemy, document.getElementById('enemyDetail'));
+                });
+
+                container.appendChild(item);
+            });
+
+            const activeExists = enemies.some(e => e.templateId === activeEnemyId);
+            if (!activeExists && enemies.length > 0) {
+                activeEnemyId = enemies[0].templateId;
+                const firstItem = container.querySelector('.enemy-item');
+                if (firstItem) firstItem.classList.add('active');
+                loadEnemyDetail(enemies[0], document.getElementById('enemyDetail'));
+            } else if (activeExists) {
+                const activeEnemy = enemies.find(e => e.templateId === activeEnemyId);
+                if (activeEnemy) {
+                    loadEnemyDetail(activeEnemy, document.getElementById('enemyDetail'));
+                }
+            }
+        }
+
+        // 加载敌人详情
+        async function loadEnemyDetail(enemy, container) {
+            container.innerHTML = '<div class="loader">加载敌人数据...</div>';
+            try {
+                const data = await fetch(enemy.contentFile + '?t=' + Date.now()).then(r => r.json());
+                container.innerHTML = renderDetail(data, enemy);
+            } catch (err) {
+                container.innerHTML = `<div class="error-message">加载失败: ${err.message}</div>`;
+            }
+        }
+
+        // 渲染详情
+        function renderDetail(data, enemy) {
+            const rarity = data.rarity || enemy.rarity || 1;
+
+            // 基础信息（左侧）+ 右侧大图（iconbig）
+            const basicHtml = `
+                <div class="detail-header">
+                    <div class="detail-left">
+                        <div class="detail-icon">
+                            <img src="${data.icon || ''}" onerror="this.onerror=null; this.src='';">
+                        </div>
+                        <div class="detail-text">
+                            <div class="detail-title-row">
+                                <span class="detail-name">${data.name}</span>
+                                <span class="detail-rarity rarity-${rarity}" title="稀有度 ${rarity}"></span>
+                            </div>
+                            <div class="detail-tags">
+                                ${data.enemyTag ? `<span class="tag">${data.enemyTag}</span>` : ''}
+                            </div>
+                            <div class="detail-meta">
+                                ${renderMeta(data)}
+                            </div>
+                            ${data.描述 ? `<div class="detail-desc">${parseText(data.描述)}</div>` : ''}
+                            ${data.技能描述 ? renderSkillDesc(data.技能描述) : ''}
+                        </div>
+                    </div>
+                    <div class="detail-pic">
+                        <img src="${data.iconbig || data.icon || ''}" onerror="this.onerror=null; this.src='';">
+                    </div>
+                </div>
+            `;
+
+            // 变种表格（完全显示所有行，无限制）
+            const variantsHtml = renderVariants(data.变种 || []);
+
+            return `
+                ${basicHtml}
+                <div class="section">
+                    <h3>变种属性</h3>
+                    ${variantsHtml}
+                </div>
+            `;
+        }
+
+        // 渲染元数据
+        function renderMeta(data) {
+            const fields = [
+                '处决承伤系数', '寒冷承伤系数', '灼热承伤系数', '自然承伤系数', '物理承伤系数', '电磁承伤系数',
+                '失衡值上限', '失衡恢复时间', '重量', '对塔攻击值', '处决技力回复', '初始护甲', '最大韧性',
+                '回弹系数', '受伤韧性降低', '韧性完全回复时长', '韧性回复值', '韧性回复间隔', '韧性归零时护甲值',
+                '失衡时护甲值', '普通攻击范围'
+            ];
+            let html = '';
+            fields.forEach(field => {
+                if (data[field] !== undefined && data[field] !== '') {
+                    html += `<div><span class="meta-label">${field}</span> ${data[field]}</div>`;
+                }
+            });
+            return html || '<div>无额外数据</div>';
+        }
+
+        // 渲染技能描述
+        function renderSkillDesc(skillArray) {
+            if (!Array.isArray(skillArray) || skillArray.length === 0) return '';
+            return `
+                <div class="skill-desc-list">
+                    ${skillArray.map(s => `<div class="skill-desc-item">${parseText(s)}</div>`).join('')}
+                </div>
+            `;
+        }
+
+        // 渲染变种表格（回滚：显示所有行，无限制）
+        function renderVariants(variants) {
+            if (!variants.length) return '<p>无变种数据</p>';
+
+            return variants.map((variant, idx) => {
+                // 找出所有数组字段（属性成长）
+                const arrayFields = [];
+                for (let key in variant) {
+                    if (Array.isArray(variant[key]) && variant[key].length > 0) {
+                        // 排除 enemyId, templateId, attrModifiers 等非属性字段
+                        if (!['enemyId', 'templateId', 'attrModifiers'].includes(key)) {
+                            arrayFields.push(key);
+                        }
+                    }
+                }
+                if (arrayFields.length === 0) return '';
+
+                // 确定行数（取第一个数组长度）
+                const rowCount = variant[arrayFields[0]].length;
+
+                // 生成表头
+                const headers = arrayFields.map(f => `<th>${f}</th>`).join('');
+
+                // 生成所有行（无限制）
+                let rows = '';
+                for (let i = 0; i < rowCount; i++) {
+                    const cells = arrayFields.map(f => {
+                        let val = variant[f][i];
+                        if (typeof val === 'number') val = val.toFixed(2);
+                        return `<td>${val}</td>`;
+                    }).join('');
+                    rows += `<tr><td>${i+1}</td>${cells}</tr>`;
+                }
+
+                const variantId = variant.enemyId || `变种 ${idx+1}`;
+                const modifier = variant.attrModifiers ? `<div class="variant-modifier">${variant.attrModifiers}</div>` : '';
+
+                return `
+                    <div class="variant-item">
+                        <div class="variant-title">${variantId}</div>
+                        ${modifier}
+                        <div class="variant-table-container">
+                            <table class="variant-table">
+                                <thead>
+                                    <tr>
+                                        <th>等级</th>
+                                        ${headers}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${rows}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 刷新整个模块
+        async function refreshModule() {
+            const list = document.getElementById('enemyList');
+            const detail = document.getElementById('enemyDetail');
+            if (!list || !detail) return;
+
+            const showHidden = getCurrentShowHidden();
+            const enemies = await loadEnemyManifest(showHidden);
+            currentEnemies = enemies;
+            renderEnemyList(enemies, list);
+        }
+
+        // 初始化
+        async function initModule() {
+            if (isInitialized) return;
+            isInitialized = true;
+
+            if (window.configLoaded) await window.configLoaded;
+            window.addEventListener('globalConfigChanged', refreshModule);
+            await refreshModule();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initModule);
+        } else {
+            initModule();
+        }
+    })();
+</script>
