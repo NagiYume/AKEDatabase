@@ -126,7 +126,10 @@
                 const icon = document.createElement('img');
                 icon.className = 'character-icon';
                 icon.src = char.icon || '';
-                icon.onerror = () => icon.src = '';
+                icon.onerror = function() {
+                    this.onerror = null;
+                    this.src = '';
+                };
 
                 // 文本区域（两行）
                 const textContainer = document.createElement('div');

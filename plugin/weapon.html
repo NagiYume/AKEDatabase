@@ -67,7 +67,10 @@
                 const icon = document.createElement('img');
                 icon.className = 'weapon-icon';
                 icon.src = weapon.icon;
-                icon.onerror = () => icon.src = '';
+                icon.onerror = function() {
+                    this.onerror = null;
+                    this.src = '';
+                };
             
                 // 信息区域（两行文本）
                 const info = document.createElement('div');

@@ -1,0 +1,292 @@
+<!-- plugin/equip.html -->
+<link rel="stylesheet" href="/theme/equip.css">
+
+<div class="equip-module">
+    <div class="equip-list" id="equipList"></div>
+    <div class="equip-detail" id="equipDetail">
+        <div class="loader">加载装备数据...</div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // ---------- 模块内部状态 ----------
+        let currentSuits = [];
+        let activeSuitId = null;
+        let isInitialized = false;
+
+        const IMAGE_BASE_PATH = '/public/images/';
+
+        function getCurrentShowHidden() {
+            return window.akeData?.getConfig().showHidden ?? false;
+        }
+
+        function parseText(text) {
+            return window.parseText(text, IMAGE_BASE_PATH);
+        }
+
+        // ---------- 占位符替换（同角色模块） ----------
+        function replacePlaceholders(desc, valueMap) {
+            const lowerValueMap = {};
+            for (const [key, val] of Object.entries(valueMap)) {
+                lowerValueMap[key.toLowerCase()] = val;
+            }
+        
+            return desc.replace(/\{([^}]+)\}/g, (match, p1) => {
+                const parts = p1.split(':');
+                const expr = parts[0].replace(/\s+/g, '');
+                const format = parts[1] ? parts[1].trim() : '';
+            
+                const varNames = expr.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
+                const missingVar = varNames.find(name => !(name.toLowerCase() in lowerValueMap));
+                if (missingVar) return match;
+            
+                let evalExpr = expr;
+                for (const name of varNames) {
+                    const value = lowerValueMap[name.toLowerCase()];
+                    const regex = new RegExp(`\\b${name}\\b`, 'g');
+                    evalExpr = evalExpr.replace(regex, `(${value})`);
+                }
+            
+                let result;
+                try {
+                    result = new Function('return ' + evalExpr)();
+                } catch (e) {
+                    console.warn('表达式计算失败:', evalExpr, e);
+                    return match;
+                }
+            
+                if (format.includes('%')) return (result * 100).toFixed(1) + '%';
+                if (format.includes('.')) {
+                    const precision = format.split('.')[1]?.length || 1;
+                    return result.toFixed(precision);
+                }
+                if (format.includes('0')) return Math.round(result);
+                return result.toString();
+            });
+        }
+
+        // ---------- 加载装备清单 ----------
+        async function loadEquipManifest(showHidden) {
+            try {
+                // 注意：请根据实际数据目录调整路径（/public/CH/equip/ 或 /public/CN/equip/）
+                const res = await fetch('/public/CH/equip/manifest.json?t=' + Date.now());
+                if (!res.ok) throw new Error('无法加载装备清单');
+                const all = await res.json();
+                let suits = showHidden ? all : all.filter(s => !s.hidden);
+                suits.sort((a, b) => (a.priority || 999) - (b.priority || 999));
+                return suits;
+            } catch (err) {
+                console.error('加载装备清单失败:', err);
+                return [];
+            }
+        }
+
+        // ---------- 渲染左侧列表 ----------
+        function renderEquipList(suits, container) {
+            container.innerHTML = '';
+            if (suits.length === 0) {
+                container.innerHTML = '<div class="loader">暂无装备套组</div>';
+                return;
+            }
+
+            suits.forEach((suit, index) => {
+                const item = document.createElement('div');
+                item.className = `equip-item ${suit.suitID === activeSuitId ? 'active' : (index === 0 && !activeSuitId ? 'active' : '')}`;
+                item.dataset.suitId = suit.suitID;
+                item.dataset.contentFile = suit.contentFile;
+
+                // 稀有度竖条
+                const rarityBar = document.createElement('span');
+                rarityBar.className = `rarity-bar rarity-${suit.rarity}`;
+                rarityBar.title = `稀有度 ${suit.rarity}`;
+
+                // 图标
+                const icon = document.createElement('img');
+                icon.className = 'equip-icon';
+                icon.src = suit.icon || '';
+                icon.onerror = function() {
+                    this.onerror = null;
+                    this.src = '';
+                };
+
+                // 信息区域
+                const info = document.createElement('div');
+                info.className = 'equip-info';
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'equip-name';
+                nameDiv.textContent = suit.name;
+                const idDiv = document.createElement('div');
+                idDiv.className = 'equip-id';
+                idDiv.textContent = suit.suitID;
+                info.appendChild(nameDiv);
+                info.appendChild(idDiv);
+
+                item.appendChild(rarityBar);
+                item.appendChild(icon);
+                item.appendChild(info);
+
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.equip-item').forEach(el => el.classList.remove('active'));
+                    item.classList.add('active');
+                    activeSuitId = suit.suitID;
+                    loadEquipDetail(suit, document.getElementById('equipDetail'));
+                });
+
+                container.appendChild(item);
+            });
+
+            const activeExists = suits.some(s => s.suitID === activeSuitId);
+            if (!activeExists && suits.length > 0) {
+                activeSuitId = suits[0].suitID;
+                const firstItem = container.querySelector('.equip-item');
+                if (firstItem) firstItem.classList.add('active');
+                loadEquipDetail(suits[0], document.getElementById('equipDetail'));
+            } else if (activeExists) {
+                const activeSuit = suits.find(s => s.suitID === activeSuitId);
+                if (activeSuit) loadEquipDetail(activeSuit, document.getElementById('equipDetail'));
+            }
+        }
+
+        // ---------- 加载套组详情 ----------
+        async function loadEquipDetail(suit, container) {
+            container.innerHTML = '<div class="loader">加载套组数据...</div>';
+            try {
+                const data = await fetch(suit.contentFile + '?t=' + Date.now()).then(r => r.json());
+                container.innerHTML = renderDetail(data, suit);
+            } catch (err) {
+                container.innerHTML = `<div class="error-message">加载失败: ${err.message}</div>`;
+            }
+        }
+
+        // 辅助：格式化数值（根据描述判断是否百分比）
+        function formatValue(desc, val) {
+            if (typeof val !== 'number') return val;
+            // 如果数值绝对值小于1，则视为百分比显示
+            if (Math.abs(val) < 1) {
+                return (val * 100).toFixed(1) + '%';
+            }
+            // 否则保留一位小数
+            return val.toFixed(1);
+        }
+
+        // 渲染副词条（显示数组中的所有值）
+        function renderSubStats(substats) {
+            if (!substats) return '';
+            let html = '<div class="substats">';
+            for (let key in substats) {
+                const stat = substats[key];
+                const desc = stat.desc;
+                const valArray = stat.value;
+                if (!Array.isArray(valArray) || valArray.length === 0) continue;
+                // 格式化每个值，并用“ / ”连接
+                const formattedValues = valArray.map(v => formatValue(desc, v)).join(' / ');
+                html += `<div class="substat-item"><span class="substat-desc">${desc}</span> <span class="substat-value">${formattedValues}</span></div>`;
+            }
+            html += '</div>';
+            return html;
+        }
+
+        // 渲染部件卡片
+        function renderEquipItems(equipObj) {
+            let html = '';
+            for (let itemId in equipObj) {
+                const item = equipObj[itemId];
+                const mainDesc = item.主词条.desc;
+                const mainVal = item.主词条.value;
+                const mainFormatted = formatValue(mainDesc, mainVal);
+                const substatsHtml = renderSubStats(item.副词条);
+                const iconSrc = item.icon || '';
+                const rarityDot = `<span class="rarity-dot rarity-${item.rarity}" title="稀有度 ${item.rarity}"></span>`;
+
+                html += `
+                    <div class="equip-item-card">
+                        <div class="card-header">
+                            <img class="card-icon" src="${iconSrc}" onerror="this.onerror=null; this.src='';">
+                            <div class="card-title">
+                                <span class="card-name">${item.name}</span>
+                                ${rarityDot}
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-meta">
+                                <span class="card-slot">${item.部位}</span>
+                                <span class="card-level">Lv.${item.level}</span>
+                            </div>
+                            <div class="card-mainstat">
+                                <span class="mainstat-desc">${mainDesc}</span>
+                                <span class="mainstat-value">${mainFormatted}</span>
+                            </div>
+                            ${substatsHtml}
+                        </div>
+                    </div>
+                `;
+            }
+            return html;
+        }
+
+        // ---------- 渲染详情 ----------
+        function renderDetail(data, suit) {
+            const suitName = data.套组名称 || suit.name;
+            let suitDesc = data.技能描述 || '';
+            const valueMap = data.value || {};
+
+            // 替换占位符，然后解析标签，最后将换行符转为 <br>
+            suitDesc = replacePlaceholders(suitDesc, valueMap);
+            suitDesc = parseText(suitDesc);
+            suitDesc = suitDesc.replace(/\n/g, '<br>');
+
+            const suitIcon = data.icon || suit.icon || '';
+            const equipItemsHtml = renderEquipItems(data.equip || {});
+
+            return `
+                <div class="equip-detail-container">
+                    <div class="suit-header">
+                        <div class="suit-icon">
+                            <img src="${suitIcon}" onerror="this.onerror=null; this.src='';">
+                        </div>
+                        <div class="suit-info">
+                            <div class="suit-title-row">
+                                <span class="suit-name">${suitName}</span>
+                                <span class="suit-rarity rarity-${suit.rarity}" title="稀有度 ${suit.rarity}"></span>
+                            </div>
+                            <div class="suit-desc">${suitDesc}</div>
+                        </div>
+                    </div>
+                    <h3>套装部件</h3>
+                    <div class="equip-items-grid">
+                        ${equipItemsHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        // ---------- 刷新模块 ----------
+        async function refreshModule() {
+            const list = document.getElementById('equipList');
+            const detail = document.getElementById('equipDetail');
+            if (!list || !detail) return;
+
+            const showHidden = getCurrentShowHidden();
+            const suits = await loadEquipManifest(showHidden);
+            currentSuits = suits;
+            renderEquipList(suits, list);
+        }
+
+        // ---------- 初始化 ----------
+        async function initModule() {
+            if (isInitialized) return;
+            isInitialized = true;
+
+            if (window.configLoaded) await window.configLoaded;
+            window.addEventListener('globalConfigChanged', refreshModule);
+            await refreshModule();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initModule);
+        } else {
+            initModule();
+        }
+    })();
+</script>
