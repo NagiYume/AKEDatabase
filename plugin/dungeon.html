@@ -1,0 +1,266 @@
+<!-- plugin/dungeon.html -->
+<link rel="stylesheet" href="/theme/dungeon.css">
+
+<div class="dungeon-module">
+    <div class="dungeon-series-list" id="dungeonSeriesList"></div>
+    <div class="dungeon-detail" id="dungeonDetail">
+        <div class="loader">加载副本数据...</div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        let currentSeries = [];
+        let activeSeriesId = null;
+        let isInitialized = false;
+
+        const IMAGE_BASE_PATH = '/public/images/';
+
+        function getCurrentShowHidden() {
+            return window.akeData?.getConfig().showHidden ?? false;
+        }
+
+        function parseText(text) {
+            return window.parseText(text, IMAGE_BASE_PATH);
+        }
+
+        // 格式化数值，根据类型显示百分比或小数
+        function formatValue(val) {
+            if (typeof val !== 'number') return val;
+            if (Math.abs(val) < 1 && val !== 0) {
+                return (val * 100).toFixed(1) + '%';
+            }
+            return val.toFixed(1);
+        }
+
+        // 加载副本系列清单
+        async function loadSeriesManifest(showHidden) {
+            try {
+                const res = await fetch('/public/CH/dungeon/manifest.json?t=' + Date.now());
+                if (!res.ok) throw new Error('无法加载副本系列清单');
+                const all = await res.json();
+                let series = showHidden ? all : all.filter(s => !s.hidden);
+                series.sort((a, b) => (a.priority || 999) - (b.priority || 999));
+                return series;
+            } catch (err) {
+                console.error('加载副本系列清单失败:', err);
+                return [];
+            }
+        }
+
+        // 渲染左侧系列列表
+        function renderSeriesList(series, container) {
+            container.innerHTML = '';
+            if (series.length === 0) {
+                container.innerHTML = '<div class="loader">暂无副本系列</div>';
+                return;
+            }
+        
+            series.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = `series-item ${item.templateId === activeSeriesId ? 'active' : (index === 0 && !activeSeriesId ? 'active' : '')}`;
+                div.dataset.seriesId = item.templateId;
+                div.dataset.contentFile = item.contentFile;
+            
+                // 左侧稀有度竖条
+                const rarityBar = document.createElement('span');
+                rarityBar.className = `rarity-bar rarity-${item.rarity || 5}`;
+                rarityBar.title = `稀有度 ${item.rarity || 5}`;
+            
+                // 信息容器
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'series-info';
+            
+                const nameSpan = document.createElement('div');
+                nameSpan.className = 'series-name';
+                nameSpan.textContent = item.name;
+            
+                const idSpan = document.createElement('div');
+                idSpan.className = 'series-id';
+                idSpan.textContent = item.templateId;
+            
+                infoDiv.appendChild(nameSpan);
+                infoDiv.appendChild(idSpan);
+            
+                div.appendChild(rarityBar);
+                div.appendChild(infoDiv);
+            
+                div.addEventListener('click', () => {
+                    document.querySelectorAll('.series-item').forEach(el => el.classList.remove('active'));
+                    div.classList.add('active');
+                    activeSeriesId = item.templateId;
+                    loadSeriesDetail(item, document.getElementById('dungeonDetail'));
+                });
+            
+                container.appendChild(div);
+            });
+
+            const activeExists = series.some(s => s.templateId === activeSeriesId);
+            if (!activeExists && series.length > 0) {
+                activeSeriesId = series[0].templateId;
+                const firstItem = container.querySelector('.series-item');
+                if (firstItem) firstItem.classList.add('active');
+                loadSeriesDetail(series[0], document.getElementById('dungeonDetail'));
+            } else if (activeExists) {
+                const activeItem = series.find(s => s.templateId === activeSeriesId);
+                if (activeItem) loadSeriesDetail(activeItem, document.getElementById('dungeonDetail'));
+            }
+        }
+
+        // 加载系列详情
+        async function loadSeriesDetail(seriesItem, container) {
+            container.innerHTML = '<div class="loader">加载副本数据...</div>';
+            try {
+                const data = await fetch(seriesItem.contentFile + '?t=' + Date.now()).then(r => r.json());
+                container.innerHTML = renderDetail(data, seriesItem);
+            } catch (err) {
+                container.innerHTML = `<div class="error-message">加载失败: ${err.message}</div>`;
+            }
+        }
+
+        // 渲染奖励对象
+        function renderRewards(rewards) {
+            if (!rewards || Object.keys(rewards).length === 0) return '无';
+            return Object.entries(rewards).map(([name, count]) => `${name} x${count}`).join('<br>');
+        }
+
+        // 渲染敌人属性表格
+        function renderEnemyValues(valueObj) {
+            const excluded = ['enemyId', 'enemyName', 'iconbig', 'attrModifiers'];
+            const entries = Object.entries(valueObj).filter(([key]) => !excluded.includes(key));
+            if (entries.length === 0) return '';
+                
+            let html = '<div class="enemy-value-grid">';
+            entries.forEach(([key, val]) => {
+                const formatted = formatValue(val);
+                html += `
+                    <div class="value-item">
+                        <span class="value-key">${key}</span>
+                        <span class="value-val">${formatted}</span>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            return html;
+        }
+
+        // 渲染单个副本卡片
+        function renderDungeonCard(dungeonId, dungeon) {
+            const name = dungeon.name || dungeonId;
+            const level = dungeon.level || '';
+            const desc = parseText(dungeon.desc || '');
+            // 仅当 featureDesc 有内容时才渲染
+            const featureDesc = dungeon.featureDesc ? parseText(dungeon.featureDesc) : '';
+            const costStamina = dungeon.costStamina !== undefined ? dungeon.costStamina : 0;
+            const recommendLevel = dungeon.推荐挑战等级 || '?';
+            const fixedRewards = renderRewards(dungeon.固定奖励);
+            const firstRewards = renderRewards(dungeon.首通奖励);
+        
+            // 敌人列表
+            let enemiesHtml = '';
+            if (dungeon.enemy && dungeon.enemy.length > 0) {
+                enemiesHtml = '<h4 class="enemies-title">敌人详情</h4><div class="enemy-list">';
+                dungeon.enemy.forEach((enemy, idx) => {
+                    const enemyName = enemy.enemyName || enemy.enemyId;
+                    const enemyLevel = enemy.level || '?';
+                    const attrModifiers = enemy.attrModifiers ? `<div class="attr-modifiers">${enemy.attrModifiers}</div>` : '';
+                    const valueTable = renderEnemyValues(enemy.value || {});
+                    const iconSrc = enemy.iconbig || '';
+                    enemiesHtml += `
+                        <div class="enemy-card">
+                            <div class="enemy-header">
+                                <img class="enemy-icon" src="${iconSrc}" onerror="this.onerror=null; this.src='';">
+                                <div class="enemy-title">
+                                    <span class="enemy-name">${enemyName}</span>
+                                    <span class="enemy-level">Lv.${enemyLevel}</span>
+                                </div>
+                            </div>
+                            ${attrModifiers}
+                            <div class="enemy-values">${valueTable}</div>
+                        </div>
+                    `;
+                });
+                enemiesHtml += '</div>';
+            }
+        
+            return `
+                <div class="dungeon-card">
+                    <div class="dungeon-header">
+                        <h4 class="dungeon-name">${name}</h4>
+                        <span class="dungeon-level">${level}</span>
+                    </div>
+                    <div class="dungeon-desc">${desc}</div>
+                    ${featureDesc ? `<div class="dungeon-feature">${featureDesc}</div>` : ''}
+                    <div class="dungeon-meta">
+                        <div><span class="meta-label">消耗理智</span> ${costStamina}</div>
+                        <div><span class="meta-label">推荐等级</span> ${recommendLevel}</div>
+                    </div>
+                    <div class="dungeon-rewards">
+                        <div class="rewards-block">
+                            <span class="rewards-title">固定奖励</span>
+                            <div class="rewards-content">${fixedRewards}</div>
+                        </div>
+                        <div class="rewards-block">
+                            <span class="rewards-title">首通奖励</span>
+                            <div class="rewards-content">${firstRewards}</div>
+                        </div>
+                    </div>
+                    ${enemiesHtml}
+                </div>
+            `;
+        }
+
+        // 渲染系列详情（包含多个副本）
+        function renderDetail(data, seriesItem) {
+            const seriesName = data.dungeonSeriesname || seriesItem.name;
+            const dungeons = data.dungeons || {};
+            const dungeonIds = Object.keys(dungeons);
+            if (dungeonIds.length === 0) {
+                return `<div class="error-message">该系列下没有副本数据</div>`;
+            }
+
+            let dungeonsHtml = '';
+            dungeonIds.forEach(id => {
+                dungeonsHtml += renderDungeonCard(id, dungeons[id]);
+            });
+
+            return `
+                <div class="dungeon-series-header">
+                    <h2 class="series-title">${seriesName}</h2>
+                    <span class="series-id">${data.dungeonSeriesId || seriesItem.templateId}</span>
+                </div>
+                <div class="dungeons-container">
+                    ${dungeonsHtml}
+                </div>
+            `;
+        }
+
+        // 刷新模块
+        async function refreshModule() {
+            const list = document.getElementById('dungeonSeriesList');
+            const detail = document.getElementById('dungeonDetail');
+            if (!list || !detail) return;
+
+            const showHidden = getCurrentShowHidden();
+            const series = await loadSeriesManifest(showHidden);
+            currentSeries = series;
+            renderSeriesList(series, list);
+        }
+
+        // 初始化
+        async function initModule() {
+            if (isInitialized) return;
+            isInitialized = true;
+
+            if (window.configLoaded) await window.configLoaded;
+            window.addEventListener('globalConfigChanged', refreshModule);
+            await refreshModule();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initModule);
+        } else {
+            initModule();
+        }
+    })();
+</script>

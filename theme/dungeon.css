@@ -1,0 +1,314 @@
+/* theme/dungeon.css */
+
+.dungeon-module {
+    display: flex;
+    gap: 20px;
+    height: 100%;
+    min-height: 500px;
+    margin: 0;
+    padding: 0;
+}
+
+/* 左侧系列列表 */
+.dungeon-series-list {
+    width: 240px;
+    background: var(--sidebar-bg, #f2f4f8);
+    border-radius: 16px;
+    padding: 16px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color, #d9e0e8);
+    flex-shrink: 0;
+    margin-left: 0;
+}
+
+.series-item {
+    display: flex;
+    align-items: flex-start; /* 改为顶部对齐，因为现在有两行文本 */
+    padding: 12px 8px;
+    margin-bottom: 8px;
+    background: var(--module-bg, white);
+    border-radius: 12px;
+    border: 1px solid var(--border-color, #e2e7f0);
+    cursor: pointer;
+    transition: all 0.2s;
+    gap: 8px;
+}
+.series-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    border-color: #b8c5d9;
+}
+.series-item.active {
+    background: var(--active-bg, #e2eaf9);
+    border-left: 5px solid #1e6f9f;
+}
+
+.rarity-bar {
+    display: inline-block;
+    width: 5px;
+    height: 40px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+.rarity-bar.rarity-1 { background-color: #808080; }
+.rarity-bar.rarity-2 { background-color: #00b300; }
+.rarity-bar.rarity-3 { background-color: #3b7eff; }
+.rarity-bar.rarity-4 { background-color: #a335ee; }
+.rarity-bar.rarity-5 { background-color: #ffcc00; }
+.rarity-bar.rarity-6 { background-color: #ff3333; }
+
+.series-info {
+    flex: 1;
+    min-width: 0;
+}
+.series-name {
+    font-weight: 600;
+    color: var(--text-color, #1e2b3c);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.series-id {
+    font-size: 12px;
+    color: #999;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 右侧详情 */
+.dungeon-detail {
+    flex: 1;
+    background: var(--content-bg, #ffffff);
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid var(--border-color, #f0f3f9);
+    overflow-y: auto;
+}
+
+.dungeon-series-header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--border-color, #d9e0e8);
+    padding-bottom: 10px;
+}
+.series-title {
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--text-color, #1e2b3c);
+    margin: 0;
+}
+.series-id {
+    color: var(--desc-color, #5b6f86);
+    font-size: 0.9rem;
+}
+
+.dungeons-container {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.dungeon-card {
+    background: var(--module-bg, #f8fafd);
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid var(--border-color, #e2e7f0);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+.dungeon-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+.dungeon-name {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--text-color, #1e2b3c);
+    margin: 0;
+}
+.dungeon-level {
+    font-size: 1rem;
+    color: var(--desc-color, #5b6f86);
+    background: var(--border-color, #eef3fa);
+    padding: 2px 10px;
+    border-radius: 30px;
+}
+
+.dungeon-desc {
+    border-left: 3px solid var(--accent-color, #1e6f9f);
+    padding-left: 12px;
+    margin: 12px 0;
+    color: var(--desc-color, #5b6f86);
+    font-style: italic;
+    white-space: pre-wrap;
+}
+.dungeon-feature {
+    background: var(--border-color, #eef3fa);
+    border-radius: 8px;
+    padding: 10px;
+    margin: 12px 0;
+    color: var(--text-color, #1e2b3c);
+    font-size: 0.95rem;
+    white-space: pre-wrap;
+}
+.dungeon-meta {
+    display: flex;
+    gap: 24px;
+    margin: 12px 0;
+    color: var(--text-color, #1e2b3c);
+}
+.meta-label {
+    font-weight: 600;
+    margin-right: 6px;
+    color: var(--desc-color, #5b6f86);
+}
+
+.dungeon-rewards {
+    display: flex;
+    gap: 30px;
+    margin: 16px 0;
+    padding: 12px;
+    background: var(--content-bg, #ffffff);
+    border-radius: 12px;
+    border: 1px solid var(--border-color, #e2e7f0);
+}
+.rewards-block {
+    flex: 1;
+}
+.rewards-title {
+    font-weight: 600;
+    display: block;
+    margin-bottom: 6px;
+    color: var(--text-color, #1e2b3c);
+}
+.rewards-content {
+    color: var(--desc-color, #5b6f86);
+    line-height: 1.5;
+}
+
+/* 敌人列表 */
+.enemy-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));  /* 增大最小宽度 */
+    gap: 16px;
+    margin-top: 16px;
+}
+.enemy-value-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;  /* 两列等宽 */
+    gap: 4px 8px;
+    margin-top: 8px;
+    font-size: 0.8rem;
+}
+
+.value-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 2px 0;
+    border-bottom: 1px dotted var(--border-color, #e2e7f0);
+}
+
+.value-key {
+    color: var(--desc-color, #5b6f86);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: 8px;
+}
+
+.value-val {
+    color: var(--text-color, #1e2b3c);
+    text-align: right;
+    white-space: nowrap;
+}
+
+.enemy-card {
+    background: var(--content-bg, #ffffff);
+    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid var(--border-color, #e2e7f0);
+}
+.enemy-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+.enemy-icon {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    background: #eef3fa;
+    border-radius: 8px;
+}
+/* 敌人详情标题 */
+.enemies-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-color, #1e2b3c);
+    margin: 20px 0 10px;
+    padding-left: 8px;
+    border-left: 4px solid var(--accent-color, #1e6f9f);
+}
+.enemy-name {
+    font-weight: 600;
+    color: var(--text-color, #1e2b3c);
+    display: block;
+}
+.enemy-level {
+    font-size: 0.85rem;
+    color: var(--desc-color, #5b6f86);
+}
+.attr-modifiers {
+    font-size: 0.85rem;
+    color: #e68a2e; /* 橙色表示 modifier */
+    margin-bottom: 8px;
+    background: #fff3e0;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+}
+.enemy-values {
+    margin-top: 8px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+.enemy-value-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+.enemy-value-table td {
+    padding: 2px 4px;
+    border-bottom: 1px solid var(--border-color, #e2e7f0);
+}
+.enemy-value-table td:first-child {
+    color: var(--desc-color, #5b6f86);
+    font-weight: 500;
+}
+.enemy-value-table td:last-child {
+    text-align: right;
+    color: var(--text-color, #1e2b3c);
+}
+
+/* 加载/错误 */
+.loader {
+    text-align: center;
+    padding: 40px;
+    color: var(--desc-color, #60758b);
+    font-style: italic;
+}
+.error-message {
+    color: #b0003a;
+    background: #ffe8f0;
+    padding: 20px;
+    border-radius: 20px;
+    border: 1px solid #ffb3c6;
+}
