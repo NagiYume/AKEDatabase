@@ -20,7 +20,7 @@
         <div class="sidebar">
             <div class="brand" id="brandHome" title="返回起始页">
                 AKEData
-                <span>plugin</span>
+                <span>Wiki</span>
             </div>
             <div class="module-list" id="moduleListContainer">
                 <div style="color:#7f8c9f; text-align:center; padding:20px;">加载模块清单...</div>
@@ -34,9 +34,9 @@
             <div class="content-area" id="contentArea">
                 <!-- 起始页由JS渲染 -->
             </div>
-            <div class="footer-note">
+            <!--<div class="footer-note">
                 ⚡ 动态读取 <code>plugin/manifest.json</code> · 按优先级排序 · 主题存放在 <code>theme/</code>
-            </div>
+            </div> -->
         </div>
     </div>
 
@@ -49,7 +49,7 @@
                 <label for="modalThemeSelect">页面样式：</label>
                 <select id="modalThemeSelect">
                     <option value="light">亮色模式</option>
-                    <option value="dark">暗色模式</option>
+                    <option value="dark">暗色模式（暂不可用）</option>
                 </select>
             </div>
             <div class="settings-item">
@@ -57,8 +57,9 @@
                 <input type="checkbox" id="modalShowHiddenCheck">
             </div>
             <div class="about-box">
-                <p>AKEData 动态模块演示 · 版本 1.0</p>
-                <p>所有样式由 theme/ 文件夹中的 CSS 提供。</p>
+                <p>AKEData · 版本 0.95</p>
+                <p>游戏版本 CN_WIN_REL_1.0.14_C5157154_E5135590</p>
+                <p>Hotfix版本 5793042-32</p>
             </div>
         </div>
     </div>
@@ -72,10 +73,14 @@
             // ---------- 起始页内容 ----------
             const HOME_CONTENT = `
                 <div class="welcome-home">
-                    <h2>🔍 数据查询可视化</h2>
-                    <p>👈 从左侧选择模块开始 · 当前为起始页</p>
-                    <div style="margin-top: 50px; color:#a3b6cc; font-size:1rem;">
-                        模块按优先级排序（数字小靠前）<br>
+                    <img src="/public/images/index/main.png" 
+                         alt="起始页图片" 
+                         class="home-image" 
+                         onerror="this.onerror=null; this.src='';"
+                         style="max-width: 80%; height: auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    <p style="margin-top: 20px; color: var(--text-color, #1e2b3c); font-size: 1.2rem;">AKEData · 《明日方舟：终末地》数据库</p>
+                    <div style="margin-top: 30px; color:#a3b6cc; font-size:1rem;">
+                        免责声明：本网站为同好爱好者项目，与鹰角网络和Gryphline官方无关。所有商标权利均归属其各自所有者。<br>
                         左下角 ⚙️ 按钮可打开全局设置
                     </div>
                 </div>
@@ -209,8 +214,6 @@
                         <div class="module-item" data-id="${mod.id}">
                             <div class="module-title">
                                 <span>${icon}</span> ${mod.title} ${hiddenMarker}
-                                <span class="tag">plugin</span>
-                                <span class="priority-tag">P:${priority}</span>
                             </div>
                             <div class="module-desc">${desc}</div>
                         </div>
