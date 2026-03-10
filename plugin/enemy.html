@@ -19,8 +19,10 @@
         let activeEnemyId = null;
         let isInitialized = false;
         let enemyLevelsToShow = null;
-        let showAllEnemyLevels = false;
+        let variantExpandStates = {}; // 每个变种的独立展开状态 { index: boolean }
         let searchTerm = '';
+        let currentEnemy = null;
+        let currentEnemyData = null;
 
         const IMAGE_BASE_PATH = '/public/images/';
 
@@ -136,17 +138,94 @@
             container.innerHTML = '<div class="loader">加载敌人数据...</div>';
             try {
                 const data = await fetch(enemy.contentFile + '?t=' + Date.now()).then(r => r.json());
+                currentEnemyData = data;
+                currentEnemy = enemy;
+
+                // 初始化每个变种的展开状态为 false
+                const variants = data.变种 || [];
+                variantExpandStates = {};
+                variants.forEach((_, idx) => { variantExpandStates[idx] = false; });
+
                 container.innerHTML = renderDetail(data, enemy);
+
+                // 绑定每个变种的展开按钮
                 const toggleBtns = container.querySelectorAll('.toggle-enemy-levels-btn');
                 toggleBtns.forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        showAllEnemyLevels = !showAllEnemyLevels;
-                        loadEnemyDetail(enemy, container);
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const variantIdx = parseInt(btn.dataset.variant, 10);
+                        if (isNaN(variantIdx)) return;
+
+                        // 切换该变种的展开状态
+                        variantExpandStates[variantIdx] = !variantExpandStates[variantIdx];
+
+                        // 更新该变种的表格和按钮文字
+                        updateVariantTable(variants[variantIdx], variantIdx);
+
+                        // 更新按钮文字
+                        btn.textContent = variantExpandStates[variantIdx] ? '收起多余等级' : '展开所有等级';
                     });
                 });
             } catch (err) {
                 container.innerHTML = `<div class="error-message">加载失败: ${err.message}</div>`;
             }
+        }
+
+        function updateVariantTable(variant, idx) {
+            const container = document.querySelector(`.variant-item[data-variant-index="${idx}"] .variant-table-container`);
+            if (!container) return;
+
+            const arrayFields = [];
+            for (let key in variant) {
+                if (Array.isArray(variant[key]) && variant[key].length > 0) {
+                    if (!['enemyId', 'templateId', 'attrModifiers'].includes(key)) {
+                        arrayFields.push(key);
+                    }
+                }
+            }
+            if (arrayFields.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const rowCount = variant[arrayFields[0]].length;
+            const headers = arrayFields.map(f => `<th>${f}</th>`).join('');
+
+            let allRows = '';
+            for (let i = 0; i < rowCount; i++) {
+                const cells = arrayFields.map(f => {
+                    let val = variant[f][i];
+                    if (typeof val === 'number') val = val.toFixed(2);
+                    return `<td>${val}</td>`;
+                }).join('');
+                allRows += `<tr data-level="${i+1}"><td>${i+1}</td>${cells}</tr>`;
+            }
+
+            // 使用该变种的独立展开状态
+            const showAll = variantExpandStates[idx] || false;
+            let rowsToRender = allRows;
+            if (enemyLevelsToShow && !showAll) {
+                const levelSet = new Set(enemyLevelsToShow);
+                const rowArray = allRows.split('</tr>').filter(r => r.trim());
+                const filteredRows = rowArray.filter(row => {
+                    const match = row.match(/data-level="(\d+)"/);
+                    return match && levelSet.has(parseInt(match[1], 10));
+                });
+                rowsToRender = filteredRows.join('</tr>') + (filteredRows.length ? '</tr>' : '');
+            }
+            if (!rowsToRender && enemyLevelsToShow && enemyLevelsToShow.length > 0) {
+                const maxLevel = Math.max(...enemyLevelsToShow);
+                const found = allRows.split('</tr>').find(r => r.includes(`data-level="${maxLevel}"`));
+                rowsToRender = found ? found + '</tr>' : '';
+            }
+
+            const tableHtml = `
+                <table class="variant-table">
+                    <thead><tr><th>等级</th>${headers}</tr></thead>
+                    <tbody>${rowsToRender}</tbody>
+                </table>
+            `;
+            container.innerHTML = tableHtml;
         }
 
         function renderMeta(data) {
@@ -156,13 +235,19 @@
                 '回弹系数', '受伤韧性降低', '韧性完全回复时长', '韧性回复值', '韧性回复间隔', '韧性归零时护甲值',
                 '失衡时护甲值', '普通攻击范围'
             ];
-            let html = '';
+            let html = '<div class="meta-grid">';
             fields.forEach(field => {
                 if (data[field] !== undefined && data[field] !== '') {
-                    html += `<div><span class="meta-label">${field}</span> ${data[field]}</div>`;
+                    html += `
+                        <div class="meta-item">
+                            <span class="meta-label">${field}</span>
+                            <span class="meta-value">${data[field]}</span>
+                        </div>
+                    `;
                 }
             });
-            return html || '<div>无额外数据</div>';
+            html += '</div>';
+            return html;
         }
 
         function renderSkillDesc(skillArray) {
@@ -200,8 +285,10 @@
                     allRows += `<tr data-level="${i+1}"><td>${i+1}</td>${cells}</tr>`;
                 }
 
+                // 使用独立状态
+                const showAll = variantExpandStates[idx] || false;
                 let rowsToRender = allRows;
-                if (enemyLevelsToShow && !showAllEnemyLevels) {
+                if (enemyLevelsToShow && !showAll) {
                     const levelSet = new Set(enemyLevelsToShow);
                     const rowArray = allRows.split('</tr>').filter(r => r.trim());
                     const filteredRows = rowArray.filter(row => {
@@ -220,12 +307,12 @@
                 const modifier = variant.attrModifiers ? `<div class="variant-modifier">${variant.attrModifiers}</div>` : '';
                 const toggleButton = enemyLevelsToShow ? `
                     <div style="text-align:right; margin-top:4px;">
-                        <button class="toggle-enemy-levels-btn" data-variant="${idx}" style="background: var(--button-bg, #e0e8f0); border: 1px solid var(--border-color); border-radius: 16px; padding: 4px 12px; cursor: pointer;">${showAllEnemyLevels ? '收起多余等级' : '展开所有等级'}</button>
+                        <button class="toggle-enemy-levels-btn" data-variant="${idx}" style="background: var(--button-bg, #e0e8f0); border: 1px solid var(--border-color); border-radius: 16px; padding: 4px 12px; cursor: pointer;">${showAll ? '收起多余等级' : '展开所有等级'}</button>
                     </div>
                 ` : '';
 
                 return `
-                    <div class="variant-item">
+                    <div class="variant-item" data-variant-index="${idx}">
                         <div class="variant-title">${variantId}</div>
                         ${modifier}
                         <div class="variant-table-container">
@@ -314,7 +401,8 @@
                 } else {
                     enemyLevelsToShow = null;
                 }
-                showAllEnemyLevels = false;
+                // 重置展开状态（因为重新加载了列表）
+                variantExpandStates = {};
                 refreshModule();
             });
 

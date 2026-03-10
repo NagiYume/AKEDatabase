@@ -21,6 +21,8 @@
         let weaponLevelsToShow = null;
         let showAllWeaponLevels = false;
         let searchTerm = '';
+        let currentWeaponData = null;
+        let currentWeapon = null;
 
         const IMAGE_BASE_PATH = '/public/images/';
 
@@ -67,6 +69,25 @@
                 console.error('加载武器清单失败:', err);
                 return [];
             }
+        }
+
+        function renderAtkRows(data, showAll, levelsToShow) {
+            const allRows = [];
+            for (let i = 0; i < 90; i++) {
+                const level = i + 1;
+                const atk = data.baseAtk[i] || '-';
+                allRows.push(`<tr data-level="${level}"><td>${level}</td><td>${atk}</td></tr>`);
+            }
+        
+            if (!levelsToShow || showAll) return allRows.join('');
+        
+            const levelSet = new Set(levelsToShow);
+            const filtered = allRows.filter(row => {
+                const match = row.match(/data-level="(\d+)"/);
+                return match && levelSet.has(parseInt(match[1], 10));
+            });
+        
+            return filtered.length ? filtered.join('') : allRows.filter(r => r.includes(`data-level="${Math.max(...levelsToShow)}"`)).join('');
         }
         
         function renderWeaponList() {
@@ -152,16 +173,31 @@
             }
         }
 
+        function updateAtkTable() {
+            const tbody = document.querySelector('.atk-table tbody');
+            if (!tbody || !currentWeaponData) return;
+            const newRows = renderAtkRows(currentWeaponData, showAllWeaponLevels, weaponLevelsToShow);
+            tbody.innerHTML = newRows;
+
+            const btn = document.querySelector('.toggle-weapon-levels-btn');
+            if (btn) btn.textContent = showAllWeaponLevels ? '收起多余等级' : '展开所有等级';
+        }
+
         async function loadWeaponDetail(weapon, container) {
             container.innerHTML = '<div class="loader">加载武器数据...</div>';
             try {
                 const data = await fetch(weapon.contentFile + '?t=' + Date.now()).then(r => r.json());
+                currentWeaponData = data;
+                currentWeapon = weapon;
                 container.innerHTML = renderDetail(data, weapon);
+            
+                // 绑定局部更新按钮
                 const toggleBtn = container.querySelector('.toggle-weapon-levels-btn');
                 if (toggleBtn) {
-                    toggleBtn.addEventListener('click', () => {
+                    toggleBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
                         showAllWeaponLevels = !showAllWeaponLevels;
-                        loadWeaponDetail(weapon, container);
+                        updateAtkTable();
                     });
                 }
             } catch (err) {
@@ -276,7 +312,7 @@
                             <div class="atk-table-container">
                                 <table class="atk-table">
                                     <thead><tr><th>等级</th><th>攻击力</th></tr></thead>
-                                    <tbody>${atkRowsHtml}</tbody>
+                                    <tbody>${renderAtkRows(data, showAllWeaponLevels, weaponLevelsToShow)}</tbody>
                                 </table>
                             </div>
                             ${toggleButtonHtml}

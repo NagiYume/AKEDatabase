@@ -30,11 +30,26 @@
             return window.parseText(text, IMAGE_BASE_PATH);
         }
 
+        // 辅助：格式化数值 - 绝对值小于1显示为百分比，否则保留一位小数
+        // 特殊处理：如果描述包含“全伤害减免”，则显示 (1 - val) 的百分比
         function formatValue(desc, val) {
             if (typeof val !== 'number') return val;
+            
+            // 特殊处理：全伤害减免
+            if (desc && desc.includes('全伤害减免')) {
+                // 计算 1 - val，然后按小于1处理显示百分比
+                const newVal = 1 - val;
+                if (Math.abs(newVal) < 1) {
+                    return (newVal * 100).toFixed(1) + '%';
+                }
+                return newVal.toFixed(1);
+            }
+            
+            // 默认逻辑：如果数值绝对值小于1，则视为百分比显示
             if (Math.abs(val) < 1) {
                 return (val * 100).toFixed(1) + '%';
             }
+            // 否则保留一位小数
             return val.toFixed(1);
         }
 

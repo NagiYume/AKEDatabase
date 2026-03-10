@@ -24,6 +24,8 @@
         let skillExpandMap = {};
         let showAllCharLevels = false;
         let searchTerm = '';
+        let currentCharacter = null;       // 当前角色数据
+        let currentCharData = null;        // 当前角色的详细数据
 
         const IMAGE_BASE_PATH = '/public/images/bufficon/';
 
@@ -193,40 +195,167 @@
             container.innerHTML = '<div class="loader">加载干员数据...</div>';
             try {
                 const data = await fetch(character.contentFile + '?t=' + Date.now()).then(r => r.json());
+                currentCharData = data;
+                currentCharacter = character;
                 container.innerHTML = renderDetail(data);
-
+            
+                // 绑定全局技能等级展开按钮
                 const globalSkillBtn = container.querySelector('.global-skill-toggle-btn');
                 if (globalSkillBtn) {
-                    globalSkillBtn.addEventListener('click', () => {
+                    globalSkillBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
                         globalSkillExpand = !globalSkillExpand;
-                        loadCharacterDetail(character, container);
+                        // 当全局展开时，清空独立状态
+                        if (globalSkillExpand) skillExpandMap = {};
+                        updateAllSkillTables(); // 更新所有技能表格
                     });
                 }
-
+            
+                // 绑定每个技能的独立展开按钮
                 const skillToggleBtns = container.querySelectorAll('.skill-toggle-btn');
                 skillToggleBtns.forEach(btn => {
                     btn.addEventListener('click', (e) => {
+                        e.preventDefault();
                         const skillName = btn.dataset.skillName;
                         if (!skillName) return;
                         if (globalSkillExpand) {
                             globalSkillExpand = false;
                         }
                         skillExpandMap[skillName] = !skillExpandMap[skillName];
-                        loadCharacterDetail(character, container);
+                        updateSkillTable(skillName);
                     });
                 });
-
+            
+                // 绑定角色等级展开按钮
                 const toggleCharBtn = container.querySelector('.toggle-char-levels-btn');
                 if (toggleCharBtn) {
-                    toggleCharBtn.addEventListener('click', () => {
+                    toggleCharBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
                         showAllCharLevels = !showAllCharLevels;
-                        loadCharacterDetail(character, container);
+                        updateGrowthTable();
                     });
                 }
-
+            
             } catch (err) {
                 container.innerHTML = `<div class="error-message">加载失败: ${err.message}</div>`;
             }
+        }
+
+        function updateGrowthTable() {
+            const tbody = document.querySelector('.growth-table tbody');
+            if (!tbody || !currentCharData) return;
+            const growth = currentCharData.growth || {};
+            const attributes = ['力量', '敏捷', '智识', '意志', '生命值', '攻击力', '法术异常伤害系数', '物理异常伤害系数'];
+            const firstAttr = attributes.find(attr => growth[attr] && growth[attr].length);
+            const levelCount = firstAttr ? growth[firstAttr].length : 0;
+            const allGrowthRows = [];
+            for (let lv = 1; lv <= levelCount; lv++) {
+                const cells = attributes.map(attr => {
+                    const val = growth[attr]?.[lv-1];
+                    return `<td>${val !== undefined ? val.toFixed(2) : '-'}</td>`;
+                }).join('');
+                allGrowthRows.push(`<tr data-level="${lv}"><td>${lv}</td>${cells}</tr>`);
+            }
+        
+            let rowsToRender = allGrowthRows;
+            if (charLevelsToShow && !showAllCharLevels) {
+                const levelSet = new Set(charLevelsToShow);
+                rowsToRender = allGrowthRows.filter(row => {
+                    const match = row.match(/data-level="(\d+)"/);
+                    return match && levelSet.has(parseInt(match[1], 10));
+                });
+            }
+            if (rowsToRender.length === 0 && charLevelsToShow && charLevelsToShow.length > 0) {
+                const maxLevel = Math.max(...charLevelsToShow);
+                const found = allGrowthRows.find(r => r.includes(`data-level="${maxLevel}"`));
+                if (found) rowsToRender = [found];
+            }
+            tbody.innerHTML = rowsToRender.join('');
+        
+            // 更新按钮文字
+            const btn = document.querySelector('.toggle-char-levels-btn');
+            if (btn) btn.textContent = showAllCharLevels ? '收起多余等级' : '展开所有等级';
+        }
+
+        function updateSkillTable(skillName) {
+            const skillContainer = document.querySelector(`.skill-item[data-skill-name="${skillName}"] .skill-detail`);
+            if (!skillContainer || !currentCharData) return;
+
+            const showHidden = getCurrentShowHidden();
+            const group = currentCharData.skills?.find(g => g.name === skillName);
+            const skillDetail = Object.values(currentCharData.skill || {}).find(s => s.name === skillName);
+            if (!group || !skillDetail) return;
+
+            const values = skillDetail.values || {};
+            const columns = Object.keys(values).filter(k => Array.isArray(values[k]));
+            let displayColumns = columns;
+            if (!showHidden) {
+                displayColumns = columns.filter(col => {
+                    const lowerCol = col.toLowerCase();
+                    return !HIDDEN_KEYWORDS.some(keyword => lowerCol.includes(keyword));
+                });
+            }
+            if (displayColumns.length === 0) {
+                skillContainer.innerHTML = '';
+                return;
+            }
+        
+            const levelCount = values[columns[0]].length;
+            const allSkillRows = [];
+            for (let lv = 1; lv <= levelCount; lv++) {
+                const cells = displayColumns.map(col => {
+                    const arr = values[col];
+                    let val = arr[lv-1] !== undefined ? arr[lv-1] : arr[arr.length-1];
+                    if (typeof val === 'number') val = val.toFixed(2);
+                    return `<td>${val}</td>`;
+                }).join('');
+                allSkillRows.push(`<tr data-level="${lv}"><td>Lv.${lv}</td>${cells}</tr>`);
+            }
+        
+            const isExpanded = globalSkillExpand ? true : (skillExpandMap[skillName] || false);
+        
+            let rowsToRender = allSkillRows;
+            if (!isExpanded && skillLevelsToShow) {
+                const levelSet = new Set(skillLevelsToShow);
+                rowsToRender = allSkillRows.filter(row => {
+                    const match = row.match(/data-level="(\d+)"/);
+                    return match && levelSet.has(parseInt(match[1], 10));
+                });
+            }
+            if (rowsToRender.length === 0 && !isExpanded && skillLevelsToShow && skillLevelsToShow.length > 0) {
+                const maxLevel = Math.max(...skillLevelsToShow);
+                const found = allSkillRows.find(r => r.includes(`data-level="${maxLevel}"`));
+                if (found) rowsToRender = [found];
+            }
+        
+            const headerCells = displayColumns.map(col => `<th>${COLUMN_MAP[col] || col}</th>`).join('');
+            const header = `<tr><th>等级</th>${headerCells}</tr>`;
+            const tableHtml = `
+                <div style="display: flex; align-items: center; justify-content: flex-end; margin-bottom: 4px;">
+                    <button class="skill-toggle-btn" data-skill-name="${skillName}" style="background: var(--button-bg, #e0e8f0); border: 1px solid var(--border-color); border-radius: 16px; padding: 2px 8px; font-size: 0.8rem; cursor: pointer;">${isExpanded ? '收起多余等级' : '展开所有等级'}</button>
+                </div>
+                <table class="skill-table">
+                    <thead>${header}</thead>
+                    <tbody>${rowsToRender.join('')}</tbody>
+                </table>
+            `;
+            skillContainer.innerHTML = tableHtml;
+            
+            // 重新绑定新按钮的事件（因为按钮被替换了）
+            const newBtn = skillContainer.querySelector('.skill-toggle-btn');
+            if (newBtn) {
+                newBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (globalSkillExpand) globalSkillExpand = false;
+                    skillExpandMap[skillName] = !skillExpandMap[skillName];
+                    updateSkillTable(skillName);
+                });
+            }
+        }
+
+        function updateAllSkillTables() {
+            const skillNames = currentCharData.skills?.map(g => g.name) || [];
+            skillNames.forEach(name => updateSkillTable(name));
         }
 
         function renderDetail(data) {
@@ -428,7 +557,7 @@
                 }
 
                 return `
-                    <div class="skill-item">
+                    <div class="skill-item" data-skill-name="${group.name}">
                         <div class="skill-name">${displayName}</div>
                         <div class="skill-desc">${groupDesc}</div>
                         ${skillTables}

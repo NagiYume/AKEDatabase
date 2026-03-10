@@ -174,15 +174,76 @@
     padding: 12px;
     margin: 10px 0;
     background: var(--module-bg, #f8fafd);
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 8px;
-    color: var(--desc-color, #5b6f86);
 }
+
+/* 基础信息网格容器 */
+.meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 8px 16px;
+    margin: 10px 0;
+}
+
+.meta-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 4px 0;
+    border-bottom: 1px dotted var(--border-color, #e2e7f0);
+}
+
 .meta-label {
     font-weight: 600;
     color: var(--text-color, #1e2b3c);
+    white-space: nowrap;
+    margin-right: 8px;
 }
+
+.meta-value {
+    color: var(--desc-color, #5b6f86);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+}
+
+/* 原有的 .detail-meta 样式保留，但内部结构改变，我们可能需要调整或移除旧样式 */
+.detail-meta {
+    border: 1px solid var(--border-color, #d9e0e8);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 10px 0;
+    background: var(--module-bg, #f8fafd);
+}
+/* 注意：.detail-meta 作为容器，内部 .meta-grid 会占据内容，所以原有的 .detail-meta 的样式保留（边框背景），内部不再需要多余的grid定义 */
+
+.meta-row {
+    display: contents; /* 使两个 span 直接成为 grid 的子项，便于对齐 */
+}
+
+.meta-label {
+    font-weight: 600;
+    color: var(--text-color, #1e2b3c);
+    white-space: nowrap;
+}
+
+.meta-value {
+    text-align: right;
+    color: var(--desc-color, #5b6f86);
+    /* font-variant-numeric: tabular-nums; 数字等宽，可选 */
+}
+
+.meta-label {
+    font-weight: 600;
+    color: var(--text-color, #1e2b3c);
+    white-space: nowrap;               /* 防止标签换行 */
+}
+
+.meta-value {
+    text-align: right;                 /* 数值右对齐 */
+    color: var(--desc-color, #5b6f86);
+    /* font-family: monospace;            可选：等宽字体使数字对齐更佳 */
+}
+
 .detail-desc {
     border: 1px solid var(--border-color, #d9e0e8);
     border-radius: 8px;
