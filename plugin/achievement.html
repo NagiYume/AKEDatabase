@@ -2,17 +2,22 @@
 <link rel="stylesheet" href="/theme/achievement.css">
 
 <div class="achievement-module">
-    <div class="category-list" id="categoryList"></div>
+    <div class="left-column">
+        <div class="list-search">
+            <input type="text" id="achievementSearchInput" placeholder="搜索分类" class="search-input">
+        </div>
+        <div class="category-list" id="categoryList"></div>
+    </div>
     <div class="achievement-detail" id="achievementDetail">
         <div class="loader">加载奖章数据...</div>
     </div>
 </div>
-
 <script>
     (function() {
-        let currentCategories = [];
+        let allCategories = [];
         let activeCategoryId = null;
         let isInitialized = false;
+        let searchTerm = '';
 
         const IMAGE_BASE_PATH = '/public/images/';
 
@@ -24,7 +29,15 @@
             return window.parseText(text, IMAGE_BASE_PATH);
         }
 
-        // ---------- 加载分类清单 ----------
+        function filterCategoriesBySearch(cats) {
+            if (!searchTerm) return cats;
+            const term = searchTerm.toLowerCase();
+            return cats.filter(c => 
+                (c.name && c.name.toLowerCase().includes(term)) || 
+                (c.categoryId && c.categoryId.toLowerCase().includes(term))
+            );
+        }
+
         async function loadCategoryManifest(showHidden) {
             try {
                 const res = await fetch('/public/CH/achievement/manifest.json?t=' + Date.now());
@@ -39,49 +52,59 @@
             }
         }
 
-        // ---------- 渲染左侧分类列表 ----------
-        function renderCategoryList(categories, container) {
+        function renderCategoryList() {
+            const container = document.getElementById('categoryList');
+            const detailContainer = document.getElementById('achievementDetail');
+            if (!container) return;
+
+            const filtered = filterCategoriesBySearch(allCategories);
+
             container.innerHTML = '';
-            if (categories.length === 0) {
-                container.innerHTML = '<div class="loader">暂无分类</div>';
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="loader">无匹配分类</div>';
+                if (detailContainer) detailContainer.innerHTML = '<div class="loader">请选择分类</div>';
+                activeCategoryId = null;
                 return;
             }
 
-            categories.forEach((cat, index) => {
+            filtered.forEach((cat, index) => {
                 const item = document.createElement('div');
                 item.className = `category-item ${cat.categoryId === activeCategoryId ? 'active' : (index === 0 && !activeCategoryId ? 'active' : '')}`;
                 item.dataset.catId = cat.categoryId;
                 item.dataset.contentFile = cat.contentFile;
 
-                // 分类名（没有图标，简单文本）
                 const nameDiv = document.createElement('div');
                 nameDiv.className = 'category-name';
                 nameDiv.textContent = cat.name;
 
                 item.appendChild(nameDiv);
+
                 item.addEventListener('click', () => {
                     document.querySelectorAll('.category-item').forEach(el => el.classList.remove('active'));
                     item.classList.add('active');
                     activeCategoryId = cat.categoryId;
-                    loadCategoryDetail(cat, document.getElementById('achievementDetail'));
+                    loadCategoryDetail(cat, detailContainer);
                 });
 
                 container.appendChild(item);
             });
 
-            const activeExists = categories.some(c => c.categoryId === activeCategoryId);
-            if (!activeExists && categories.length > 0) {
-                activeCategoryId = categories[0].categoryId;
+            const activeExists = filtered.some(c => c.categoryId === activeCategoryId);
+            if (!activeExists && filtered.length > 0) {
+                activeCategoryId = filtered[0].categoryId;
                 const firstItem = container.querySelector('.category-item');
                 if (firstItem) firstItem.classList.add('active');
-                loadCategoryDetail(categories[0], document.getElementById('achievementDetail'));
+                loadCategoryDetail(filtered[0], detailContainer);
             } else if (activeExists) {
-                const activeCat = categories.find(c => c.categoryId === activeCategoryId);
-                if (activeCat) loadCategoryDetail(activeCat, document.getElementById('achievementDetail'));
+                const activeCat = filtered.find(c => c.categoryId === activeCategoryId);
+                if (activeCat) {
+                    const activeItem = container.querySelector(`.category-item[data-cat-id="${activeCategoryId}"]`);
+                    if (activeItem) activeItem.classList.add('active');
+                    loadCategoryDetail(activeCat, detailContainer);
+                }
             }
         }
 
-        // ---------- 加载分类详情 ----------
         async function loadCategoryDetail(category, container) {
             container.innerHTML = '<div class="loader">加载奖章数据...</div>';
             try {
@@ -92,7 +115,6 @@
             }
         }
 
-        // 渲染奖章标签（根据三个布尔值）
         function renderBadges(achv) {
             let badges = [];
             if (achv.canBeUpgraded) badges.push('<span class="badge upgrade">可升级</span>');
@@ -101,13 +123,11 @@
             if (achv.noObtainCanView === false) badges.push('<span class="badge hidden">隐藏成就</span>');
             return badges.length ? `<div class="badge-group">${badges.join('')}</div>` : '';
         }
-        
-        // 渲染单个奖章的所有等级
+
         function renderAchievementLevels(achv) {
             const levels = achv.level || [];
             let levelsHtml = '';
             levels.forEach(lvl => {
-                // 处理条件与进度
                 const conditions = lvl.conditions || [];
                 const progress = lvl.progressToCompare || [];
                 let conditionsHtml = '';
@@ -117,7 +137,6 @@
                     conditionsHtml += `<div class="condition-item">${parseText(cond)}${progText}</div>`;
                 });
 
-                // 等级图标
                 const iconSrc = lvl.icon || '';
                 levelsHtml += `
                     <div class="level-item">
@@ -134,9 +153,7 @@
             return levelsHtml;
         }
 
-        // 渲染一个分组内的所有奖章
         function renderGroupAchievements(achvMap) {
-            // 将对象转为数组并按 order 排序
             const achvList = Object.entries(achvMap).map(([id, achv]) => ({ id, ...achv }));
             achvList.sort((a, b) => (a.order || 999) - (b.order || 999));
 
@@ -159,12 +176,10 @@
             return html;
         }
 
-        // ---------- 渲染详情（处理 group）----------
         function renderDetail(data) {
             const group = data.group || {};
             const groupKeys = Object.keys(group);
 
-            // 如果只有一个分组且键名为 "default"，则扁平化显示
             if (groupKeys.length === 1 && groupKeys[0] === 'default') {
                 return `
                     <div class="category-title">${data.categoryName || ''}</div>
@@ -173,11 +188,10 @@
                     </div>
                 `;
             } else {
-                // 多个分组，按分组显示
                 let groupsHtml = '';
                 groupKeys.forEach(key => {
-                    if (key === 'default') return; // 正常情况下不会出现多个分组且包含default，但以防万一
-                    const groupName = key; // 分组名直接使用键名（如“谷地地区奖章”）
+                    if (key === 'default') return;
+                    const groupName = key;
                     const achvMap = group[key];
                     groupsHtml += `
                         <div class="group-section">
@@ -195,7 +209,6 @@
             }
         }
 
-        // ---------- 刷新模块 ----------
         async function refreshModule() {
             const list = document.getElementById('categoryList');
             const detail = document.getElementById('achievementDetail');
@@ -203,17 +216,27 @@
 
             const showHidden = getCurrentShowHidden();
             const cats = await loadCategoryManifest(showHidden);
-            currentCategories = cats;
-            renderCategoryList(cats, list);
+            allCategories = cats;
+            renderCategoryList();
         }
 
-        // ---------- 初始化 ----------
         async function initModule() {
             if (isInitialized) return;
             isInitialized = true;
-
             if (window.configLoaded) await window.configLoaded;
-            window.addEventListener('globalConfigChanged', refreshModule);
+
+            window.addEventListener('globalConfigChanged', (e) => {
+                searchTerm = '';
+                const searchInput = document.getElementById('achievementSearchInput');
+                if (searchInput) searchInput.value = '';
+                refreshModule();
+            });
+
+            document.getElementById('achievementSearchInput')?.addEventListener('input', (e) => {
+                searchTerm = e.target.value;
+                renderCategoryList();
+            });
+
             await refreshModule();
         }
 

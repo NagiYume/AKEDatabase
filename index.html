@@ -5,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AKEData · Endfield Database</title>
     <link rel="icon" type="image/png" href="\public\images\character\charremoteicon\icon_chr_0013_aglina.png">
-    <!-- 主题样式：完全由 theme/ 下的 CSS 控制，无内联样式 -->
     <link rel="stylesheet" id="theme-style" href="theme/light.css">
     <script>
-        // 提前定义全局 parseText 占位，确保任何时刻 window.parseText 都是函数
         window.parseText = function(text, baseImagePath, depth) {
             console.warn('parseText 的完整定义尚未加载，返回原文本');
             return text || '';
@@ -17,7 +15,6 @@
 </head>
 <body>
     <div class="app">
-        <!-- 左侧模块栏 -->
         <div class="sidebar">
             <div class="brand" id="brandHome" title="返回起始页">
                 AKEData
@@ -26,22 +23,14 @@
             <div class="module-list" id="moduleListContainer">
                 <div style="color:#7f8c9f; text-align:center; padding:20px;">加载模块清单...</div>
             </div>
-            <!-- 左下角设置按钮（悬浮于侧边栏底部） -->
             <div class="settings-button" id="settingsButton" title="全局设置">⚙️</div>
         </div>
 
-        <!-- 右侧主内容区 -->
         <div class="main-content">
-            <div class="content-area" id="contentArea">
-                <!-- 起始页由JS渲染 -->
-            </div>
-            <!--<div class="footer-note">
-                ⚡ 动态读取 <code>plugin/manifest.json</code> · 按优先级排序 · 主题存放在 <code>theme/</code>
-            </div> -->
+            <div class="content-area" id="contentArea"></div>
         </div>
     </div>
 
-    <!-- 设置弹窗（模态框） - 初始隐藏 -->
     <div class="settings-modal" id="settingsModal">
         <div class="modal-content">
             <span class="close-button" id="closeSettings">&times;</span>
@@ -50,13 +39,49 @@
                 <label for="modalThemeSelect">页面样式：</label>
                 <select id="modalThemeSelect">
                     <option value="light">亮色模式</option>
-                    <option value="dark">暗色模式（暂不可用）</option>
+                    <option value="dark">暗色模式</option>
                 </select>
             </div>
             <div class="settings-item">
                 <label for="modalShowHiddenCheck">显示隐藏模块：</label>
                 <input type="checkbox" id="modalShowHiddenCheck">
             </div>
+
+            <!-- 等级设置区域 -->
+            <div class="settings-section" style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                <h4>📊 默认显示等级设置</h4>
+                <div class="settings-item">
+                    <label style="width: auto;">激活设置：</label>
+                    <input type="checkbox" id="modalLevelsEnabled">
+                </div>
+                <div class="settings-item">
+                    <label style="width: auto;">等级筛选，可以将需要显示的等级键入，使用英文逗号分隔</label>
+                </div>
+                <div class="settings-item">
+                    <label>角色等级：</label>
+                    <input type="text" id="modalCharacterLevels" placeholder="例: 80 或 10,20,30,80" style="flex:1;">
+                </div>
+                <div class="settings-item">
+                    <label>武器等级：</label>
+                    <input type="text" id="modalWeaponLevels" placeholder="例: 80 或 10,20,30,80" style="flex:1;">
+                </div>
+                <div class="settings-item">
+                    <label>敌人等级：</label>
+                    <input type="text" id="modalEnemyLevels" placeholder="例: 80 或 10,20,30,80" style="flex:1;">
+                </div>
+                <div class="settings-item" style="flex-wrap: wrap;">
+                    <label style="width: 100%; margin-bottom: 8px;">角色技能等级（1-12）：</label>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="skillLevelCheckboxes">
+                        <!-- 动态生成12个复选框 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 恢复默认按钮 -->
+            <div class="settings-buttons" style="display: flex; justify-content: flex-end; margin-top: 16px;">
+                <button id="resetSettingsBtn" style="background: var(--button-bg, #e0e8f0); border: 1px solid var(--border-color); border-radius: 30px; padding: 8px 20px; cursor: pointer;">恢复默认设置</button>
+            </div>
+
             <div class="about-box">
                 <p>AKEData · 版本 0.97</p>
                 <p>游戏版本 CN_WIN_REL_1.0.14_C5157154_E5135590</p>
@@ -65,13 +90,11 @@
         </div>
     </div>
 
-    <!-- 两个超链接浮窗容器，由主页面统一管理 -->
     <div id="hyperlink-tooltip-1" class="hyperlink-tooltip"></div>
     <div id="hyperlink-tooltip-2" class="hyperlink-tooltip"></div>
 
     <script>
         (function() {
-            // ---------- 起始页内容 ----------
             const HOME_CONTENT = `
                 <div class="welcome-home">
                     <img src="/public/images/index/main.png" 
@@ -87,16 +110,21 @@
                 </div>
             `;
 
-            // ---------- 全局状态 ----------
             let config = {
-                theme: 'light',          // 当前主题 'light' 或 'dark'
-                showHidden: false        // 是否显示隐藏模块
+                theme: 'light',
+                showHidden: false,
+                levelSettings: {
+                    enabled: true,
+                    characterLevels: '1,20,40,60,80,90',
+                    weaponLevels: '1,20,40,60,80,90',
+                    enemyLevels: '1,20,40,60,80,90',
+                    skillLevels: [true, false, false, false, false, false, false, false, true, true, true, true]
+                }
             };
 
-            let allModules = [];          // 从 manifest 读取的原始模块（未经过滤）
-            let activeModuleId = null;    // 当前选中模块id
+            let allModules = [];
+            let activeModuleId = null;
 
-            // DOM 元素
             const moduleListEl = document.getElementById('moduleListContainer');
             const contentArea = document.getElementById('contentArea');
             const brandHome = document.getElementById('brandHome');
@@ -106,6 +134,11 @@
             const closeSettings = document.getElementById('closeSettings');
             const modalThemeSelect = document.getElementById('modalThemeSelect');
             const modalShowHiddenCheck = document.getElementById('modalShowHiddenCheck');
+            const modalLevelsEnabled = document.getElementById('modalLevelsEnabled');
+            const modalCharacterLevels = document.getElementById('modalCharacterLevels');
+            const modalWeaponLevels = document.getElementById('modalWeaponLevels');
+            const modalEnemyLevels = document.getElementById('modalEnemyLevels');
+            const skillLevelContainer = document.getElementById('skillLevelCheckboxes');
             const tooltip1 = document.getElementById('hyperlink-tooltip-1');
             const tooltip2 = document.getElementById('hyperlink-tooltip-2');
 
@@ -120,29 +153,19 @@
                 activeModuleId = null;
             }
 
-            // 加载模块内容并显示
             async function loadModuleContent(module) {
                 if (!module || !module.contentFile) {
                     setContent(`<div class="error-message">模块内容文件未指定</div>`);
                     return;
                 }
-            
                 setContent(`<div class="loader">⏳ 加载模块内容...</div>`);
-            
                 try {
                     const response = await fetch(module.contentFile, { cache: "no-cache" });
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     const html = await response.text();
-                
-                    // 清空内容区域
                     contentArea.innerHTML = '';
-                
-                    // 使用 insertAdjacentHTML 插入 HTML
                     contentArea.insertAdjacentHTML('beforeend', html);
-                
-                    // 手动执行所有 script 标签
                     const scripts = contentArea.querySelectorAll('script');
-                    console.log(`找到 ${scripts.length} 个脚本待执行`);
                     scripts.forEach(oldScript => {
                         const newScript = document.createElement('script');
                         Array.from(oldScript.attributes).forEach(attr => {
@@ -156,13 +179,11 @@
                         }
                         oldScript.parentNode.replaceChild(newScript, oldScript);
                     });
-                
                 } catch (err) {
                     setContent(`<div class="error-message">❌ 无法加载模块内容：${err.message}</div>`);
                 }
             }
 
-            // 按优先级排序
             function sortModulesByPriority(modulesArray) {
                 return modulesArray.sort((a, b) => {
                     const pa = a.priority !== undefined ? Number(a.priority) : 999;
@@ -171,20 +192,17 @@
                 });
             }
 
-            // 根据 config.showHidden 过滤模块
             function filterModules(modules) {
-                let filtered = modules.filter(m => m.id !== 'settings'); // 排除旧设置模块（如有）
+                let filtered = modules.filter(m => m.id !== 'settings');
                 if (!config.showHidden) {
                     filtered = filtered.filter(m => !m.hidden);
                 }
                 return filtered;
             }
 
-            // 应用过滤并重新渲染左侧列表
             function applyFilterAndRender() {
                 const visibleModules = filterModules(allModules);
                 renderModuleList(visibleModules);
-
                 if (activeModuleId) {
                     const stillVisible = visibleModules.some(m => m.id === activeModuleId);
                     if (!stillVisible) {
@@ -196,20 +214,16 @@
                 }
             }
 
-            // 渲染左侧模块列表
             function renderModuleList(modulesArray) {
                 if (!modulesArray || modulesArray.length === 0) {
                     moduleListEl.innerHTML = `<div style="padding:20px; color:#999; text-align:center;">📭 暂无可见模块</div>`;
                     return;
                 }
-
                 const sorted = sortModulesByPriority(modulesArray);
-
                 let html = '';
                 sorted.forEach(mod => {
                     const icon = mod.icon || '📦';
                     const desc = mod.description || '无描述';
-                    const priority = mod.priority !== undefined ? mod.priority : 999;
                     const hiddenMarker = mod.hidden ? '🔒' : '';
                     html += `
                         <div class="module-item" data-id="${mod.id}">
@@ -221,28 +235,23 @@
                     `;
                 });
                 moduleListEl.innerHTML = html;
-
                 document.querySelectorAll('.module-item').forEach(item => {
                     item.addEventListener('click', async (e) => {
                         const id = item.dataset.id;
                         const module = allModules.find(m => m.id === id);
                         if (!module) return;
-
                         document.querySelectorAll('.module-item').forEach(el => el.classList.remove('active'));
                         item.classList.add('active');
                         activeModuleId = id;
-
                         await loadModuleContent(module);
                     });
                 });
-
                 if (activeModuleId) {
                     const activeItem = document.querySelector(`.module-item[data-id="${activeModuleId}"]`);
                     if (activeItem) activeItem.classList.add('active');
                 }
             }
 
-            // 切换主题
             function setTheme(themeName) {
                 const lowerTheme = themeName.toLowerCase();
                 config.theme = lowerTheme;
@@ -251,56 +260,104 @@
                 if (modalThemeSelect) modalThemeSelect.value = lowerTheme;
             }
 
-            // 初始化主题
             function initTheme() {
                 const savedTheme = localStorage.getItem('akedata-theme') || 'light';
                 setTheme(savedTheme);
             }
 
-            // ---------- 弹窗控制 ----------
+            // 等级输入校验
+            function validateLevelInput(input, defaultValue, maxLevel = 90) {
+                if (!input || input.trim() === '') return defaultValue;
+                const parts = input.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n >= 1 && n <= maxLevel);
+                if (parts.length === 0) return defaultValue;
+                const uniqueSorted = [...new Set(parts)].sort((a,b) => a-b);
+                return uniqueSorted.join(',');
+            }
+
             function openSettings() {
                 modalThemeSelect.value = config.theme;
                 modalShowHiddenCheck.checked = config.showHidden;
+                modalLevelsEnabled.checked = config.levelSettings.enabled;
+                modalCharacterLevels.value = config.levelSettings.characterLevels;
+                modalWeaponLevels.value = config.levelSettings.weaponLevels;
+                modalEnemyLevels.value = config.levelSettings.enemyLevels;
+
+                skillLevelContainer.innerHTML = '';
+                for (let i = 1; i <= 12; i++) {
+                    const checked = config.levelSettings.skillLevels[i-1];
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.id = `skillLv${i}`;
+                    checkbox.value = i;
+                    checkbox.checked = checked;
+                    const label = document.createElement('label');
+                    label.htmlFor = `skillLv${i}`;
+                    label.textContent = i;
+                    label.style.marginRight = '8px';
+                    skillLevelContainer.appendChild(checkbox);
+                    skillLevelContainer.appendChild(label);
+                }
                 settingsModal.style.display = 'flex';
             }
 
             function closeSettingsModal() {
+                const enabled = modalLevelsEnabled.checked;
+                let charLevels = modalCharacterLevels.value;
+                let weaponLevels = modalWeaponLevels.value;
+                let enemyLevels = modalEnemyLevels.value;
+
+                // 校验
+                charLevels = validateLevelInput(charLevels, '1,20,40,60,80,90', 90);
+                weaponLevels = validateLevelInput(weaponLevels, '1,20,40,60,80,90', 90);
+                enemyLevels = validateLevelInput(enemyLevels, '1,20,40,60,80,90', 100); // 敌人最大等级假设100
+
+                config.levelSettings.enabled = enabled;
+                config.levelSettings.characterLevels = charLevels;
+                config.levelSettings.weaponLevels = weaponLevels;
+                config.levelSettings.enemyLevels = enemyLevels;
+
+                const skillChecks = document.querySelectorAll('#skillLevelCheckboxes input[type="checkbox"]');
+                config.levelSettings.skillLevels = Array.from(skillChecks).map(cb => cb.checked);
+
+                localStorage.setItem('akedata-levelSettings', JSON.stringify(config.levelSettings));
+
+                // 主题
+                const theme = modalThemeSelect.value;
+                if (theme !== config.theme) {
+                    setTheme(theme);
+                }
+
+                // 隐藏模块
+                const showHidden = modalShowHiddenCheck.checked;
+                if (showHidden !== config.showHidden) {
+                    config.showHidden = showHidden;
+                    applyFilterAndRender();
+                    localStorage.setItem('akedata-showHidden', showHidden);
+                }
+
+                window.dispatchEvent(new CustomEvent('globalConfigChanged', { detail: { config } }));
                 settingsModal.style.display = 'none';
             }
 
-            // ---------- 从 plugin/manifest.json 加载模块清单 ----------
             async function loadModulesFromManifest() {
                 try {
                     const response = await fetch(`plugin/manifest.json?t=${Date.now()}`);
-                    if (!response.ok) {
-                        console.warn('manifest.json 加载失败，状态码:', response.status);
-                        return [];
-                    }
+                    if (!response.ok) return [];
                     const manifest = await response.json();
-                    if (!Array.isArray(manifest)) {
-                        console.warn('manifest.json 格式错误：应为数组');
-                        return [];
-                    }
-                    const validModules = manifest
+                    if (!Array.isArray(manifest)) return [];
+                    return manifest
                         .filter(m => m.id && m.title && m.contentFile)
                         .map(m => ({
                             ...m,
                             priority: m.priority !== undefined ? m.priority : 999,
                             hidden: m.hidden === true
                         }));
-                    console.log(`✅ 从 manifest 加载到 ${validModules.length} 个模块`);
-                    return validModules;
                 } catch (err) {
-                    console.warn('读取 manifest 失败:', err.message);
-                    moduleListEl.innerHTML = `<div style="color:#b0003a; padding:20px; text-align:center;">
-                        ❌ 无法读取模块清单。<br>请通过本地服务器访问。
-                    </div>`;
+                    moduleListEl.innerHTML = `<div style="color:#b0003a; padding:20px; text-align:center;">❌ 无法读取模块清单。<br>请通过本地服务器访问。</div>`;
                     return [];
                 }
             }
 
-            // ---------- 全局超链接相关 ----------
-            // 加载超链接和文本样式配置
             window.hyperlinkConfig = {};
             window.textstyleConfig = {};
             window.configLoaded = Promise.all([
@@ -308,7 +365,6 @@
                 fetch('/theme/textstyle.json?t=' + Date.now()).then(r => r.json()).then(cfg => window.textstyleConfig = cfg).catch(() => {})
             ]);
 
-            // 全局 parseText 函数，支持嵌套深度限制（最大2层），覆盖占位函数
             window.parseText = function(text, baseImagePath = '/public/images/', depth = 0) {
                 if (!text) return '';
                 let result = '';
@@ -319,7 +375,6 @@
 
                 while (i < len) {
                     if (text[i] === '<') {
-                        // 检查 <image...> 自闭合标签
                         if (text.substr(i, 6) === '<image') {
                             const endIdx = text.indexOf('>', i);
                             if (endIdx === -1) { result += text[i]; i++; continue; }
@@ -329,19 +384,16 @@
                                 let path = imgMatch[1];
                                 const scale = imgMatch[2];
                                 if (!path.includes('.')) path += '.png';
-                                result += `<img src="${baseImagePath}${path}" style="transform: scale(${scale}); width: auto; height: 1em; display: inline-block; vertical-align: middle;" class="inline-icon">`;
+                                result += `<img src="${baseImagePath}${path}" style="transform: scale(${scale}); width: auto; height: 1em; display: inline-block; vertical-align: middle;" class="inline-icon" onerror="this.onerror=null; this.src='';">`;
                             }
                             i = endIdx + 1;
                             continue;
                         }
-                        // 检查 <@tag> 或 <#tag>
                         else if (text[i+1] === '@' || text[i+1] === '#') {
                             const prefix = text[i+1];
                             const tagNameEnd = text.indexOf('>', i);
                             if (tagNameEnd === -1) { result += text[i]; i++; continue; }
                             const tagName = text.substring(i+2, tagNameEnd);
-
-                            // 寻找匹配的闭合标签 </>
                             let depthCounter = 1;
                             let pos = tagNameEnd + 1;
                             while (pos < len) {
@@ -350,9 +402,7 @@
                                         depthCounter--;
                                         if (depthCounter === 0) {
                                             const innerContent = text.substring(tagNameEnd + 1, pos);
-                                            // 递归解析内部内容，传入 depth+1
                                             const renderedInner = window.parseText(innerContent, baseImagePath, depth + 1);
-
                                             let tagResult = '';
                                             if (prefix === '@') {
                                                 const styleDef = textstyleCfg?.[tagName];
@@ -363,21 +413,18 @@
                                                     const image = styleDef.image?.[1] ?? styleDef.image?.[0] ?? null;
                                                     const scale = styleDef.scale?.[1] ?? styleDef.scale?.[0] ?? 1;
                                                     if (image) {
-                                                        tagResult = `<span class="textstyle-icon-text"><img src="/${image}" style="transform: scale(${scale});" alt=""><span style="${color ? `color: ${color};` : ''}">${renderedInner}</span></span>`;
+                                                        tagResult = `<span class="textstyle-icon-text"><img src="/${image}" style="transform: scale(${scale});" alt="" onerror="this.onerror=null; this.src='';"><span style="${color ? `color: ${color};` : ''}">${renderedInner}</span></span>`;
                                                     } else {
                                                         tagResult = color ? `<span style="color: ${color};">${renderedInner}</span>` : renderedInner;
                                                     }
                                                 }
-                                            } else { // prefix === '#'
-                                                // 深度限制：超过2层则不再生成超链接
+                                            } else {
                                                 if (depth >= 2) {
-                                                    tagResult = renderedInner; // 直接输出内部内容，不包装为超链接
+                                                    tagResult = renderedInner;
                                                 } else {
                                                     const hyperDef = hyperlinkCfg?.[tagName];
                                                     if (hyperDef) {
                                                         const styleid = hyperDef.styleid;
-                                                        let extraClass = '';
-                                                        let styleColor = '';
                                                         if (styleid && textstyleCfg?.[styleid]) {
                                                             const styleDef = textstyleCfg[styleid];
                                                             const color = styleDef.color?.[1] ?? styleDef.color?.[0] ?? null;
@@ -385,12 +432,11 @@
                                                             const scale = styleDef.scale?.[1] ?? styleDef.scale?.[0] ?? 1;
                                                             if (image) {
                                                                 tagResult = `<span class="textstyle-icon-text">
-                                                                    <img src="/${image}" style="transform: scale(${scale});" alt="">
+                                                                    <img src="/${image}" style="transform: scale(${scale});" alt="" onerror="this.onerror=null; this.src='';">
                                                                     <span class="tag-hyperlink" data-tag-id="${tagName}" style="${color ? `color: ${color};` : ''}">${renderedInner}</span>
                                                                 </span>`;
                                                             } else if (color) {
-                                                                styleColor = `color: ${color};`;
-                                                                tagResult = `<span class="tag-hyperlink" data-tag-id="${tagName}" style="${styleColor}">${renderedInner}</span>`;
+                                                                tagResult = `<span class="tag-hyperlink" data-tag-id="${tagName}" style="color: ${color};">${renderedInner}</span>`;
                                                             } else {
                                                                 tagResult = `<span class="tag-hyperlink" data-tag-id="${tagName}">${renderedInner}</span>`;
                                                             }
@@ -398,7 +444,6 @@
                                                             tagResult = `<span class="tag-hyperlink" data-tag-id="${tagName}">${renderedInner}</span>`;
                                                         }
                                                     } else {
-                                                        // 无定义，仅输出内部内容（不包装）
                                                         tagResult = renderedInner;
                                                     }
                                                 }
@@ -418,7 +463,7 @@
                                     pos++;
                                 }
                             }
-                            if (pos >= len) { // 未找到匹配闭合，原样输出
+                            if (pos >= len) {
                                 result += text.substring(i, tagNameEnd + 1);
                                 i = tagNameEnd + 1;
                             }
@@ -435,10 +480,10 @@
                 return result;
             };
 
-            // ---------- 双层浮窗管理 ----------
-            let activeTooltipLevel = 0; // 0:无, 1:第一层显示, 2:第二层显示
-            let anchor1 = null;          // 第一层锚点元素
-            let anchor2 = null;          // 第二层锚点元素
+            // 双层浮窗管理
+            let activeTooltipLevel = 0;
+            let anchor1 = null;
+            let anchor2 = null;
 
             function closeTooltip(level) {
                 if (level === 1) {
@@ -470,32 +515,26 @@
 
             function showTooltip(level, anchorElement, hyperDef) {
                 if (!hyperDef) return;
-
                 const name = hyperDef.name || '';
                 let desc = hyperDef.desc || '';
-                desc = window.parseText(desc, '/public/images/'); // 解析描述中的标签
-
+                desc = window.parseText(desc, '/public/images/');
                 let iconHtml = '';
                 if (hyperDef.iconPath) {
                     const iconFullPath = hyperDef.iconPath.includes('.') ? hyperDef.iconPath : hyperDef.iconPath + '.png';
-                    iconHtml = `<img src="/${iconFullPath}" style="width: 1.2em; height: 1.2em; vertical-align: middle; margin-right: 4px;">`;
+                    iconHtml = `<img src="/${iconFullPath}" style="width: 1.2em; height: 1.2em; vertical-align: middle; margin-right: 4px;" onerror="this.onerror=null; this.src='';">`;
                 }
-
                 const content = `
                     <div class="tooltip-name">${iconHtml}${name}</div>
                     <div class="tooltip-desc">${desc}</div>
                 `;
-
                 const tooltip = level === 1 ? tooltip1 : tooltip2;
                 tooltip.innerHTML = content;
-
                 const rect = anchorElement.getBoundingClientRect();
                 const scrollX = window.scrollX || window.pageXOffset;
                 const scrollY = window.scrollY || window.pageYOffset;
                 tooltip.style.left = (rect.left + scrollX) + 'px';
                 tooltip.style.top = (rect.bottom + scrollY + 5) + 'px';
                 tooltip.style.display = 'block';
-
                 if (level === 1) {
                     anchor1 = anchorElement;
                     activeTooltipLevel = 1;
@@ -505,65 +544,52 @@
                 }
             }
 
-            // 全局点击监听
             document.addEventListener('click', (e) => {
                 const target = e.target;
                 const hyperlink = target.closest('.tag-hyperlink');
-
                 const inTooltip1 = tooltip1.contains(target);
                 const inTooltip2 = tooltip2.contains(target);
-
-                // 如果点击在浮窗内且不是超链接，不关闭浮窗
-                if (!hyperlink && (inTooltip1 || inTooltip2)) {
-                    return;
-                }
-
-                // 处理点击超链接
+                if (!hyperlink && (inTooltip1 || inTooltip2)) return;
                 if (hyperlink) {
                     e.preventDefault();
                     const tagId = hyperlink.dataset.tagId;
                     if (!tagId) return;
                     const hyperDef = window.hyperlinkConfig?.[tagId];
                     if (!hyperDef) return;
-
                     if (inTooltip2) {
-                        // 在第二层浮窗内点击超链接：更新第二层浮窗内容
                         showTooltip(2, hyperlink, hyperDef);
                     } else if (inTooltip1) {
-                        // 在第一层浮窗内点击超链接：显示/更新第二层浮窗
                         showTooltip(2, hyperlink, hyperDef);
                     } else {
-                        // 在页面主体点击超链接：关闭所有，显示第一层
                         closeAllTooltips();
                         showTooltip(1, hyperlink, hyperDef);
                     }
                     return;
                 }
-
-                // 点击非超链接：根据点击位置关闭浮窗
-                if (inTooltip2) {
-                    // 点击在第二层浮窗内（非超链接），不关闭
-                    return;
-                }
+                if (inTooltip2) return;
                 if (inTooltip1) {
-                    // 点击在第一层浮窗内（非超链接），关闭第二层（如果存在）
-                    if (activeTooltipLevel === 2) {
-                        closeTooltip(2);
-                    }
+                    if (activeTooltipLevel === 2) closeTooltip(2);
                     return;
                 }
-                // 点击在浮窗外，关闭所有
                 closeAllTooltips();
             });
 
-            // 阻止浮窗上的点击事件冒泡（可选，但避免干扰）
-            //tooltip1.addEventListener('click', (e) => e.stopPropagation());
             tooltip2.addEventListener('click', (e) => e.stopPropagation());
 
-            // ---------- 初始化 ----------
             async function initApp() {
                 showHomePage();
                 initTheme();
+
+                const savedLevelSettings = localStorage.getItem('akedata-levelSettings');
+                if (savedLevelSettings) {
+                    try {
+                        const parsed = JSON.parse(savedLevelSettings);
+                        config.levelSettings = parsed;
+                        if (!config.levelSettings.skillLevels || config.levelSettings.skillLevels.length !== 12) {
+                            config.levelSettings.skillLevels = Array(12).fill(true);
+                        }
+                    } catch (e) {}
+                }
 
                 allModules = await loadModulesFromManifest();
                 applyFilterAndRender();
@@ -571,14 +597,28 @@
                 settingsButton.addEventListener('click', openSettings);
                 closeSettings.addEventListener('click', closeSettingsModal);
                 window.addEventListener('click', (e) => {
-                    if (e.target === settingsModal) {
-                        closeSettingsModal();
-                    }
+                    if (e.target === settingsModal) closeSettingsModal();
                 });
 
-                modalThemeSelect.addEventListener('change', (e) => {
-                    setTheme(e.target.value);
-                });
+                // 重置按钮
+                const resetBtn = document.getElementById('resetSettingsBtn');
+                if (resetBtn) {
+                    resetBtn.addEventListener('click', () => {
+                        document.getElementById('modalLevelsEnabled').checked = true;
+                        document.getElementById('modalCharacterLevels').value = '1,20,40,60,80,90';
+                        document.getElementById('modalWeaponLevels').value = '1,20,40,60,80,90';
+                        document.getElementById('modalEnemyLevels').value = '1,20,40,60,80,90';
+                        const skillChecks = document.querySelectorAll('#skillLevelCheckboxes input[type="checkbox"]');
+                        skillChecks.forEach((cb, index) => {
+                            cb.checked = [0, 8, 9, 10, 11].includes(index);
+                        });
+                        document.getElementById('modalThemeSelect').value = 'light';
+                        document.getElementById('modalShowHiddenCheck').checked = false;
+                        closeSettingsModal(); // 立即应用
+                    });
+                }
+
+                modalThemeSelect.addEventListener('change', (e) => setTheme(e.target.value));
                 modalShowHiddenCheck.addEventListener('change', (e) => {
                     if (e.target.checked) {
                         const confirmed = confirm('是否确认开启隐藏内容？隐藏内容中包含开发中内容，可能存在bug');
@@ -601,7 +641,6 @@
             }
 
             brandHome.addEventListener('click', showHomePage);
-
             initApp();
 
             window.akeData = {
@@ -613,6 +652,7 @@
                     if (modalShowHiddenCheck) modalShowHiddenCheck.checked = val;
                 },
                 getConfig: () => ({ ...config }),
+                getLevelSettings: () => ({ ...config.levelSettings }),
                 showHomePage
             };
         })();

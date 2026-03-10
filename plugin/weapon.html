@@ -2,34 +2,59 @@
 <link rel="stylesheet" href="/theme/weapon.css">
 
 <div class="weapon-module">
-    <div class="weapon-list" id="weaponList"></div>
+    <div class="weapon-list" id="weaponList">
+        <div class="list-search-fixed">
+            <input type="text" id="weaponSearchInput" placeholder="搜索武器 (名称/ID)" class="search-input">
+        </div>
+        <div class="list-items" id="weaponListItems"></div>
+    </div>
     <div class="weapon-detail" id="weaponDetail">
         <div class="loader">加载武器数据...</div>
     </div>
 </div>
 
-<!-- 超链接浮窗已由主页面统一管理，此处不再需要容器 -->
-
 <script>
     (function() {
-        // ---------- 模块内部状态 ----------
-        let currentWeapons = [];
+        let allWeapons = [];
         let activeWeaponId = null;
         let isInitialized = false;
+        let weaponLevelsToShow = null;
+        let showAllWeaponLevels = false;
+        let searchTerm = '';
 
         const IMAGE_BASE_PATH = '/public/images/';
 
-        // ---------- 辅助函数 ----------
+        const WEAPON_TYPE_MAP = {
+            1: "单手剑",
+            6: "手铳",
+            2: "施术单元",
+            3: "双手剑",
+            5: "长柄武器"
+        };
+
         function getCurrentShowHidden() {
             return window.akeData?.getConfig().showHidden ?? false;
         }
 
-        // 使用全局 parseText，传入武器模块的图片路径
         function parseText(text) {
             return window.parseText(text, IMAGE_BASE_PATH);
         }
 
-        // ---------- 武器数据加载 ----------
+        function parseLevelInput(input, maxLevel = 90) {
+            if (!input || input.trim() === '') return [];
+            const parts = input.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n >= 1 && n <= maxLevel);
+            return parts.length ? parts : [maxLevel];
+        }
+
+        function filterWeaponsBySearch(weapons) {
+            if (!searchTerm) return weapons;
+            const term = searchTerm.toLowerCase();
+            return weapons.filter(w => 
+                (w.title && w.title.toLowerCase().includes(term)) || 
+                (w.weaponId && w.weaponId.toLowerCase().includes(term))
+            );
+        }
+
         async function loadWeaponManifest(showHidden) {
             try {
                 const res = await fetch('/public/CH/weapon/manifest.json?t=' + Date.now());
@@ -44,21 +69,28 @@
             }
         }
         
-        // ---------- 渲染左侧武器列表 ----------
-        function renderWeaponList(weapons, container) {
-            container.innerHTML = '';
-            if (weapons.length === 0) {
-                container.innerHTML = '<div class="loader">暂无可用武器</div>';
+        function renderWeaponList() {
+            const listItemsContainer = document.getElementById('weaponListItems');
+            const detailContainer = document.getElementById('weaponDetail');
+            if (!listItemsContainer) return;
+
+            const filtered = filterWeaponsBySearch(allWeapons);
+
+            listItemsContainer.innerHTML = '';
+            if (filtered.length === 0) {
+                listItemsContainer.innerHTML = '<div class="loader">无匹配武器</div>';
+                if (detailContainer) detailContainer.innerHTML = '<div class="loader">请选择武器</div>';
+                activeWeaponId = null;
                 return;
             }
         
-            weapons.forEach((weapon, index) => {
+            filtered.forEach((weapon, index) => {
                 const item = document.createElement('div');
                 item.className = `weapon-item ${weapon.weaponId === activeWeaponId ? 'active' : (index === 0 && !activeWeaponId ? 'active' : '')}`;
                 item.dataset.weaponId = weapon.weaponId;
                 item.dataset.contentFile = weapon.contentFile;
             
-                // 稀有度竖条（左侧）
+                // 稀有度竖条
                 const rarityBar = document.createElement('span');
                 rarityBar.className = `rarity-bar rarity-${weapon.rarity}`;
                 rarityBar.title = `稀有度 ${weapon.rarity}`;
@@ -67,77 +99,105 @@
                 const icon = document.createElement('img');
                 icon.className = 'weapon-icon';
                 icon.src = weapon.icon;
-                icon.onerror = function() {
-                    this.onerror = null;
-                    this.src = '';
-                };
+                icon.onerror = function() { this.onerror = null; this.src = ''; };
             
-                // 信息区域（两行文本）
+                // 信息区域
                 const info = document.createElement('div');
                 info.className = 'weapon-info';
-            
                 const title = document.createElement('div');
                 title.className = 'weapon-title';
                 title.textContent = weapon.title;
-            
                 const idSpan = document.createElement('div');
                 idSpan.className = 'weapon-id';
                 idSpan.textContent = weapon.weaponId;
-            
                 info.appendChild(title);
                 info.appendChild(idSpan);
             
-                // 按顺序添加：稀有度竖条、头像、信息区域
+                // 武器类型标签
+                const typeTag = document.createElement('span');
+                typeTag.className = 'weapon-type-tag';
+                const typeName = WEAPON_TYPE_MAP[weapon.weapontype] || '未知';
+                typeTag.textContent = typeName;
+                typeTag.title = typeName;
+            
+                // 组装
                 item.appendChild(rarityBar);
                 item.appendChild(icon);
                 item.appendChild(info);
+                item.appendChild(typeTag);
             
                 item.addEventListener('click', () => {
                     document.querySelectorAll('.weapon-item').forEach(el => el.classList.remove('active'));
                     item.classList.add('active');
                     activeWeaponId = weapon.weaponId;
-                    loadWeaponDetail(weapon, document.getElementById('weaponDetail'));
+                    loadWeaponDetail(weapon, detailContainer);
                 });
             
-                container.appendChild(item);
+                listItemsContainer.appendChild(item);
             });
         
-            const activeExists = weapons.some(w => w.weaponId === activeWeaponId);
-            if (!activeExists && weapons.length > 0) {
-                activeWeaponId = weapons[0].weaponId;
-                const firstItem = container.querySelector('.weapon-item');
+            const activeExists = filtered.some(w => w.weaponId === activeWeaponId);
+            if (!activeExists && filtered.length > 0) {
+                activeWeaponId = filtered[0].weaponId;
+                const firstItem = listItemsContainer.querySelector('.weapon-item');
                 if (firstItem) firstItem.classList.add('active');
-                loadWeaponDetail(weapons[0], document.getElementById('weaponDetail'));
+                loadWeaponDetail(filtered[0], detailContainer);
             } else if (activeExists) {
-                const activeWeapon = weapons.find(w => w.weaponId === activeWeaponId);
+                const activeWeapon = filtered.find(w => w.weaponId === activeWeaponId);
                 if (activeWeapon) {
-                    loadWeaponDetail(activeWeapon, document.getElementById('weaponDetail'));
+                    const activeItem = listItemsContainer.querySelector(`.weapon-item[data-weapon-id="${activeWeaponId}"]`);
+                    if (activeItem) activeItem.classList.add('active');
+                    loadWeaponDetail(activeWeapon, detailContainer);
                 }
             }
         }
 
-        // ---------- 加载并渲染武器详情 ----------
         async function loadWeaponDetail(weapon, container) {
             container.innerHTML = '<div class="loader">加载武器数据...</div>';
             try {
                 const data = await fetch(weapon.contentFile + '?t=' + Date.now()).then(r => r.json());
-                container.innerHTML = renderDetail(data);
+                container.innerHTML = renderDetail(data, weapon);
+                const toggleBtn = container.querySelector('.toggle-weapon-levels-btn');
+                if (toggleBtn) {
+                    toggleBtn.addEventListener('click', () => {
+                        showAllWeaponLevels = !showAllWeaponLevels;
+                        loadWeaponDetail(weapon, container);
+                    });
+                }
             } catch (err) {
                 container.innerHTML = `<div class="error-message">加载失败: ${err.message}</div>`;
             }
         }
 
-        // ---------- 渲染详情 ----------
-        function renderDetail(data) {
-            // 基础攻击力表格
+        function renderDetail(data, weapon) {
             const atkRows = [];
             for (let i = 0; i < 90; i++) {
                 const level = i + 1;
                 const atk = data.baseAtk[i] || '-';
-                atkRows.push(`<tr><td>${level}</td><td>${atk}</td></tr>`);
+                atkRows.push(`<tr data-level="${level}"><td>${level}</td><td>${atk}</td></tr>`);
             }
-        
-            // 技能列表
+
+            let rowsToRender = atkRows;
+            if (weaponLevelsToShow && !showAllWeaponLevels) {
+                const levelSet = new Set(weaponLevelsToShow);
+                rowsToRender = atkRows.filter(row => {
+                    const match = row.match(/data-level="(\d+)"/);
+                    return match && levelSet.has(parseInt(match[1], 10));
+                });
+            }
+            if (rowsToRender.length === 0 && weaponLevelsToShow && weaponLevelsToShow.length > 0) {
+                const maxLevel = Math.max(...weaponLevelsToShow);
+                const found = atkRows.find(r => r.includes(`data-level="${maxLevel}"`));
+                if (found) rowsToRender = [found];
+            }
+
+            const atkRowsHtml = rowsToRender.join('');
+            const toggleButtonHtml = weaponLevelsToShow ? `
+                <div style="display: flex; justify-content: flex-end; margin-top: 4px;">
+                    <button class="toggle-weapon-levels-btn" style="background: var(--button-bg, #e0e8f0); border: 1px solid var(--border-color); border-radius: 16px; padding: 4px 12px; cursor: pointer;">${showAllWeaponLevels ? '收起多余等级' : '展开所有等级'}</button>
+                </div>
+            ` : '';
+
             const skillHtml = data.skilllist.map(skill => {
                 const blackboard = skill.blackboard;
                 const levelCount = 9;
@@ -151,30 +211,25 @@
                         let val = (idx < arr.length) ? arr[idx] : arr[arr.length - 1];
                         replaceMap[key] = val;
                     });
-                
                     let desc = skill.description;
                     desc = desc.replace(/\{([^}]+)\}/g, (match, p1) => {
                         const parts = p1.split(':');
                         const expr = parts[0].trim();
                         const format = parts[1] ? parts[1].trim() : '';
-                    
                         const varNames = expr.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
                         const missingVar = varNames.find(name => !(name in replaceMap));
                         if (missingVar) return match;
-                    
                         let evalExpr = expr;
                         for (const name of varNames) {
                             const value = replaceMap[name];
                             evalExpr = evalExpr.replace(new RegExp(`\\b${name}\\b`, 'g'), value);
                         }
-                    
                         let result;
                         try {
                             result = new Function('return ' + evalExpr)();
                         } catch (e) {
                             return match;
                         }
-                    
                         if (format.includes('%')) return (result * 100).toFixed(1) + '%';
                         if (format.includes('0')) return Math.round(result);
                         if (format.includes('.')) {
@@ -183,9 +238,7 @@
                         }
                         return result;
                     });
-                
                     desc = parseText(desc);
-                
                     rows.push(`
                         <div class="skill-level-row">
                             <span class="skill-level">Lv.${lv}</span>
@@ -193,7 +246,6 @@
                         </div>
                     `);
                 }
-            
                 return `
                     <div class="skill-item">
                         <div class="skill-name">${skill.skillName}</div>
@@ -201,10 +253,9 @@
                     </div>
                 `;
             }).join('');
-        
+
             return `
                 <div class="detail-header">
-                    <!-- 左侧容器：头像、文本、攻击力表格（底部） -->
                     <div class="detail-left">
                         <div class="detail-left-top">
                             <div class="detail-icon">
@@ -214,62 +265,75 @@
                                 <div class="detail-title-row">
                                     <span class="detail-title">${data.title}</span>
                                     <span class="detail-rarity rarity-${data.rarity}" title="稀有度 ${data.rarity}"></span>
+                                    <span class="detail-id">${weapon.weaponId}</span>
                                 </div>
                                 <div class="detail-desc">${data.desc}</div>
                                 <div class="detail-deco">${data.decoDesc || ''}</div>
                             </div>
                         </div>
-                        <!-- 攻击力表格放在底部 -->
                         <div class="detail-atk">
                             <h3>基础攻击力 (1-90级)</h3>
                             <div class="atk-table-container">
                                 <table class="atk-table">
                                     <thead><tr><th>等级</th><th>攻击力</th></tr></thead>
-                                    <tbody>${atkRows.join('')}</tbody>
+                                    <tbody>${atkRowsHtml}</tbody>
                                 </table>
                             </div>
+                            ${toggleButtonHtml}
                         </div>
                     </div>
-                    <!-- 右侧大图 -->
                     <div class="detail-right">
                         <div class="detail-iconfull">
                             <img src="${data.iconfull || ''}" onerror="this.style.display='none'">
                         </div>
                     </div>
                 </div>
-            
                 <h3>技能数据</h3>
                 <div class="skill-list">
                     ${skillHtml}
                 </div>
-            
                 <div class="weapon-desc">${data.weaponDesc || ''}</div>
             `;
         }
         
-        // ---------- 刷新整个武器模块 ----------
         async function refreshWeaponModule() {
             const weaponList = document.getElementById('weaponList');
             const weaponDetail = document.getElementById('weaponDetail');
             if (!weaponList || !weaponDetail) return;
-
             const showHidden = getCurrentShowHidden();
             const weapons = await loadWeaponManifest(showHidden);
-            currentWeapons = weapons;
-            renderWeaponList(weapons, weaponList);
+            allWeapons = weapons;
+            renderWeaponList();
         }
 
-        // ---------- 初始化 ----------
         async function initWeaponModule() {
             if (isInitialized) return;
             isInitialized = true;
-
-            // 等待主页面配置加载完成（可选）
             if (window.configLoaded) await window.configLoaded;
-
-            window.addEventListener('globalConfigChanged', async () => {
-                await refreshWeaponModule();
+            const settings = window.akeData?.getLevelSettings?.() || {};
+            if (settings.enabled) {
+                weaponLevelsToShow = parseLevelInput(settings.weaponLevels, 90);
+            }
+            window.addEventListener('globalConfigChanged', (e) => {
+                searchTerm = '';
+                const searchInput = document.getElementById('weaponSearchInput');
+                if (searchInput) searchInput.value = '';
+                const settings = window.akeData?.getLevelSettings?.() || {};
+                if (settings.enabled) {
+                    weaponLevelsToShow = parseLevelInput(settings.weaponLevels, 90);
+                } else {
+                    weaponLevelsToShow = null;
+                }
+                showAllWeaponLevels = false;
+                refreshWeaponModule();
             });
+
+            // 搜索监听
+            document.getElementById('weaponSearchInput')?.addEventListener('input', (e) => {
+                searchTerm = e.target.value;
+                renderWeaponList();
+            });
+
             await refreshWeaponModule();
         }
 

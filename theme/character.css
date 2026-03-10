@@ -8,17 +8,6 @@
     padding: 0;
 }
 
-.character-list {
-    width: 260px;
-    background: var(--sidebar-bg, #f2f4f8);
-    border-radius: 16px;
-    padding: 16px;
-    overflow-y: auto;
-    border: 1px solid var(--border-color, #d9e0e8);
-    flex-shrink: 0;
-    margin-left: 0;
-}
-
 /* 角色列表项整体布局 */
 .character-item {
     display: flex;
@@ -47,7 +36,7 @@
     height: 48px;
     object-fit: contain;
     border-radius: 8px;
-    background: #eef3fa;
+    background: var(--icon-bg, #eef3fa);
 }
 
 .character-info {
@@ -95,7 +84,7 @@
     width: 120px;
     height: 120px;
     object-fit: contain;
-    background: #eef3fa;
+    background: var(--icon-bg, #eef3fa);
     border-radius: 20px;
     padding: 10px;
 }
@@ -182,7 +171,7 @@
     font-size: 0.9rem;
 }
 .growth-table th {
-    background: var(--table-header-bg, #eef3fa);
+    background: var(--table-header-bg, var(--icon-bg, #eef3fa)); /* 使用变量，fallback */
     padding: 6px;
     text-align: center;
     border: 1px solid var(--border-color, #d9e0e8);
@@ -265,7 +254,7 @@
     text-align: center;
 }
 .skill-table th {
-    background: var(--table-header-bg, #eef3fa);
+    background: var(--table-header-bg, var(--icon-bg, #eef3fa));
 }
 
 /* 档案 */
@@ -357,7 +346,7 @@
 .loader {
     text-align: center;
     padding: 40px;
-    color: var(--desc-color, #60758b);
+    color: var(--loader-color, #60758b);
     font-style: italic;
 }
 .error-message {
@@ -493,7 +482,7 @@
     width: 100%;
     height: auto;
     object-fit: contain;
-    background: #eef3fa;
+    background: var(--icon-bg, #eef3fa);
     border-radius: 16px;
     padding: 8px;
 }
@@ -601,3 +590,36 @@
 .char-type-dot.type-hot      { background-color: #FF623D; }
 .char-type-dot.type-electro  { background-color: #FFC000; }
 .char-type-dot.type-unknown  { background-color: #cccccc; }
+
+.left-column {
+    width: 260px; /* 原 character-list 宽度 */
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    flex-shrink: 0;
+}
+
+.list-search {
+    padding: 8px;
+    border-bottom: 1px solid var(--border-color, #d9e0e8);
+    flex-shrink: 0;
+    background: var(--sidebar-bg, #f2f4f8);
+    border-radius: 16px 16px 0 0;
+}
+
+.character-list {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--sidebar-bg, #f2f4f8);
+    border-radius: 0 0 16px 16px;
+    padding: 16px;
+    border: 1px solid var(--border-color, #d9e0e8);
+    border-top: none;
+    width: auto;
+}
+.detail-id {
+    font-size: 0.9rem;
+    color: var(--desc-color, #5b6f86);
+    margin-left: 8px;
+    font-weight: normal;
+}

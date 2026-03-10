@@ -9,16 +9,31 @@
     padding: 0;
 }
 
-/* ---------- 左侧分类列表 ---------- */
-.category-list {
-    width: 220px;
-    background: var(--sidebar-bg, #f2f4f8);
-    border-radius: 16px;
-    padding: 16px;
-    overflow-y: auto;
-    border: 1px solid var(--border-color, #d9e0e8);
+.left-column {
+    width: 220px; /* 原 category-list 宽度 */
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     flex-shrink: 0;
-    margin-left: 0;
+}
+
+.list-search {
+    padding: 8px;
+    border-bottom: 1px solid var(--border-color, #d9e0e8);
+    flex-shrink: 0;
+    background: var(--sidebar-bg, #f2f4f8);
+    border-radius: 16px 16px 0 0;
+}
+
+.category-list {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--sidebar-bg, #f2f4f8);
+    border-radius: 0 0 16px 16px;
+    padding: 16px;
+    border: 1px solid var(--border-color, #d9e0e8);
+    border-top: none;
+    width: auto;
 }
 
 .category-item {
@@ -163,7 +178,7 @@
     max-height: 100%;
     object-fit: contain;
     border-radius: 8px;
-    background: #eef3fa;
+    background: var(--icon-bg, #eef3fa);
 }
 .level-info {
     flex: 1;
@@ -194,7 +209,7 @@
 .loader {
     text-align: center;
     padding: 40px;
-    color: var(--desc-color, #60758b);
+    color: var(--loader-color, #60758b);
     font-style: italic;
 }
 .error-message {
@@ -208,4 +223,10 @@
 .badge.hidden {
     background-color: #ff3333;
     color: white;
+}
+.detail-id {
+    font-size: 0.9rem;
+    color: var(--desc-color, #5b6f86);
+    margin-left: 8px;
+    font-weight: normal;
 }

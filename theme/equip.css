@@ -9,15 +9,31 @@
     padding: 0;
 }
 
-.equip-list {
+.left-column {
     width: 260px;
-    background: var(--sidebar-bg, #f2f4f8);
-    border-radius: 16px;
-    padding: 16px;
-    overflow-y: auto;
-    border: 1px solid var(--border-color, #d9e0e8);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     flex-shrink: 0;
-    margin-left: 0;
+}
+
+.list-search {
+    padding: 8px;
+    border-bottom: 1px solid var(--border-color, #d9e0e8);
+    flex-shrink: 0;
+    background: var(--sidebar-bg, #f2f4f8);
+    border-radius: 16px 16px 0 0;
+}
+
+.equip-list {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--sidebar-bg, #f2f4f8);
+    border-radius: 0 0 16px 16px;
+    padding: 16px;
+    border: 1px solid var(--border-color, #d9e0e8);
+    border-top: none;
+    width: auto;
 }
 
 .equip-item {
@@ -66,7 +82,7 @@
     object-fit: cover;
     margin-right: 4px;
     flex-shrink: 0;
-    background: #eef3fa;
+    background: var(--icon-bg, #eef3fa);
 }
 
 .equip-info {
@@ -110,7 +126,7 @@
     width: 120px;
     height: 120px;
     object-fit: contain;
-    background: #eef3fa;
+    background: var(--icon-bg, #eef3fa);
     border-radius: 20px;
     padding: 10px;
 }
@@ -177,7 +193,7 @@
     height: 48px;
     object-fit: contain;
     border-radius: 8px;
-    background: #eef3fa;
+    background: var(--icon-bg, #eef3fa);
 }
 .card-title {
     flex: 1;
@@ -236,6 +252,19 @@
     justify-content: space-between;
     padding: 2px 0;
 }
+/* 副词条多级数值对齐 */
+.substat-multi-levels {
+    display: inline-flex;
+    gap: 8px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+.substat-level-value {
+    min-width: 50px;          /* 固定最小宽度，保证对齐 */
+    text-align: right;
+    /*font-family: monospace;     等宽字体使数字对齐更精准 */
+    white-space: nowrap;
+}
 .substat-desc {
     color: var(--desc-color, #5b6f86);
 }
@@ -249,7 +278,7 @@
 .loader {
     text-align: center;
     padding: 40px;
-    color: var(--desc-color, #60758b);
+    color: var(--loader-color, #60758b);
     font-style: italic;
 }
 .error-message {
@@ -258,4 +287,89 @@
     padding: 20px;
     border-radius: 20px;
     border: 1px solid #ffb3c6;
+}
+
+/* 副词条等级标签 */
+.substat-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    min-width: 0;
+}
+.substat-level-labels {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-bottom: 2px;
+}
+.level-label {
+    min-width: 50px;          /* 与数值宽度一致 */
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--desc-color, #5b6f86);
+    font-weight: 500;
+}
+.substat-multi-levels {
+    display: inline-flex;
+    gap: 8px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+.substat-level-value {
+    min-width: 50px;
+    text-align: right;
+    font-family: monospace;
+    white-space: nowrap;
+}
+/* 调整单项布局 */
+.substat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 2px 0;
+}
+.substat-desc {
+    color: var(--desc-color, #5b6f86);
+    margin-right: 16px;
+    white-space: nowrap;
+}
+
+/* 副词条表格样式 */
+.substat-table {
+    width: 100%;
+    margin-top: 8px;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+.substat-table th {
+    font-weight: 500;
+    color: var(--desc-color, #5b6f86);
+    padding: 4px 8px;
+    text-align: center;
+    border-bottom: 1px solid var(--border-color, #e2e7f0);
+}
+.substat-table td {
+    padding: 4px 8px;
+    text-align: center;
+    border-bottom: 1px dotted var(--border-color, #e2e7f0);
+}
+.substat-table td:first-child {
+    text-align: left;
+    color: var(--text-color, #1e2b3c);
+    font-weight: 500;
+}
+.substat-table .value-cell {
+    font-family: monospace;
+    white-space: nowrap;
+}
+/* 卡片主体微调 */
+.card-body {
+    /* 确保表格不溢出 */
+    overflow-x: auto;
+}
+.detail-id {
+    font-size: 0.9rem;
+    color: var(--desc-color, #5b6f86);
+    margin-left: 8px;
+    font-weight: normal;
 }

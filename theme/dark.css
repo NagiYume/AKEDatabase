@@ -1,5 +1,4 @@
 /* ==================== dark.css - 暗色主题 ==================== */
-/* 全局基础样式 */
 * {
     margin: 0;
     padding: 0;
@@ -13,7 +12,6 @@ body {
     color: #e0e0e0;
 }
 
-/* 应用主容器 */
 .app {
     display: flex;
     height: 100vh;
@@ -76,7 +74,6 @@ body {
     border-radius: 10px;
 }
 
-/* 模块项 */
 .module-item {
     background: #2c4056;
     border-radius: 12px;
@@ -135,7 +132,6 @@ body {
     line-height: 1.4;
 }
 
-/* 左下角设置按钮 */
 .settings-button {
     position: absolute;
     bottom: 20px;
@@ -260,7 +256,7 @@ body {
     border-radius: 24px;
     padding: 30px;
     width: 90%;
-    max-width: 450px;
+    max-width: 550px;
     box-shadow: 0 20px 40px rgba(0,0,0,0.5);
     position: relative;
     animation: modalFadeIn 0.3s;
@@ -337,9 +333,45 @@ body {
     margin: 5px 0;
 }
 
-/* ---------- 辅助/通用 ---------- */
-/* 隐藏模块标记颜色自动适配，无需额外 */
+/* ---------- 新增 CSS 变量（供模块使用）---------- */
+:root {
+    --input-bg: #2c4056;
+    --sidebar-bg: #1e2b3c;
+    --border-color: #2a3a4f;
+    --module-bg: #2c4056;
+    --active-bg: #1e3b5a;
+    --text-color: #e0e0e0;
+    --desc-color: #b0c4de;
+    --accent-color: #4a9fd8;
+    --tag-bg: #3a4f68;
+    --tag-text: #b0d0f0;
+    --table-header-bg: #2c4056;
+    --link-color: #4a9fd8;
+    --tooltip-bg: #242837;
+    --tooltip-text: #e0e0e0;
+    --code-color: #d0e0ff;
+    --content-bg: #242837;          /* 内容区背景 */
+    --icon-bg: #2a3a4f;             /* 图标占位背景 */
+    --loader-color: #9aaec9;        /* 加载文字颜色 */
+    --error-bg: #3a1e2c;
+    --error-border: #b0003a;
+    --error-text: #ffb3c6;
+}
 
-/* 特殊标签颜色（暗色模式下建议略微调亮，但保持辨识度） */
-.ba-vup { color: #9eb7ff; }
-.ba-info { color: #aaaaaa; }  /* 暗色背景下稍微亮一点，但仍然是灰色调 */
+.list-search {
+    padding: 8px;
+    border-bottom: 1px solid var(--border-color, #d9e0e8);
+}
+.search-input {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 30px;
+    border: 1px solid var(--border-color, #d9e0e8);
+    background: var(--input-bg, white);
+    color: var(--text-color, #1e2b3c);
+    font-size: 0.9rem;
+    outline: none;
+}
+.search-input:focus {
+    border-color: var(--accent-color, #1e6f9f);
+}

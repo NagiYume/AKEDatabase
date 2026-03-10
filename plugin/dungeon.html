@@ -2,17 +2,22 @@
 <link rel="stylesheet" href="/theme/dungeon.css">
 
 <div class="dungeon-module">
-    <div class="dungeon-series-list" id="dungeonSeriesList"></div>
+    <div class="left-column">
+        <div class="list-search">
+            <input type="text" id="dungeonSearchInput" placeholder="搜索副本系列 (名称/ID)" class="search-input">
+        </div>
+        <div class="dungeon-series-list" id="dungeonSeriesList"></div>
+    </div>
     <div class="dungeon-detail" id="dungeonDetail">
         <div class="loader">加载副本数据...</div>
     </div>
 </div>
-
 <script>
     (function() {
-        let currentSeries = [];
+        let allSeries = [];
         let activeSeriesId = null;
         let isInitialized = false;
+        let searchTerm = '';
 
         const IMAGE_BASE_PATH = '/public/images/';
 
@@ -24,7 +29,6 @@
             return window.parseText(text, IMAGE_BASE_PATH);
         }
 
-        // 格式化数值，根据类型显示百分比或小数
         function formatValue(val) {
             if (typeof val !== 'number') return val;
             if (Math.abs(val) < 1 && val !== 0) {
@@ -33,7 +37,15 @@
             return val.toFixed(1);
         }
 
-        // 加载副本系列清单
+        function filterSeriesBySearch(series) {
+            if (!searchTerm) return series;
+            const term = searchTerm.toLowerCase();
+            return series.filter(s => 
+                (s.name && s.name.toLowerCase().includes(term)) || 
+                (s.templateId && s.templateId.toLowerCase().includes(term))
+            );
+        }
+
         async function loadSeriesManifest(showHidden) {
             try {
                 const res = await fetch('/public/CH/dungeon/manifest.json?t=' + Date.now());
@@ -48,66 +60,74 @@
             }
         }
 
-        // 渲染左侧系列列表
-        function renderSeriesList(series, container) {
+        function renderSeriesList() {
+            const container = document.getElementById('dungeonSeriesList');
+            const detailContainer = document.getElementById('dungeonDetail');
+            if (!container) return;
+
+            const filtered = filterSeriesBySearch(allSeries);
+
             container.innerHTML = '';
-            if (series.length === 0) {
-                container.innerHTML = '<div class="loader">暂无副本系列</div>';
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="loader">无匹配系列</div>';
+                if (detailContainer) detailContainer.innerHTML = '<div class="loader">请选择系列</div>';
+                activeSeriesId = null;
                 return;
             }
-        
-            series.forEach((item, index) => {
+
+            filtered.forEach((item, index) => {
                 const div = document.createElement('div');
                 div.className = `series-item ${item.templateId === activeSeriesId ? 'active' : (index === 0 && !activeSeriesId ? 'active' : '')}`;
                 div.dataset.seriesId = item.templateId;
                 div.dataset.contentFile = item.contentFile;
-            
-                // 左侧稀有度竖条
+
                 const rarityBar = document.createElement('span');
                 rarityBar.className = `rarity-bar rarity-${item.rarity || 5}`;
                 rarityBar.title = `稀有度 ${item.rarity || 5}`;
-            
-                // 信息容器
+
                 const infoDiv = document.createElement('div');
                 infoDiv.className = 'series-info';
-            
+
                 const nameSpan = document.createElement('div');
                 nameSpan.className = 'series-name';
                 nameSpan.textContent = item.name;
-            
+
                 const idSpan = document.createElement('div');
                 idSpan.className = 'series-id';
                 idSpan.textContent = item.templateId;
-            
+
                 infoDiv.appendChild(nameSpan);
                 infoDiv.appendChild(idSpan);
-            
+
                 div.appendChild(rarityBar);
                 div.appendChild(infoDiv);
-            
+
                 div.addEventListener('click', () => {
                     document.querySelectorAll('.series-item').forEach(el => el.classList.remove('active'));
                     div.classList.add('active');
                     activeSeriesId = item.templateId;
-                    loadSeriesDetail(item, document.getElementById('dungeonDetail'));
+                    loadSeriesDetail(item, detailContainer);
                 });
-            
+
                 container.appendChild(div);
             });
 
-            const activeExists = series.some(s => s.templateId === activeSeriesId);
-            if (!activeExists && series.length > 0) {
-                activeSeriesId = series[0].templateId;
+            const activeExists = filtered.some(s => s.templateId === activeSeriesId);
+            if (!activeExists && filtered.length > 0) {
+                activeSeriesId = filtered[0].templateId;
                 const firstItem = container.querySelector('.series-item');
                 if (firstItem) firstItem.classList.add('active');
-                loadSeriesDetail(series[0], document.getElementById('dungeonDetail'));
+                loadSeriesDetail(filtered[0], detailContainer);
             } else if (activeExists) {
-                const activeItem = series.find(s => s.templateId === activeSeriesId);
-                if (activeItem) loadSeriesDetail(activeItem, document.getElementById('dungeonDetail'));
+                const activeItem = filtered.find(s => s.templateId === activeSeriesId);
+                if (activeItem) {
+                    const activeDiv = container.querySelector(`.series-item[data-series-id="${activeSeriesId}"]`);
+                    if (activeDiv) activeDiv.classList.add('active');
+                    loadSeriesDetail(activeItem, detailContainer);
+                }
             }
         }
 
-        // 加载系列详情
         async function loadSeriesDetail(seriesItem, container) {
             container.innerHTML = '<div class="loader">加载副本数据...</div>';
             try {
@@ -118,13 +138,11 @@
             }
         }
 
-        // 渲染奖励对象
         function renderRewards(rewards) {
             if (!rewards || Object.keys(rewards).length === 0) return '无';
             return Object.entries(rewards).map(([name, count]) => `${name} x${count}`).join('<br>');
         }
 
-        // 渲染敌人属性表格
         function renderEnemyValues(valueObj) {
             const excluded = ['enemyId', 'enemyName', 'iconbig', 'attrModifiers'];
             const entries = Object.entries(valueObj).filter(([key]) => !excluded.includes(key));
@@ -144,19 +162,16 @@
             return html;
         }
 
-        // 渲染单个副本卡片
         function renderDungeonCard(dungeonId, dungeon) {
             const name = dungeon.name || dungeonId;
             const level = dungeon.level || '';
             const desc = parseText(dungeon.desc || '');
-            // 仅当 featureDesc 有内容时才渲染
             const featureDesc = dungeon.featureDesc ? parseText(dungeon.featureDesc) : '';
             const costStamina = dungeon.costStamina !== undefined ? dungeon.costStamina : 0;
             const recommendLevel = dungeon.推荐挑战等级 || '?';
             const fixedRewards = renderRewards(dungeon.固定奖励);
             const firstRewards = renderRewards(dungeon.首通奖励);
         
-            // 敌人列表
             let enemiesHtml = '';
             if (dungeon.enemy && dungeon.enemy.length > 0) {
                 enemiesHtml = '<h4 class="enemies-title">敌人详情</h4><div class="enemy-list">';
@@ -210,7 +225,6 @@
             `;
         }
 
-        // 渲染系列详情（包含多个副本）
         function renderDetail(data, seriesItem) {
             const seriesName = data.dungeonSeriesname || seriesItem.name;
             const dungeons = data.dungeons || {};
@@ -235,7 +249,6 @@
             `;
         }
 
-        // 刷新模块
         async function refreshModule() {
             const list = document.getElementById('dungeonSeriesList');
             const detail = document.getElementById('dungeonDetail');
@@ -243,17 +256,27 @@
 
             const showHidden = getCurrentShowHidden();
             const series = await loadSeriesManifest(showHidden);
-            currentSeries = series;
-            renderSeriesList(series, list);
+            allSeries = series;
+            renderSeriesList();
         }
 
-        // 初始化
         async function initModule() {
             if (isInitialized) return;
             isInitialized = true;
-
             if (window.configLoaded) await window.configLoaded;
-            window.addEventListener('globalConfigChanged', refreshModule);
+
+            window.addEventListener('globalConfigChanged', (e) => {
+                searchTerm = '';
+                const searchInput = document.getElementById('dungeonSearchInput');
+                if (searchInput) searchInput.value = '';
+                refreshModule();
+            });
+
+            document.getElementById('dungeonSearchInput')?.addEventListener('input', (e) => {
+                searchTerm = e.target.value;
+                renderSeriesList();
+            });
+
             await refreshModule();
         }
 
