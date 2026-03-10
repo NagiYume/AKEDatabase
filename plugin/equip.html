@@ -34,23 +34,33 @@
         // 特殊处理：如果描述包含“全伤害减免”，则显示 (1 - val) 的百分比
         function formatValue(desc, val) {
             if (typeof val !== 'number') return val;
-            
-            // 特殊处理：全伤害减免
+
+            // 特殊处理：全伤害减免（优先执行）
             if (desc && desc.includes('全伤害减免')) {
-                // 计算 1 - val，然后按小于1处理显示百分比
                 const newVal = 1 - val;
                 if (Math.abs(newVal) < 1) {
-                    return (newVal * 100).toFixed(1) + '%';
+                    return (newVal * 100).toFixed(2) + '%';
                 }
-                return newVal.toFixed(1);
+                return newVal.toFixed(2);
             }
-            
-            // 默认逻辑：如果数值绝对值小于1，则视为百分比显示
+        
+            // 根据描述词决定小数位数
+            let precision = 2; // 默认保留1位
+            if (desc) {
+                if (desc.includes('暴击') || desc.includes('充能')) {
+                    precision = 2; // 暴击、充能保留2位
+                } else if (desc.includes('源石技艺强度') || desc.includes('防御力') || desc.includes('力量') || desc.includes('智识') || desc.includes('敏捷') || desc.includes('意志')) {
+                    precision = 1; // 源石技艺强度保留1位（明确指定）
+                }
+                // 可继续添加其他关键词
+            }
+        
+            // 若数值绝对值小于1，视为百分比值（如 0.123 → 12.3%）
             if (Math.abs(val) < 1) {
-                return (val * 100).toFixed(1) + '%';
+                return (val * 100).toFixed(precision) + '%';
             }
-            // 否则保留一位小数
-            return val.toFixed(1);
+            // 否则直接显示小数
+            return val.toFixed(precision);
         }
 
         function filterSuitsBySearch(suits) {
