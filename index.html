@@ -6,6 +6,7 @@
     <title>AKEData · Endfield Database</title>
     <link rel="icon" type="image/png" href="\public\images\character\charremoteicon\icon_chr_0013_aglina.png">
     <link rel="stylesheet" id="theme-style" href="theme/light.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script>
         window.parseText = function(text, baseImagePath, depth) {
             console.warn('parseText 的完整定义尚未加载，返回原文本');
@@ -23,7 +24,10 @@
             <div class="module-list" id="moduleListContainer">
                 <div style="color:#7f8c9f; text-align:center; padding:20px;">加载模块清单...</div>
             </div>
-            <div class="settings-button" id="settingsButton" title="全局设置">⚙️</div>
+            <div class="sidebar-footer">
+                <div class="settings-button" id="settingsButton" title="全局设置">⚙️</div>
+                <div class="export-button" id="exportButton" title="导出长图">📸</div>
+            </div>
         </div>
 
         <div class="main-content">
@@ -46,6 +50,10 @@
             <div class="settings-item">
                 <label for="modalShowHiddenCheck">显示隐藏模块：</label>
                 <input type="checkbox" id="modalShowHiddenCheck">
+            </div>
+            <div class="settings-item">
+                <label for="modalShowExportCheck">显示导出按钮（测试功能）：</label>
+                <input type="checkbox" id="modalShowExportCheck">
             </div>
 
             <!-- 等级设置区域 -->
@@ -115,6 +123,7 @@
             let config = {
                 theme: 'light',
                 showHidden: false,
+                showExportButton: false,
                 levelSettings: {
                     enabled: true,
                     characterLevels: '1,20,40,60,80,90',
@@ -279,6 +288,8 @@
             function openSettings() {
                 modalThemeSelect.value = config.theme;
                 modalShowHiddenCheck.checked = config.showHidden;
+                const modalShowExportCheck = document.getElementById('modalShowExportCheck');
+                if (modalShowExportCheck) modalShowExportCheck.checked = config.showExportButton;
                 modalLevelsEnabled.checked = config.levelSettings.enabled;
                 modalCharacterLevels.value = config.levelSettings.characterLevels;
                 modalWeaponLevels.value = config.levelSettings.weaponLevels;
@@ -323,6 +334,12 @@
 
                 localStorage.setItem('akedata-levelSettings', JSON.stringify(config.levelSettings));
 
+                const modalShowExportCheck = document.getElementById('modalShowExportCheck');
+                if (modalShowExportCheck) {
+                    config.showExportButton = modalShowExportCheck.checked;
+                    localStorage.setItem('akedata-showExportButton', config.showExportButton);
+                }
+                
                 // 主题
                 const theme = modalThemeSelect.value;
                 if (theme !== config.theme) {
@@ -578,6 +595,13 @@
 
             tooltip2.addEventListener('click', (e) => e.stopPropagation());
 
+            function updateExportButtonVisibility() {
+                const exportBtn = document.getElementById('exportButton');
+                if (exportBtn) {
+                    exportBtn.style.display = config.showExportButton ? 'flex' : 'none';
+                }
+            }
+
             async function initApp() {
                 showHomePage();
                 initTheme();
@@ -633,6 +657,120 @@
                     applyFilterAndRender();
                     localStorage.setItem('akedata-showHidden', config.showHidden);
                     window.dispatchEvent(new CustomEvent('globalConfigChanged', { detail: { showHidden: config.showHidden } }));
+                });
+
+                document.getElementById('exportButton').addEventListener('click', async () => {
+                    const contentArea = document.getElementById('contentArea');
+                    if (!contentArea) return;
+
+                    // 获取文件名（优先使用详情标题）
+                    let title = '起始页';
+                    const possibleSelectors = [
+                        '.detail-title', '.detail-name', '.suit-name',
+                        '.category-title', '.series-title', '.dungeon-name',
+                        '.weapon-detail .detail-title', '.character-detail .detail-name',
+                        '.enemy-detail .detail-name', '.equip-detail .suit-name',
+                        '.achievement-detail .category-title', '.dungeon-detail .series-title'
+                    ];
+                    for (const sel of possibleSelectors) {
+                        const el = contentArea.querySelector(sel);
+                        if (el && el.textContent.trim()) {
+                            title = el.textContent.trim();
+                            break;
+                        }
+                    }
+                    if (title === '起始页' && activeModuleId) {
+                        const mod = allModules.find(m => m.id === activeModuleId);
+                        if (mod?.title) title = mod.title;
+                    }
+                    title = title.replace(/[/?<>\\:*|"]/g, '_');
+                
+                    try {
+                        const canvas = await html2canvas(contentArea, {
+                            scale: 2,
+                            useCORS: true,
+                            logging: false,
+                            allowTaint: false,
+                            scrollY: 0,
+                            onclone: (clonedDoc, element) => {
+                                // 移除左侧栏和内部列
+                                const globalSidebar = clonedDoc.querySelector('.sidebar');
+                                if (globalSidebar) globalSidebar.remove();
+                                const leftColumns = clonedDoc.querySelectorAll('.left-column');
+                                leftColumns.forEach(col => col.remove());
+                                const weaponList = clonedDoc.querySelector('.weapon-list');
+                                if (weaponList) weaponList.remove();
+                            
+                                // 调整布局
+                                const app = clonedDoc.querySelector('.app');
+                                if (app) {
+                                    app.style.display = 'block';
+                                    app.style.height = 'auto';
+                                    app.style.overflow = 'visible';
+                                }
+                                const mainContent = clonedDoc.querySelector('.main-content');
+                                if (mainContent) {
+                                    mainContent.style.height = 'auto';
+                                    mainContent.style.overflow = 'visible';
+                                    mainContent.style.padding = '0';
+                                }
+                            
+                                element.style.margin = '0';
+                                element.style.padding = '0';
+                                element.style.overflow = 'visible';
+                                element.style.height = 'auto';
+                            
+                                const allElements = clonedDoc.querySelectorAll('*');
+                                allElements.forEach(el => {
+                                    el.style.overflow = 'visible';
+                                    el.style.maxHeight = 'none';
+                                    el.style.height = 'auto';
+                                    el.style.minHeight = 'auto';
+                                });
+                            
+                                clonedDoc.body.style.margin = '0';
+                                clonedDoc.body.style.padding = '0';
+                            }
+                        });
+                    
+                        // ========== 添加覆盖水印（30% 透明度） ==========
+                        const ctx = canvas.getContext('2d');
+                        ctx.font = 'bold 40px "Microsoft YaHei", sans-serif';
+                        ctx.fillStyle = 'rgba(150, 150, 150, 0.1)'; // 30% 不透明度
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                    
+                        const stepX = 800;  // 水平间距
+                        const stepY = 600;  // 垂直间距
+                        const angle = -0.5; // 旋转角度（弧度）
+                    
+                        for (let y = 50; y < canvas.height; y += stepY) {
+                            for (let x = 50; x < canvas.width; x += stepX) {
+                                ctx.save();
+                                ctx.translate(x, y);
+                                ctx.rotate(angle);
+                                ctx.fillText('AKEData.top', 0, 0);
+                                ctx.restore();
+                            }
+                        }
+                    
+                        const link = document.createElement('a');
+                        link.download = title + '.png';
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                    } catch (err) {
+                        alert('截图失败：' + err.message);
+                    }
+                });
+
+                const savedShowExport = localStorage.getItem('akedata-showExportButton');
+                if (savedShowExport !== null) {
+                    config.showExportButton = savedShowExport === 'true';
+                }
+                updateExportButtonVisibility();
+
+                window.addEventListener('globalConfigChanged', (e) => {
+                    updateExportButtonVisibility();
                 });
 
                 const savedShowHidden = localStorage.getItem('akedata-showHidden');

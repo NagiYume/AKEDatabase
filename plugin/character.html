@@ -235,6 +235,19 @@
                         updateGrowthTable();
                     });
                 }
+
+                // 绑定折叠区域标题点击事件
+                container.querySelectorAll('.section-header').forEach(header => {
+                    header.addEventListener('click', () => {
+                        const indicator = header.querySelector('.collapse-indicator');
+                        const content = header.nextElementSibling;
+                        if (content && content.classList.contains('collapse-content')) {
+                            const isHidden = content.style.display === 'none';
+                            content.style.display = isHidden ? '' : 'none';
+                            indicator.textContent = isHidden ? '▼' : '▶';
+                        }
+                    });
+                });
             
             } catch (err) {
                 container.innerHTML = `<div class="error-message">加载失败: ${err.message}</div>`;
@@ -570,10 +583,14 @@
             if (data.potentialpic2) potentialPics.push(data.potentialpic2);
             if (data.potentialpic3) potentialPics.push(data.potentialpic3);
             const potentialPicsHtml = potentialPics.length > 0 ? `
-                <div class="section">
-                    <h3>潜能图片</h3>
-                    <div class="potential-pics">
-                        ${potentialPics.map(src => `<img src="${src}" onerror="this.style.display='none'">`).join('')}
+                <div class="section collapsible-section">
+                    <h3 class="section-header">
+                        <span class="collapse-indicator">▶</span> 潜能图片
+                    </h3>
+                    <div class="collapse-content" style="display:none;">
+                        <div class="potential-pics">
+                            ${potentialPics.map(src => `<img src="${src}" onerror="this.style.display='none'">`).join('')}
+                        </div>
                     </div>
                 </div>
             ` : '';
@@ -585,12 +602,16 @@
                 </div>
             `).join('');
 
-            const voiceHtml = (data.profileVoice || []).map(v => `
-                <div class="voice-record">
-                    <div class="voice-title">${v.title}</div>
-                    <div class="voice-desc">${v.desc}</div>
-                </div>
-            `).join('');
+            const voiceHtml = (data.profileVoice || []).length ? `
+                <table class="voice-table">
+                    ${(data.profileVoice || []).map(v => `
+                        <tr>
+                            <td class="voice-title">${v.title}</td>
+                            <td class="voice-desc">${v.desc}</td>
+                        </tr>
+                    `).join('')}
+                </table>
+            ` : '<p>无</p>';
 
             return `
                 ${basicHtml}
@@ -612,13 +633,21 @@
                     ${skillsHtml || '<p>无</p>'}
                 </div>
                 ${potentialPicsHtml}
-                <div class="section">
-                    <h3>档案</h3>
-                    ${profileRecordsHtml || '<p>无</p>'}
+                <div class="section collapsible-section">
+                    <h3 class="section-header">
+                        <span class="collapse-indicator">▶</span> 档案
+                    </h3>
+                    <div class="collapse-content" style="display:none;">
+                        ${profileRecordsHtml || '<p>无</p>'}
+                    </div>
                 </div>
-                <div class="section">
-                    <h3>语音记录</h3>
-                    ${voiceHtml || '<p>无</p>'}
+                <div class="section collapsible-section">
+                    <h3 class="section-header">
+                        <span class="collapse-indicator">▶</span> 语音记录
+                    </h3>
+                    <div class="collapse-content" style="display:none;">
+                        ${voiceHtml}
+                    </div>
                 </div>
             `;
         }

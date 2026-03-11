@@ -133,7 +133,6 @@ body {
 }
 
 .settings-button {
-    position: absolute;
     bottom: 20px;
     left: 20px;
     width: 48px;
@@ -374,4 +373,43 @@ body {
 }
 .search-input:focus {
     border-color: var(--accent-color, #1e6f9f);
+}
+
+/* 底部按钮容器 */
+.sidebar-footer {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    display: flex;
+    justify-content: space-between;
+    z-index: 10;
+}
+
+.settings-button,
+.export-button {
+    width: 48px;
+    height: 48px;
+    background-color: #2c4056;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    transition: background-color 0.2s, transform 0.2s;
+    border: 1px solid #4a5f78;
+    color: #ffffff;
+}
+
+.settings-button:hover,
+.export-button:hover {
+    background-color: #3a5a7a;
+    transform: scale(1.05);
+}
+
+.settings-button:active,
+.export-button:active {
+    transform: scale(0.95);
 }
