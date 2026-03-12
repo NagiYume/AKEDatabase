@@ -613,6 +613,29 @@
                 </table>
             ` : '<p>无</p>';
 
+            // 后勤技能
+            const spaceshipSkills = data.spaceshipSkills || [];
+            const spaceshipHtml = spaceshipSkills.length ? spaceshipSkills.map(slot => `
+                <div class="spaceship-skill-item">
+                    <div class="spaceship-skill-header">
+                        <span class="spaceship-skill-name">${slot.talentName}</span>
+                        <span class="spaceship-skill-room">${slot.roomTypeName}</span>
+                    </div>
+                    <div class="spaceship-skill-levels">
+                        ${slot.levels.map(lv => `
+                            <div class="spaceship-skill-level">
+                                <span class="spaceship-skill-postfix">${lv.postfix}</span>
+                                <div class="spaceship-skill-info">
+                                    <div class="spaceship-skill-fullname">${lv.skillName}</div>
+                                    <div class="spaceship-skill-desc">${lv.skillDesc}</div>
+                                    <div class="spaceship-skill-unlock">${lv.unlockHint}</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('') : '<p>无</p>';
+
             return `
                 ${basicHtml}
                 ${growthHtml}
@@ -633,6 +656,10 @@
                     ${skillsHtml || '<p>无</p>'}
                 </div>
                 ${potentialPicsHtml}
+                <div class="section">
+                    <h3>后勤技能</h3>
+                    ${spaceshipHtml}
+                </div>
                 <div class="section collapsible-section">
                     <h3 class="section-header">
                         <span class="collapse-indicator">▶</span> 档案
