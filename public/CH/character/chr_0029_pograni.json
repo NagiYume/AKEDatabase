@@ -34,6 +34,7 @@
                 "atk_up": 0.04,
                 "physpell_up": 4,
                 "max_stack_owner": 3,
+                "0": 0,
                 "Level": 0
             }
         },
@@ -46,6 +47,7 @@
                 "atk_up": 0.08,
                 "physpell_up": 8,
                 "max_stack_owner": 3,
+                "0": 0,
                 "Level": 0
             }
         },
@@ -54,6 +56,7 @@
             "description": "当任意干员触发终结技<@ba.key>盾卫旗队，上前</>的后续效果后，也会获得持续<@ba.vup>{duration:0}</>秒的<@ba.key>士气激昂</>。\n<@ba.info>需要激活天赋活着的旗帜。</>",
             "values": {
                 "duration": 5,
+                "0": 0,
                 "Level": 0
             }
         },
@@ -62,6 +65,7 @@
             "description": "当任意干员触发终结技<@ba.key>盾卫旗队，上前</>的后续效果后，也会获得持续<@ba.vup>{duration:0}</>秒的<@ba.key>士气激昂</>。\n<@ba.info>需要激活天赋活着的旗帜。</>",
             "values": {
                 "duration": 10,
+                "0": 0,
                 "Level": 0
             }
         }
@@ -94,6 +98,7 @@
             "description": "战技<@ba.key>粉碎阵线</>命中至少两个敌人时，<#ba.return>返还</><@ba.vup>{atb_return:0}</>点技力。",
             "values": {
                 "has_potential1": 1,
+                "0": 0,
                 "Level": 0,
                 "atb_return": 15
             }
@@ -102,6 +107,7 @@
             "name": "“行军”",
             "description": "意志<@ba.vup>+{Will:0}</>，造成的物理伤害<@ba.vup>+{PhysicalDamageIncrease:0%}</>。",
             "values": {
+                "0": 0,
                 "Will": 20,
                 "PhysicalDamageIncrease": 0.1
             }
@@ -111,6 +117,7 @@
             "description": "天赋<@ba.key>活着的旗帜</>效果加强：获得<@ba.key>士气激昂</>所需的技力恢复量降低至<@ba.vup>{atb_gain:0}</>点。自身<@ba.key>士气激昂</>最大叠加层数<@ba.vup>+{max_stack_owner-3}</>。",
             "values": {
                 "atb_gain": 60,
+                "0": 0,
                 "Level": 0,
                 "max_stack_owner": 5
             }
@@ -119,7 +126,7 @@
             "name": "塔卫二之盾",
             "description": "终结技<@ba.key>盾卫旗队，上前</>所需的终结技能量<@ba.vup>-{1-costvalue:0%}</>。",
             "values": {
-                "1": 0.85,
+                "costValue": 0.85,
                 "Level": 0
             }
         },
@@ -127,22 +134,14 @@
             "name": "新铸剑锋",
             "description": "连携技<@ba.key>盈月邀击</>冷却时间<@ba.vup>{coolDown:0}</>秒，且技力恢复量变为原本的<@ba.vup>{atb_ratio:0.0}</>倍。",
             "values": {
-                "2": -2,
+                "coolDown": -2,
                 "Level": 0,
-                "atb_ratio": 1.2
+                "atb_ratio": 1.2,
+                "0": 0
             }
         }
     ],
     "skills": [
-        {
-            "name": "盈月邀击",
-            "icon": "/public/images/character/skillicon/icon_combo_skill_pograni_01.png",
-            "description": "当有敌人被<#ba.crush>猛击</>或者<#ba.fracture>碎甲</><#ba.consume>消耗</><#ba.noguard>破防</>层数后可以发动。\n根据<#ba.consume>消耗</>的最高<#ba.noguard>破防</>层数，对敌人进行相同段数的斩击（最多3段），造成<@ba.pd>物理伤害</>并恢复一定技力，每一击的伤害和技力恢复效果都更强。\n<@ba.info>若消耗4层破防，第3段斩击将获得强化。</>",
-            "groupType": 3,
-            "skillIds": [
-                "chr_0029_pograni_combo_skill"
-            ]
-        },
         {
             "name": "全面攻势",
             "icon": "/public/images/character/skillicon/icon_attack_sword.png",
@@ -174,6 +173,15 @@
             "groupType": 2,
             "skillIds": [
                 "chr_0029_pograni_ultimate_skill"
+            ]
+        },
+        {
+            "name": "盈月邀击",
+            "icon": "/public/images/character/skillicon/icon_combo_skill_pograni_01.png",
+            "description": "当有敌人被<#ba.crush>猛击</>或者<#ba.fracture>碎甲</><#ba.consume>消耗</><#ba.noguard>破防</>层数后可以发动。\n根据<#ba.consume>消耗</>的最高<#ba.noguard>破防</>层数，对敌人进行相同段数的斩击（最多3段），造成<@ba.pd>物理伤害</>并恢复一定技力，每一击的伤害和技力恢复效果都更强。\n<@ba.info>若消耗4层破防，第3段斩击将获得强化。</>",
+            "groupType": 3,
+            "skillIds": [
+                "chr_0029_pograni_combo_skill"
             ]
         }
     ],

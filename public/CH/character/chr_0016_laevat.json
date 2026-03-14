@@ -32,6 +32,7 @@
                 "ignore_fire_resist": 0.1,
                 "ignore_fire_resist_duration": 20,
                 "max_stack": 4,
+                "0": 0,
                 "Level": 0
             }
         },
@@ -42,6 +43,7 @@
                 "ignore_fire_resist": 0.15,
                 "ignore_fire_resist_duration": 20,
                 "max_stack": 4,
+                "0": 0,
                 "Level": 0
             }
         },
@@ -52,6 +54,7 @@
                 "ignore_fire_resist": 0.2,
                 "ignore_fire_resist_duration": 20,
                 "max_stack": 4,
+                "0": 0,
                 "Level": 0
             }
         },
@@ -65,6 +68,7 @@
                 "duration": 4,
                 "cd": 120,
                 "shelter_real": 0.1,
+                "0": 0,
                 "Level": 0
             }
         },
@@ -78,6 +82,7 @@
                 "duration": 8,
                 "cd": 120,
                 "shelter_real": 0.1,
+                "0": 0,
                 "Level": 0
             }
         }
@@ -110,6 +115,7 @@
             "description": "战技<@ba.key>焚灭</>的追加攻击的伤害倍率提升至原本的<@ba.vup>{ratio:0.0}</>倍，且命中后<#ba.return>返还</><@ba.vup>{atb:0}</>点技力。",
             "values": {
                 "atb": 20,
+                "0": 0,
                 "Level": 0,
                 "ratio": 1.2
             }
@@ -118,6 +124,7 @@
             "name": "追忆之旅",
             "description": "智识<@ba.vup>+{Wisd:0}</>，普通攻击伤害<@ba.vup>+{NormalAttackDamageIncrease:0%}</>。",
             "values": {
+                "0": 0,
                 "Wisd": 20,
                 "NormalAttackDamageIncrease": 0.15
             }
@@ -127,6 +134,7 @@
             "description": "战技<@ba.key>焚灭</>造成的<#ba.burning>燃烧</>持续时间<@ba.vup>+{duration-1:0%}</>，且<#ba.burning>燃烧</>的伤害提升至原本的<@ba.vup>{extra_scaling:0.0}</>倍。",
             "values": {
                 "duration": 1.5,
+                "0": 0,
                 "Level": 0,
                 "extra_scaling": 1.5
             }
@@ -135,7 +143,7 @@
             "name": "冰淇淋熔炉",
             "description": "终结技<@ba.key>黄昏</>所需的终结技能量<@ba.vup>-{1-costvalue:0%}</>。",
             "values": {
-                "1": 0.85,
+                "costValue": 0.85,
                 "Level": 0
             }
         },
@@ -145,21 +153,13 @@
             "values": {
                 "extend_duration": 1,
                 "max_duration": 7,
+                "0": 0,
                 "Level": 0,
                 "ratio": 1.2
             }
         }
     ],
     "skills": [
-        {
-            "name": "沸腾",
-            "icon": "/public/images/character/skillicon/icon_combo_skill_laevat_01.png",
-            "description": "当有敌人进入<#ba.burning>燃烧</>或<#ba.corrupt>腐蚀</>状态时可以发动。\n让所有处于<#ba.burning>燃烧</>或<#ba.corrupt>腐蚀</>状态的敌人脚下喷出火焰，对其造成<@ba.fire>灼热伤害</>。\n如果命中敌人，会获得1层<@ba.key>熔火</>。每命中1个敌人，还会额外获得终结技能量。",
-            "groupType": 3,
-            "skillIds": [
-                "chr_0016_laevat_combo_skill"
-            ]
-        },
         {
             "name": "燃烬",
             "icon": "/public/images/character/skillicon/icon_attack_sword.png",
@@ -196,6 +196,15 @@
                 "chr_0016_laevat_ult_attack2",
                 "chr_0016_laevat_ult_attack3",
                 "chr_0016_laevat_ult_attack4"
+            ]
+        },
+        {
+            "name": "沸腾",
+            "icon": "/public/images/character/skillicon/icon_combo_skill_laevat_01.png",
+            "description": "当有敌人进入<#ba.burning>燃烧</>或<#ba.corrupt>腐蚀</>状态时可以发动。\n让所有处于<#ba.burning>燃烧</>或<#ba.corrupt>腐蚀</>状态的敌人脚下喷出火焰，对其造成<@ba.fire>灼热伤害</>。\n如果命中敌人，会获得1层<@ba.key>熔火</>。每命中1个敌人，还会额外获得终结技能量。",
+            "groupType": 3,
+            "skillIds": [
+                "chr_0016_laevat_combo_skill"
             ]
         }
     ],

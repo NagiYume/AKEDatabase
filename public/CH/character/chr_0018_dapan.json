@@ -33,6 +33,7 @@
                 "dmg_up": 0.04,
                 "stack": 4,
                 "duration": 10,
+                "0": 0,
                 "Level": 0
             }
         },
@@ -43,6 +44,7 @@
                 "dmg_up": 0.06,
                 "stack": 4,
                 "duration": 10,
+                "0": 0,
                 "Level": 0
             }
         },
@@ -51,6 +53,7 @@
             "description": "终结技<@ba.key>切丝入锅！</>的最后一击每命中一个敌人，获得一层<@ba.key>备料</>状态，持续{talent_1_duration:0}秒，最多叠加{talent_1_stack:0}层。当处于<@ba.key>备料</>状态时，连携技命中敌人后立即恢复<@ba.vup>{talent_1_cd_reduce:0%}</>冷却时间并<#ba.consume>消耗</>一层<@ba.key>备料</>状态。",
             "values": {
                 "talent_1": 1,
+                "0": 0,
                 "Level": 0,
                 "talent_1_stack": 1,
                 "talent_1_duration": 20,
@@ -62,6 +65,7 @@
             "description": "终结技<@ba.key>切丝入锅！</>的最后一击每命中一个敌人，获得一层<@ba.key>备料</>状态，持续{talent_1_duration:0}秒，最多叠加{talent_1_stack:0}层。当处于<@ba.key>备料</>状态时，连携技命中敌人后立即恢复<@ba.vup>{talent_1_cd_reduce:0%}</>冷却时间并<#ba.consume>消耗</>一层<@ba.key>备料</>状态。",
             "values": {
                 "talent_1": 1,
+                "0": 0,
                 "Level": 0,
                 "talent_1_stack": 2,
                 "talent_1_duration": 20,
@@ -97,6 +101,7 @@
             "description": "如果终结技<@ba.key>切丝入锅！</>至少击败了一个敌人，大潘造成的<@ba.pd>物理伤害</><@ba.vup>+{potential_1_dmg_up:0%}</>，持续{potential_1_duration:0}秒，该效果无法叠加。",
             "values": {
                 "potential_1_dmg_up": 0.3,
+                "0": 0,
                 "Level": 0,
                 "potential_1_duration": 15
             }
@@ -106,6 +111,7 @@
             "description": "天赋<@ba.key>尝尝咸淡</>效果加强：<@ba.key>备料</>状态持续时间<@ba.vup>+{talent_1_duration:0}</>秒，最大叠加层数<@ba.vup>+{talent_1_stack:0}</>。",
             "values": {
                 "talent_1_stack": 1,
+                "0": 0,
                 "Level": 0,
                 "talent_1_duration": 10
             }
@@ -114,6 +120,7 @@
             "name": "先进工作者",
             "description": "力量<@ba.vup>+{Str:0}</>，造成的物理伤害<@ba.vup>+{PhysicalDamageIncrease:0%}</>。",
             "values": {
+                "0": 0,
                 "Str": 15,
                 "PhysicalDamageIncrease": 0.08
             }
@@ -122,7 +129,7 @@
             "name": "自制酱料",
             "description": "终结技<@ba.key>切丝入锅！</>所需的终结技能量<@ba.vup>-{1-costValue:0%}</>。",
             "values": {
-                "1": 0.85,
+                "costValue": 0.85,
                 "Level": 0
             }
         },
@@ -131,20 +138,12 @@
             "description": "战技<@ba.key>颠勺！</>如果仅命中单个敌人，对目标额外施加一层<#ba.noguard>破防</>，该效果每{potential_5_interval:0}秒最多触发一次。",
             "values": {
                 "potential_5_interval": 45,
+                "0": 0,
                 "Level": 0
             }
         }
     ],
     "skills": [
-        {
-            "name": "加料！",
-            "icon": "/public/images/character/skillicon/icon_combo_skill_dapan_01.png",
-            "description": "当有敌人达到4层<#ba.noguard>破防</>时可以发动。\n抡起铁锅对敌人造成大量<@ba.pd>物理伤害</>并<#ba.crush>猛击</>，本次<#ba.crush>猛击</>的伤害获得额外提升。",
-            "groupType": 3,
-            "skillIds": [
-                "chr_0018_dapan_combo_skill"
-            ]
-        },
         {
             "name": "滚刀切！",
             "icon": "/public/images/character/skillicon/icon_attack_claym.png",
@@ -175,6 +174,15 @@
             "groupType": 2,
             "skillIds": [
                 "chr_0018_dapan_ultimate_skill"
+            ]
+        },
+        {
+            "name": "加料！",
+            "icon": "/public/images/character/skillicon/icon_combo_skill_dapan_01.png",
+            "description": "当有敌人达到4层<#ba.noguard>破防</>时可以发动。\n抡起铁锅对敌人造成大量<@ba.pd>物理伤害</>并<#ba.crush>猛击</>，本次<#ba.crush>猛击</>的伤害获得额外提升。",
+            "groupType": 3,
+            "skillIds": [
+                "chr_0018_dapan_combo_skill"
             ]
         }
     ],

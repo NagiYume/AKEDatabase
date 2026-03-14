@@ -31,6 +31,7 @@
             "description": "每有10点意志，防御力<@ba.vup>+{rate:0.0}</>。",
             "values": {
                 "rate": 1,
+                "0": 0,
                 "Level": 0
             }
         },
@@ -39,6 +40,7 @@
             "description": "每有10点意志，防御力<@ba.vup>+{rate:0.0}</>。",
             "values": {
                 "rate": 1.2,
+                "0": 0,
                 "Level": 0
             }
         },
@@ -47,6 +49,7 @@
             "description": "终结技<@ba.key>教科书式猛攻</>的最后一击产生{talent_1+1:0}次冲击波，每次冲击波造成攻击力{atk_scale_shockwave:0%}的<@ba.pd>物理伤害</>。",
             "values": {
                 "talent_1": 1,
+                "0": 0,
                 "Level": 0,
                 "atk_scale_shockwave": 0.3
             }
@@ -56,6 +59,7 @@
             "description": "终结技<@ba.key>教科书式猛攻</>的最后一击产生{talent_1+1:0}次冲击波，每次冲击波造成攻击力{atk_scale_shockwave:0%}的<@ba.pd>物理伤害</>。",
             "values": {
                 "talent_1": 2,
+                "0": 0,
                 "Level": 0,
                 "atk_scale_shockwave": 0.45
             }
@@ -90,6 +94,7 @@
             "values": {
                 "def_scale": 5,
                 "dmg_base": 300,
+                "0": 0,
                 "Level": 0
             }
         },
@@ -97,6 +102,7 @@
             "name": "额外特训",
             "description": "防御力<@ba.vup>+{Def:0}</>，意志<@ba.vup>+{Will:0}</>。",
             "values": {
+                "0": 0,
                 "Def": 20,
                 "Will": 10
             }
@@ -106,6 +112,7 @@
             "description": "连携技<@ba.key>即时压制</>提供的<#ba.shield>护盾</>持续时间<@ba.vup>+{potential3_duration:0}</>秒。",
             "values": {
                 "potential3_duration": 5,
+                "0": 0,
                 "Level": 0
             }
         },
@@ -113,7 +120,7 @@
             "name": "苦难代偿",
             "description": "终结技<@ba.key>教科书式猛攻</>所需的终结技能量<@ba.vup>-{1-costValue:0%}</>。",
             "values": {
-                "1": 0.9,
+                "costValue": 0.9,
                 "Level": 0
             }
         },
@@ -122,20 +129,12 @@
             "description": "卡契尔存在<#ba.shield>护盾</>时，战技<@ba.key>刚性阻击</>成功命中敌人后<#ba.return>返还</><@ba.vup>{potential5_atb:0}</>点技力。",
             "values": {
                 "potential5_atb": 10,
+                "0": 0,
                 "Level": 0
             }
         }
     ],
     "skills": [
-        {
-            "name": "即时压制",
-            "icon": "/public/images/character/skillicon/icon_combo_skill_meurs_01.png",
-            "description": "当敌人开始蓄力，或主控干员受到攻击后生命值低于{trigger_hp_ratio:0%}可以发动。\n挥拳向前用力扣下，对敌人造成<@ba.pd>物理伤害</>，并使自身和另一名友方干员（主控干员优先）获得<#ba.shield>护盾</>。\n防御力可以额外提高护盾值。",
-            "groupType": 3,
-            "skillIds": [
-                "chr_0020_meurs_combo_skill"
-            ]
-        },
         {
             "name": "基础战术",
             "icon": "/public/images/character/skillicon/icon_attack_claym.png",
@@ -166,6 +165,15 @@
             "groupType": 2,
             "skillIds": [
                 "chr_0020_meurs_ultimate_skill"
+            ]
+        },
+        {
+            "name": "即时压制",
+            "icon": "/public/images/character/skillicon/icon_combo_skill_meurs_01.png",
+            "description": "当敌人开始蓄力，或主控干员受到攻击后生命值低于{trigger_hp_ratio:0%}可以发动。\n挥拳向前用力扣下，对敌人造成<@ba.pd>物理伤害</>，并使自身和另一名友方干员（主控干员优先）获得<#ba.shield>护盾</>。\n防御力可以额外提高护盾值。",
+            "groupType": 3,
+            "skillIds": [
+                "chr_0020_meurs_combo_skill"
             ]
         }
     ],
