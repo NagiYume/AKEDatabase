@@ -571,7 +571,10 @@
 
                 return `
                     <div class="skill-item" data-skill-name="${group.name}">
-                        <div class="skill-name">${displayName}</div>
+                        <div class="skill-name">
+                            <img class="skill-icon" src="${group.icon}" alt="" onerror="this.onerror=null; this.src='';">
+                            ${displayName}
+                        </div>
                         <div class="skill-desc">${groupDesc}</div>
                         ${skillTables}
                     </div>
@@ -618,6 +621,7 @@
             const spaceshipHtml = spaceshipSkills.length ? spaceshipSkills.map(slot => `
                 <div class="spaceship-skill-item">
                     <div class="spaceship-skill-header">
+                        <img class="spaceship-icon" src="${slot.icon}" alt="" onerror="this.onerror=null; this.src='';">
                         <span class="spaceship-skill-name">${slot.talentName}</span>
                         <span class="spaceship-skill-room">${slot.roomTypeName}</span>
                     </div>
