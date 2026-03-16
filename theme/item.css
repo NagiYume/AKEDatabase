@@ -1,0 +1,253 @@
+/* theme/item.css */
+
+.item-module {
+    display: flex;
+    gap: 20px;
+    height: 100%;
+    min-height: 500px;
+    margin: 0;
+    padding: 0;
+}
+
+.left-column {
+    width: 260px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    flex-shrink: 0;
+}
+
+.list-search {
+    padding: 8px;
+    border-bottom: 1px solid var(--border-color, #d9e0e8);
+    flex-shrink: 0;
+    background: var(--sidebar-bg, #f2f4f8);
+}
+
+.item-list {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--sidebar-bg, #f2f4f8);
+    padding: 16px;
+    border: 1px solid var(--border-color, #d9e0e8);
+    border-top: none;
+    width: auto;
+}
+
+.item-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 6px;
+    margin-bottom: 8px;
+    background: var(--module-bg, white);
+    border-radius: 12px;
+    border: 1px solid var(--border-color, #e2e7f0);
+    cursor: pointer;
+    transition: all 0.2s;
+    gap: 2px;
+}
+.item-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    border-color: #b8c5d9;
+}
+.item-item.active {
+    background: var(--active-bg, #e2eaf9);
+    border-left: 5px solid #1e6f9f;
+}
+
+.rarity-bar {
+    display: inline-block;
+    width: 5px;
+    height: 50px;
+    border-radius: 2px;
+    margin-right: 4px;
+    background-color: #ccc;
+    flex-shrink: 0;
+}
+.rarity-bar.rarity-1 { background-color: #808080; }
+.rarity-bar.rarity-2 { background-color: #00b300; }
+.rarity-bar.rarity-3 { background-color: #3b7eff; }
+.rarity-bar.rarity-4 { background-color: #a335ee; }
+.rarity-bar.rarity-5 { background-color: #ffcc00; }
+.rarity-bar.rarity-6 { background-color: #ff3333; }
+
+.item-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 4px;
+    object-fit: cover;
+    margin-right: 4px;
+    flex-shrink: 0;
+    background: var(--icon-bg, #eef3fa);
+}
+
+.item-info {
+    flex: 1;
+    min-width: 0;
+    line-height: 1.2;
+    margin-right: 4px;
+}
+.item-name {
+    font-weight: 600;
+    color: var(--text-color, #1e2b3c);
+    font-size: 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.item-id {
+    font-size: 12px;
+    color: #999;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.item-detail {
+    flex: 1;
+    background: var(--content-bg, #ffffff);
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid var(--border-color, #f0f3f9);
+    overflow-y: auto;
+}
+
+/* 详情头部 */
+.detail-header {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+.detail-icon img {
+    width: 120px;
+    height: 120px;
+    object-fit: contain;
+    background: var(--icon-bg, #eef3fa);
+    border-radius: 20px;
+    padding: 10px;
+}
+.detail-text {
+    flex: 1;
+}
+.detail-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.detail-name {
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--text-color, #1e2b3c);
+}
+.detail-rarity {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.detail-rarity.rarity-1 { background-color: #808080; }
+.detail-rarity.rarity-2 { background-color: #00b300; }
+.detail-rarity.rarity-3 { background-color: #3b7eff; }
+.detail-rarity.rarity-4 { background-color: #a335ee; }
+.detail-rarity.rarity-5 { background-color: #ffcc00; }
+.detail-rarity.rarity-6 { background-color: #ff3333; }
+
+.detail-id {
+    font-size: 0.9rem;
+    color: var(--desc-color, #5b6f86);
+    margin-left: 8px;
+    font-weight: normal;
+}
+.detail-type {
+    font-size: 1rem;
+    color: var(--desc-color, #5b6f86);
+    margin-bottom: 10px;
+    background: var(--tag-bg, #e0e8f2);
+    display: inline-block;
+    padding: 2px 12px;
+    border-radius: 30px;
+}
+.detail-desc {
+    border: 1px solid var(--border-color, #d9e0e8);
+    border-radius: 8px;
+    padding: 12px;
+    background: var(--module-bg, #f8fafd);
+    line-height: 1.6;
+    color: var(--text-color, #1e2b3c);
+    white-space: pre-wrap;
+}
+
+/* 详情区块 */
+.detail-section {
+    margin-top: 30px;
+}
+.detail-section h3 {
+    font-size: 1.4rem;
+    border-bottom: 2px solid var(--border-color, #d9e0e8);
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+    color: var(--text-color, #1e2b3c);
+}
+
+/* 获取方式列表 */
+.obtain-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.obtain-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--module-bg, #f8fafd);
+    border-radius: 8px;
+    border: 1px solid var(--border-color, #e2e7f0);
+}
+.obtain-icon {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    background: #2a3a4f;
+    border-radius: 6px;
+    padding: 4px;
+}
+.obtain-desc {
+    color: var(--text-color, #1e2b3c);
+}
+
+/* 合成配方、掉落列表 */
+.craft-list, .dropped-list {
+    background: var(--module-bg, #f8fafd);
+    border-radius: 8px;
+    padding: 12px;
+    border: 1px solid var(--border-color, #e2e7f0);
+}
+.dropped-list {
+    list-style: none;
+    padding-left: 0;
+}
+.dropped-list li {
+    padding: 4px 0;
+    border-bottom: 1px dotted var(--border-color, #e2e7f0);
+    color: var(--desc-color, #5b6f86);
+}
+.dropped-list li:last-child {
+    border-bottom: none;
+}
+
+.loader {
+    text-align: center;
+    padding: 40px;
+    color: var(--loader-color, #60758b);
+    font-style: italic;
+}
+.error-message {
+    color: #b0003a;
+    background: #ffe8f0;
+    padding: 20px;
+    border-radius: 20px;
+    border: 1px solid #ffb3c6;
+}

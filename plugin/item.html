@@ -1,0 +1,329 @@
+<!-- plugin/item.html -->
+<link rel="stylesheet" href="/theme/item.css">
+
+<div class="item-module">
+    <div class="left-column">
+        <div class="list-search">
+            <input type="text" id="itemSearchInput" placeholder="搜索物品 (名称/ID)" class="search-input">
+        </div>
+        <div class="item-list" id="itemList"></div>
+    </div>
+    <div class="item-detail" id="itemDetail">
+        <div class="loader">加载物品数据...</div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        let allItems = [];
+        let activeItemId = null;
+        let isInitialized = false;
+        let searchTerm = '';
+
+        const IMAGE_BASE_PATH = '/public/images/';
+
+        // 类型映射（根据游戏实际类型补充）
+        const TYPE_MAP = {
+            4: '角色',
+            5: '武器',
+            6: '装备',
+            8: '材料',
+            12: '蓝图',
+            13: '任务道具',
+            14: '寻访凭证',
+            19: '基质',
+            21: '理智',
+            22: '消耗品',
+            25: '武器经验',
+            26: '武器突破',
+            27: '角色培养',
+            33: '礼物',
+            37: '行动资历',
+            38: '活跃度',
+            39: '配方',
+            40: '升级材料',
+            42: '信物',
+            43: '自选箱',
+            44: '信用',
+            45: '解析晶块',
+            47: '装备配方',
+            48: '食物',
+            49: '配额',
+            51: '据点发展值',
+            52: '食物',
+            53: '调度券',
+            54: '作战设备',
+            55: '探物器',
+            56: '货组',
+            57: '情报',
+            58: '滤镜',
+            59: '音乐',
+            60: '刻写箱',
+            61: '冷却脂',
+            62: '理智回复',
+            63: '限时理智',
+            64: '系统蓝图',
+            65: '建设值',
+            66: '头像',
+            67: '头像框',
+            68: '名片主题',
+            69: '展品',
+            70: '贴纸',
+            71: '结核',
+            72: '残块',
+            73: '残块(已开启)',
+            74: '醚质晶块',
+            75: '芯片',
+            76: '记忆网纸',
+            77: '行动刻度',
+            78: '刻写券',
+            79: '武库配额',
+            80: '作战设备容量',
+            81: '寻访凭证',
+            82: '限时寻访凭证',
+            83: '寻访情报书',
+            84: '通行证经验',
+            85: '通行证申请',
+            86: '通行证申请(预设)',
+            87: '武器原型',
+            88: '精锻助剂',
+            89: '月卡凭证',
+            90: '月卡凭证',
+            91: '地区增益',
+            92: '工业点数',
+            95: '技能专精',
+            96: '存续痕迹',
+            97: '理智萃取器',
+            98: '理智消耗许可',
+            99: '叙事',
+            100: '蚀刻章'
+        };
+
+        function getCurrentShowHidden() {
+            return window.akeData?.getConfig().showHidden ?? false;
+        }
+
+        function parseText(text) {
+            return window.parseText(text, IMAGE_BASE_PATH);
+        }
+
+        function filterItemsBySearch(items) {
+            if (!searchTerm) return items;
+            const term = searchTerm.toLowerCase();
+            return items.filter(i => 
+                (i.name && i.name.toLowerCase().includes(term)) || 
+                (i.itemId && i.itemId.toLowerCase().includes(term))
+            );
+        }
+
+        async function loadItemManifest(showHidden) {
+            try {
+                const res = await fetch('/public/CH/item/manifest.json?t=' + Date.now());
+                if (!res.ok) throw new Error('无法加载物品清单');
+                const all = await res.json();
+                let items = showHidden ? all : all.filter(i => !i.hidden);
+                items.sort((a, b) => (a.priority || 999) - (b.priority || 999));
+                return items;
+            } catch (err) {
+                console.error('加载物品清单失败:', err);
+                return [];
+            }
+        }
+
+        function renderItemList() {
+            const container = document.getElementById('itemList');
+            const detailContainer = document.getElementById('itemDetail');
+            if (!container) return;
+
+            const filtered = filterItemsBySearch(allItems);
+
+            container.innerHTML = '';
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="loader">无匹配物品</div>';
+                if (detailContainer) detailContainer.innerHTML = '<div class="loader">请选择物品</div>';
+                activeItemId = null;
+                return;
+            }
+
+            filtered.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = `item-item ${item.itemId === activeItemId ? 'active' : (index === 0 && !activeItemId ? 'active' : '')}`;
+                div.dataset.itemId = item.itemId;
+                div.dataset.contentFile = item.contentFile;
+
+                const rarityBar = document.createElement('span');
+                rarityBar.className = `rarity-bar rarity-${item.rarity}`;
+                rarityBar.title = `稀有度 ${item.rarity}`;
+
+                const icon = document.createElement('img');
+                icon.className = 'item-icon';
+                icon.src = item.icon || '';
+                icon.onerror = function() { this.onerror = null; this.src = ''; };
+
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'item-info';
+
+                const nameSpan = document.createElement('div');
+                nameSpan.className = 'item-name';
+                nameSpan.textContent = item.name;
+
+                const idSpan = document.createElement('div');
+                idSpan.className = 'item-id';
+                idSpan.textContent = item.itemId;
+
+                infoDiv.appendChild(nameSpan);
+                infoDiv.appendChild(idSpan);
+
+                div.appendChild(rarityBar);
+                div.appendChild(icon);
+                div.appendChild(infoDiv);
+
+                div.addEventListener('click', () => {
+                    document.querySelectorAll('.item-item').forEach(el => el.classList.remove('active'));
+                    div.classList.add('active');
+                    activeItemId = item.itemId;
+                    loadItemDetail(item, detailContainer);
+                });
+
+                container.appendChild(div);
+            });
+
+            const activeExists = filtered.some(i => i.itemId === activeItemId);
+            if (!activeExists && filtered.length > 0) {
+                activeItemId = filtered[0].itemId;
+                const firstItem = container.querySelector('.item-item');
+                if (firstItem) firstItem.classList.add('active');
+                loadItemDetail(filtered[0], detailContainer);
+            } else if (activeExists) {
+                const activeItem = filtered.find(i => i.itemId === activeItemId);
+                if (activeItem) {
+                    const activeDiv = container.querySelector(`.item-item[data-item-id="${activeItemId}"]`);
+                    if (activeDiv) activeDiv.classList.add('active');
+                    loadItemDetail(activeItem, detailContainer);
+                }
+            }
+        }
+
+        async function loadItemDetail(item, container) {
+            container.innerHTML = '<div class="loader">加载物品数据...</div>';
+            try {
+                const data = await fetch(item.contentFile + '?t=' + Date.now()).then(r => r.json());
+                container.innerHTML = renderDetail(data, item);
+            } catch (err) {
+                container.innerHTML = `<div class="error-message">加载失败: ${err.message}</div>`;
+            }
+        }
+
+        function renderDetail(data, item) {
+            const name = data.name || item.name;
+            const rarity = data.rarity || item.rarity;
+            const iconBig = data.icon || item.icon; // 如果有大图可单独用 data.iconbig
+            const typeName = TYPE_MAP[data.type] || `类型 ${data.type}`;
+            
+            // 获取方式
+            let obtainHtml = '';
+            if (data.obtainWays && data.obtainWays.length) {
+                obtainHtml = `
+                    <div class="detail-section">
+                        <h3>获取方式</h3>
+                        <div class="obtain-list">
+                            ${data.obtainWays.map(way => `
+                                <div class="obtain-item">
+                                    <img class="obtain-icon" src="${way.icon}" onerror="this.onerror=null; this.src='';">
+                                    <span class="obtain-desc">${way.desc}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 合成配方
+            let craftHtml = '';
+            if (data.craft) {
+                // 假设 craft 对象包含材料列表，格式可能为 { materials: [{ itemId, count }] } 或类似
+                // 根据实际数据调整，这里先显示占位
+                craftHtml = `
+                    <div class="detail-section">
+                        <h3>合成配方</h3>
+                        <div class="craft-list">
+                            ${JSON.stringify(data.craft)} <!-- 临时显示，需根据实际结构解析 -->
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 掉落来源
+            let droppedHtml = '';
+            if (data.droppedBy && data.droppedBy.length) {
+                droppedHtml = `
+                    <div class="detail-section">
+                        <h3>掉落来源</h3>
+                        <ul class="dropped-list">
+                            ${data.droppedBy.map(src => `<li>${src}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="item-detail-container">
+                    <div class="detail-header">
+                        <div class="detail-icon">
+                            <img src="${iconBig}" onerror="this.onerror=null; this.src='';">
+                        </div>
+                        <div class="detail-text">
+                            <div class="detail-title-row">
+                                <span class="detail-name">${name}</span>
+                                <span class="detail-rarity rarity-${rarity}" title="稀有度 ${rarity}"></span>
+                                <span class="detail-id">${data.id || item.itemId}</span>
+                            </div>
+                            <div class="detail-type">${typeName}</div>
+                            <div class="detail-desc">${parseText(data.description || '')}</div>
+                        </div>
+                    </div>
+                    ${obtainHtml}
+                    ${craftHtml}
+                    ${droppedHtml}
+                </div>
+            `;
+        }
+
+        async function refreshModule() {
+            const list = document.getElementById('itemList');
+            const detail = document.getElementById('itemDetail');
+            if (!list || !detail) return;
+
+            const showHidden = getCurrentShowHidden();
+            const items = await loadItemManifest(showHidden);
+            allItems = items;
+            renderItemList();
+        }
+
+        async function initModule() {
+            if (isInitialized) return;
+            isInitialized = true;
+            if (window.configLoaded) await window.configLoaded;
+
+            window.addEventListener('globalConfigChanged', (e) => {
+                searchTerm = '';
+                const searchInput = document.getElementById('itemSearchInput');
+                if (searchInput) searchInput.value = '';
+                refreshModule();
+            });
+
+            document.getElementById('itemSearchInput')?.addEventListener('input', (e) => {
+                searchTerm = e.target.value;
+                renderItemList();
+            });
+
+            await refreshModule();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initModule);
+        } else {
+            initModule();
+        }
+    })();
+</script>
