@@ -6,6 +6,17 @@
         <div class="list-search-fixed">
             <input type="text" id="weaponSearchInput" placeholder="搜索武器 (名称/ID)" class="search-input">
         </div>
+        <!-- 新增筛选栏 -->
+        <div class="filter-bar" id="weaponFilterBar">
+            <div class="filter-section">
+                <span class="filter-label">星级:</span>
+                <div class="filter-buttons" id="weaponRarityFilter"></div>
+            </div>
+            <div class="filter-section">
+                <span class="filter-label">类型:</span>
+                <div class="filter-buttons" id="weaponTypeFilter"></div>
+            </div>
+        </div>
         <div class="list-items" id="weaponListItems"></div>
     </div>
     <div class="weapon-detail" id="weaponDetail">
@@ -24,14 +35,17 @@
         let currentWeaponData = null;
         let currentWeapon = null;
 
-        const IMAGE_BASE_PATH = '/public/images/';
+        // 新增筛选状态
+        let selectedRarities = new Set();   // 选中的稀有度
+        let selectedTypes = new Set();      // 选中的武器类型ID
 
+        const IMAGE_BASE_PATH = '/public/images/';
         const WEAPON_TYPE_MAP = {
             1: "单手剑",
-            6: "手铳",
             2: "施术单元",
             3: "双手剑",
-            5: "长柄武器"
+            5: "长柄武器",
+            6: "手铳"
         };
 
         function getCurrentShowHidden() {
@@ -48,13 +62,82 @@
             return parts.length ? parts : [maxLevel];
         }
 
-        function filterWeaponsBySearch(weapons) {
-            if (!searchTerm) return weapons;
-            const term = searchTerm.toLowerCase();
-            return weapons.filter(w => 
-                (w.title && w.title.toLowerCase().includes(term)) || 
-                (w.weaponId && w.weaponId.toLowerCase().includes(term))
-            );
+        // 合并搜索和筛选
+        function filterWeapons(weapons) {
+            return weapons.filter(w => {
+                // 搜索过滤
+                if (searchTerm) {
+                    const term = searchTerm.toLowerCase();
+                    const nameMatch = w.title && w.title.toLowerCase().includes(term);
+                    const idMatch = w.weaponId && w.weaponId.toLowerCase().includes(term);
+                    if (!nameMatch && !idMatch) return false;
+                }
+                // 稀有度筛选
+                if (selectedRarities.size > 0 && !selectedRarities.has(w.rarity)) {
+                    return false;
+                }
+                // 类型筛选
+                if (selectedTypes.size > 0 && !selectedTypes.has(w.weapontype)) {
+                    return false;
+                }
+                return true;
+            });
+        }
+
+        // 生成筛选按钮
+        function generateFilterButtons() {
+            const rarityContainer = document.getElementById('weaponRarityFilter');
+            const typeContainer = document.getElementById('weaponTypeFilter');
+            if (!rarityContainer || !typeContainer) return;
+
+            // 稀有度按钮（1-6，只显示存在的）
+            const existingRarities = new Set(allWeapons.map(w => w.rarity));
+            const rarityBtns = [];
+            for (let r = 1; r <= 6; r++) {
+                if (existingRarities.has(r)) {
+                    const btn = document.createElement('span');
+                    btn.className = `filter-btn ${selectedRarities.has(r) ? 'active' : ''}`;
+                    btn.dataset.rarity = r;
+                    btn.textContent = r + '星';
+                    btn.addEventListener('click', () => {
+                        if (selectedRarities.has(r)) {
+                            selectedRarities.delete(r);
+                        } else {
+                            selectedRarities.add(r);
+                        }
+                        btn.classList.toggle('active');
+                        renderWeaponList();
+                    });
+                    rarityBtns.push(btn);
+                }
+            }
+            rarityContainer.innerHTML = '';
+            rarityBtns.forEach(btn => rarityContainer.appendChild(btn));
+
+            // 类型按钮（从WEAPON_TYPE_MAP中取，只显示存在的）
+            const existingTypes = new Set(allWeapons.map(w => w.weapontype));
+            const typeBtns = [];
+            for (const [typeId, typeName] of Object.entries(WEAPON_TYPE_MAP)) {
+                const id = parseInt(typeId, 10);
+                if (existingTypes.has(id)) {
+                    const btn = document.createElement('span');
+                    btn.className = `filter-btn ${selectedTypes.has(id) ? 'active' : ''}`;
+                    btn.dataset.type = id;
+                    btn.textContent = typeName;
+                    btn.addEventListener('click', () => {
+                        if (selectedTypes.has(id)) {
+                            selectedTypes.delete(id);
+                        } else {
+                            selectedTypes.add(id);
+                        }
+                        btn.classList.toggle('active');
+                        renderWeaponList();
+                    });
+                    typeBtns.push(btn);
+                }
+            }
+            typeContainer.innerHTML = '';
+            typeBtns.forEach(btn => typeContainer.appendChild(btn));
         }
 
         async function loadWeaponManifest(showHidden) {
@@ -71,6 +154,85 @@
             }
         }
 
+        function renderWeaponList() {
+            const listItemsContainer = document.getElementById('weaponListItems');
+            const detailContainer = document.getElementById('weaponDetail');
+            if (!listItemsContainer) return;
+
+            const filtered = filterWeapons(allWeapons);
+
+            listItemsContainer.innerHTML = '';
+            if (filtered.length === 0) {
+                listItemsContainer.innerHTML = '<div class="loader">无匹配武器</div>';
+                if (detailContainer) detailContainer.innerHTML = '<div class="loader">请选择武器</div>';
+                activeWeaponId = null;
+                return;
+            }
+
+            filtered.forEach((weapon, index) => {
+                const item = document.createElement('div');
+                item.className = `weapon-item ${weapon.weaponId === activeWeaponId ? 'active' : (index === 0 && !activeWeaponId ? 'active' : '')}`;
+                item.dataset.weaponId = weapon.weaponId;
+                item.dataset.contentFile = weapon.contentFile;
+
+                const rarityBar = document.createElement('span');
+                rarityBar.className = `rarity-bar rarity-${weapon.rarity}`;
+                rarityBar.title = `稀有度 ${weapon.rarity}`;
+
+                const icon = document.createElement('img');
+                icon.className = 'weapon-icon';
+                icon.src = weapon.icon;
+                icon.onerror = function() { this.onerror = null; this.src = ''; };
+
+                const info = document.createElement('div');
+                info.className = 'weapon-info';
+                const title = document.createElement('div');
+                title.className = 'weapon-title';
+                title.textContent = weapon.title;
+                const idSpan = document.createElement('div');
+                idSpan.className = 'weapon-id';
+                idSpan.textContent = weapon.weaponId;
+                info.appendChild(title);
+                info.appendChild(idSpan);
+
+                const typeTag = document.createElement('span');
+                typeTag.className = 'weapon-type-tag';
+                const typeName = WEAPON_TYPE_MAP[weapon.weapontype] || '未知';
+                typeTag.textContent = typeName;
+                typeTag.title = typeName;
+
+                item.appendChild(rarityBar);
+                item.appendChild(icon);
+                item.appendChild(info);
+                item.appendChild(typeTag);
+
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.weapon-item').forEach(el => el.classList.remove('active'));
+                    item.classList.add('active');
+                    activeWeaponId = weapon.weaponId;
+                    loadWeaponDetail(weapon, detailContainer);
+                });
+
+                listItemsContainer.appendChild(item);
+            });
+
+            const activeExists = filtered.some(w => w.weaponId === activeWeaponId);
+            if (!activeExists && filtered.length > 0) {
+                activeWeaponId = filtered[0].weaponId;
+                const firstItem = listItemsContainer.querySelector('.weapon-item');
+                if (firstItem) firstItem.classList.add('active');
+                loadWeaponDetail(filtered[0], detailContainer);
+            } else if (activeExists) {
+                const activeWeapon = filtered.find(w => w.weaponId === activeWeaponId);
+                if (activeWeapon) {
+                    const activeItem = listItemsContainer.querySelector(`.weapon-item[data-weapon-id="${activeWeaponId}"]`);
+                    if (activeItem) activeItem.classList.add('active');
+                    loadWeaponDetail(activeWeapon, detailContainer);
+                }
+            }
+        }
+
+        // 原有 renderAtkRows 函数保持不变
         function renderAtkRows(data, showAll, levelsToShow) {
             const allRows = [];
             for (let i = 0; i < 90; i++) {
@@ -88,99 +250,6 @@
             });
         
             return filtered.length ? filtered.join('') : allRows.filter(r => r.includes(`data-level="${Math.max(...levelsToShow)}"`)).join('');
-        }
-        
-        function renderWeaponList() {
-            const listItemsContainer = document.getElementById('weaponListItems');
-            const detailContainer = document.getElementById('weaponDetail');
-            if (!listItemsContainer) return;
-
-            const filtered = filterWeaponsBySearch(allWeapons);
-
-            listItemsContainer.innerHTML = '';
-            if (filtered.length === 0) {
-                listItemsContainer.innerHTML = '<div class="loader">无匹配武器</div>';
-                if (detailContainer) detailContainer.innerHTML = '<div class="loader">请选择武器</div>';
-                activeWeaponId = null;
-                return;
-            }
-        
-            filtered.forEach((weapon, index) => {
-                const item = document.createElement('div');
-                item.className = `weapon-item ${weapon.weaponId === activeWeaponId ? 'active' : (index === 0 && !activeWeaponId ? 'active' : '')}`;
-                item.dataset.weaponId = weapon.weaponId;
-                item.dataset.contentFile = weapon.contentFile;
-            
-                // 稀有度竖条
-                const rarityBar = document.createElement('span');
-                rarityBar.className = `rarity-bar rarity-${weapon.rarity}`;
-                rarityBar.title = `稀有度 ${weapon.rarity}`;
-            
-                // 头像
-                const icon = document.createElement('img');
-                icon.className = 'weapon-icon';
-                icon.src = weapon.icon;
-                icon.onerror = function() { this.onerror = null; this.src = ''; };
-            
-                // 信息区域
-                const info = document.createElement('div');
-                info.className = 'weapon-info';
-                const title = document.createElement('div');
-                title.className = 'weapon-title';
-                title.textContent = weapon.title;
-                const idSpan = document.createElement('div');
-                idSpan.className = 'weapon-id';
-                idSpan.textContent = weapon.weaponId;
-                info.appendChild(title);
-                info.appendChild(idSpan);
-            
-                // 武器类型标签
-                const typeTag = document.createElement('span');
-                typeTag.className = 'weapon-type-tag';
-                const typeName = WEAPON_TYPE_MAP[weapon.weapontype] || '未知';
-                typeTag.textContent = typeName;
-                typeTag.title = typeName;
-            
-                // 组装
-                item.appendChild(rarityBar);
-                item.appendChild(icon);
-                item.appendChild(info);
-                item.appendChild(typeTag);
-            
-                item.addEventListener('click', () => {
-                    document.querySelectorAll('.weapon-item').forEach(el => el.classList.remove('active'));
-                    item.classList.add('active');
-                    activeWeaponId = weapon.weaponId;
-                    loadWeaponDetail(weapon, detailContainer);
-                });
-            
-                listItemsContainer.appendChild(item);
-            });
-        
-            const activeExists = filtered.some(w => w.weaponId === activeWeaponId);
-            if (!activeExists && filtered.length > 0) {
-                activeWeaponId = filtered[0].weaponId;
-                const firstItem = listItemsContainer.querySelector('.weapon-item');
-                if (firstItem) firstItem.classList.add('active');
-                loadWeaponDetail(filtered[0], detailContainer);
-            } else if (activeExists) {
-                const activeWeapon = filtered.find(w => w.weaponId === activeWeaponId);
-                if (activeWeapon) {
-                    const activeItem = listItemsContainer.querySelector(`.weapon-item[data-weapon-id="${activeWeaponId}"]`);
-                    if (activeItem) activeItem.classList.add('active');
-                    loadWeaponDetail(activeWeapon, detailContainer);
-                }
-            }
-        }
-
-        function updateAtkTable() {
-            const tbody = document.querySelector('.atk-table tbody');
-            if (!tbody || !currentWeaponData) return;
-            const newRows = renderAtkRows(currentWeaponData, showAllWeaponLevels, weaponLevelsToShow);
-            tbody.innerHTML = newRows;
-
-            const btn = document.querySelector('.toggle-weapon-levels-btn');
-            if (btn) btn.textContent = showAllWeaponLevels ? '收起多余等级' : '展开所有等级';
         }
 
         async function loadWeaponDetail(weapon, container) {
@@ -203,6 +272,16 @@
             } catch (err) {
                 container.innerHTML = `<div class="error-message">加载失败: ${err.message}</div>`;
             }
+        }
+
+        function updateAtkTable() {
+            const tbody = document.querySelector('.atk-table tbody');
+            if (!tbody || !currentWeaponData) return;
+            const newRows = renderAtkRows(currentWeaponData, showAllWeaponLevels, weaponLevelsToShow);
+            tbody.innerHTML = newRows;
+
+            const btn = document.querySelector('.toggle-weapon-levels-btn');
+            if (btn) btn.textContent = showAllWeaponLevels ? '收起多余等级' : '展开所有等级';
         }
 
         function renderDetail(data, weapon) {
@@ -331,7 +410,7 @@
                 <div class="weapon-desc">${data.weaponDesc || ''}</div>
             `;
         }
-        
+
         async function refreshWeaponModule() {
             const weaponList = document.getElementById('weaponList');
             const weaponDetail = document.getElementById('weaponDetail');
@@ -339,6 +418,8 @@
             const showHidden = getCurrentShowHidden();
             const weapons = await loadWeaponManifest(showHidden);
             allWeapons = weapons;
+            // 生成筛选按钮
+            generateFilterButtons();
             renderWeaponList();
         }
 
@@ -361,10 +442,12 @@
                     weaponLevelsToShow = null;
                 }
                 showAllWeaponLevels = false;
+                // 重置筛选状态
+                selectedRarities.clear();
+                selectedTypes.clear();
                 refreshWeaponModule();
             });
 
-            // 搜索监听
             document.getElementById('weaponSearchInput')?.addEventListener('input', (e) => {
                 searchTerm = e.target.value;
                 renderWeaponList();

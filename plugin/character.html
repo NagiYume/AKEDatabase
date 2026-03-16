@@ -6,6 +6,25 @@
         <div class="list-search">
             <input type="text" id="characterSearchInput" placeholder="搜索角色 (名称/ID)" class="search-input">
         </div>
+        <!-- 新增筛选栏 -->
+        <div class="filter-bar" id="characterFilterBar">
+            <div class="filter-section">
+                <span class="filter-label">星级:</span>
+                <div class="filter-buttons" id="charRarityFilter"></div>
+            </div>
+            <div class="filter-section">
+                <span class="filter-label">属性:</span>
+                <div class="filter-buttons" id="charTypeFilter"></div>
+            </div>
+            <div class="filter-section">
+                <span class="filter-label">职业:</span>
+                <div class="filter-buttons" id="charProfessionFilter"></div>
+            </div>
+            <div class="filter-section">
+                <span class="filter-label">武器:</span>
+                <div class="filter-buttons" id="charWeaponFilter"></div>
+            </div>
+        </div>
         <div class="character-list" id="characterList"></div>
     </div>
     <div class="character-detail" id="characterDetail">
@@ -20,12 +39,19 @@
         let isInitialized = false;
 
         let charLevelsToShow = null;
+        let skillLevelsToShow = null; // 新增声明
         let globalSkillExpand = false;
         let skillExpandMap = {};
         let showAllCharLevels = false;
         let searchTerm = '';
-        let currentCharacter = null;       // 当前角色数据
-        let currentCharData = null;        // 当前角色的详细数据
+        let currentCharacter = null;
+        let currentCharData = null;
+
+        // 新增筛选状态
+        let selectedRarities = new Set();
+        let selectedCharTypes = new Set();
+        let selectedProfessions = new Set();
+        let selectedWeaponTypes = new Set();
 
         const IMAGE_BASE_PATH = '/public/images/bufficon/';
 
@@ -57,15 +83,7 @@
             return parts.length ? parts : [maxLevel];
         }
 
-        function filterCharactersBySearch(chars) {
-            if (!searchTerm) return chars;
-            const term = searchTerm.toLowerCase();
-            return chars.filter(c => 
-                (c.name && c.name.toLowerCase().includes(term)) || 
-                (c.charId && c.charId.toLowerCase().includes(term))
-            );
-        }
-
+        // 占位符替换函数（必须定义）
         function replacePlaceholders(desc, valueMap) {
             const lowerValueMap = {};
             for (const [key, val] of Object.entries(valueMap)) {
@@ -100,6 +118,119 @@
             });
         }
 
+        // 合并搜索和筛选
+        function filterCharacters(chars) {
+            return chars.filter(c => {
+                // 搜索过滤
+                if (searchTerm) {
+                    const term = searchTerm.toLowerCase();
+                    const nameMatch = c.name && c.name.toLowerCase().includes(term);
+                    const idMatch = c.charId && c.charId.toLowerCase().includes(term);
+                    if (!nameMatch && !idMatch) return false;
+                }
+                // 稀有度筛选
+                if (selectedRarities.size > 0 && !selectedRarities.has(c.rarity)) return false;
+                // 属性筛选
+                if (selectedCharTypes.size > 0 && !selectedCharTypes.has(c.charType)) return false;
+                // 职业筛选
+                if (selectedProfessions.size > 0 && !selectedProfessions.has(c.profession)) return false;
+                // 武器类型筛选
+                if (selectedWeaponTypes.size > 0 && !selectedWeaponTypes.has(c.weapontype)) return false;
+                return true;
+            });
+        }
+
+        // 生成筛选按钮
+        function generateFilterButtons() {
+            const rarityContainer = document.getElementById('charRarityFilter');
+            const typeContainer = document.getElementById('charTypeFilter');
+            const profContainer = document.getElementById('charProfessionFilter');
+            const weaponContainer = document.getElementById('charWeaponFilter');
+            if (!rarityContainer || !typeContainer || !profContainer || !weaponContainer) return;
+
+            // 稀有度按钮（1-6，只显示存在的）
+            const existingRarities = new Set(allCharacters.map(c => c.rarity));
+            rarityContainer.innerHTML = '';
+            for (let r = 1; r <= 6; r++) {
+                if (existingRarities.has(r)) {
+                    const btn = document.createElement('span');
+                    btn.className = `filter-btn ${selectedRarities.has(r) ? 'active' : ''}`;
+                    btn.dataset.rarity = r;
+                    btn.textContent = r + '星';
+                    btn.addEventListener('click', () => {
+                        if (selectedRarities.has(r)) {
+                            selectedRarities.delete(r);
+                        } else {
+                            selectedRarities.add(r);
+                        }
+                        btn.classList.toggle('active');
+                        renderCharacterList();
+                    });
+                    rarityContainer.appendChild(btn);
+                }
+            }
+
+            // 属性按钮（使用实际值，只显示存在的）
+            const existingTypes = new Set(allCharacters.map(c => c.charType).filter(t => t));
+            typeContainer.innerHTML = '';
+            existingTypes.forEach(type => {
+                const btn = document.createElement('span');
+                btn.className = `filter-btn ${selectedCharTypes.has(type) ? 'active' : ''}`;
+                btn.dataset.type = type;
+                btn.textContent = type;
+                btn.addEventListener('click', () => {
+                    if (selectedCharTypes.has(type)) {
+                        selectedCharTypes.delete(type);
+                    } else {
+                        selectedCharTypes.add(type);
+                    }
+                    btn.classList.toggle('active');
+                    renderCharacterList();
+                });
+                typeContainer.appendChild(btn);
+            });
+
+            // 职业按钮
+            const existingProfessions = new Set(allCharacters.map(c => c.profession).filter(p => p));
+            profContainer.innerHTML = '';
+            existingProfessions.forEach(prof => {
+                const btn = document.createElement('span');
+                btn.className = `filter-btn ${selectedProfessions.has(prof) ? 'active' : ''}`;
+                btn.dataset.profession = prof;
+                btn.textContent = prof;
+                btn.addEventListener('click', () => {
+                    if (selectedProfessions.has(prof)) {
+                        selectedProfessions.delete(prof);
+                    } else {
+                        selectedProfessions.add(prof);
+                    }
+                    btn.classList.toggle('active');
+                    renderCharacterList();
+                });
+                profContainer.appendChild(btn);
+            });
+
+            // 武器类型按钮
+            const existingWeapons = new Set(allCharacters.map(c => c.weapontype).filter(w => w));
+            weaponContainer.innerHTML = '';
+            existingWeapons.forEach(weapon => {
+                const btn = document.createElement('span');
+                btn.className = `filter-btn ${selectedWeaponTypes.has(weapon) ? 'active' : ''}`;
+                btn.dataset.weapon = weapon;
+                btn.textContent = weapon;
+                btn.addEventListener('click', () => {
+                    if (selectedWeaponTypes.has(weapon)) {
+                        selectedWeaponTypes.delete(weapon);
+                    } else {
+                        selectedWeaponTypes.add(weapon);
+                    }
+                    btn.classList.toggle('active');
+                    renderCharacterList();
+                });
+                weaponContainer.appendChild(btn);
+            });
+        }
+
         async function loadCharacterManifest(showHidden) {
             try {
                 const res = await fetch('/public/CH/character/manifest.json?t=' + Date.now());
@@ -119,7 +250,7 @@
             const detailContainer = document.getElementById('characterDetail');
             if (!container) return;
 
-            const filtered = filterCharactersBySearch(allCharacters);
+            const filtered = filterCharacters(allCharacters);
 
             container.innerHTML = '';
             if (filtered.length === 0) {
@@ -205,13 +336,11 @@
                     globalSkillBtn.addEventListener('click', (e) => {
                         e.preventDefault();
                         globalSkillExpand = !globalSkillExpand;
-                        // 当全局展开时，清空独立状态
                         if (globalSkillExpand) skillExpandMap = {};
-                        updateAllSkillTables(); // 更新所有技能表格
+                        updateAllSkillTables();
                     });
                 }
             
-                // 绑定每个技能的独立展开按钮
                 const skillToggleBtns = container.querySelectorAll('.skill-toggle-btn');
                 skillToggleBtns.forEach(btn => {
                     btn.addEventListener('click', (e) => {
@@ -226,7 +355,6 @@
                     });
                 });
             
-                // 绑定角色等级展开按钮
                 const toggleCharBtn = container.querySelector('.toggle-char-levels-btn');
                 if (toggleCharBtn) {
                     toggleCharBtn.addEventListener('click', (e) => {
@@ -236,7 +364,6 @@
                     });
                 }
 
-                // 绑定折叠区域标题点击事件
                 container.querySelectorAll('.section-header').forEach(header => {
                     header.addEventListener('click', () => {
                         const indicator = header.querySelector('.collapse-indicator');
@@ -285,7 +412,6 @@
             }
             tbody.innerHTML = rowsToRender.join('');
         
-            // 更新按钮文字
             const btn = document.querySelector('.toggle-char-levels-btn');
             if (btn) btn.textContent = showAllCharLevels ? '收起多余等级' : '展开所有等级';
         }
@@ -354,7 +480,6 @@
             `;
             skillContainer.innerHTML = tableHtml;
             
-            // 重新绑定新按钮的事件（因为按钮被替换了）
             const newBtn = skillContainer.querySelector('.skill-toggle-btn');
             if (newBtn) {
                 newBtn.addEventListener('click', (e) => {
@@ -616,7 +741,6 @@
                 </table>
             ` : '<p>无</p>';
 
-            // 后勤技能
             const spaceshipSkills = data.spaceshipSkills || [];
             const spaceshipHtml = spaceshipSkills.length ? spaceshipSkills.map(slot => `
                 <div class="spaceship-skill-item">
@@ -690,6 +814,7 @@
             const showHidden = getCurrentShowHidden();
             const chars = await loadCharacterManifest(showHidden);
             allCharacters = chars;
+            generateFilterButtons();
             renderCharacterList();
         }
 
@@ -725,6 +850,11 @@
                 showAllCharLevels = false;
                 globalSkillExpand = false;
                 skillExpandMap = {};
+                // 重置筛选状态
+                selectedRarities.clear();
+                selectedCharTypes.clear();
+                selectedProfessions.clear();
+                selectedWeaponTypes.clear();
                 refreshModule();
             });
 

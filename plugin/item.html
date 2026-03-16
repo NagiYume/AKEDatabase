@@ -6,6 +6,17 @@
         <div class="list-search">
             <input type="text" id="itemSearchInput" placeholder="搜索物品 (名称/ID)" class="search-input">
         </div>
+        <!-- 筛选栏 -->
+        <div class="filter-bar" id="itemFilterBar">
+            <div class="filter-section">
+                <span class="filter-label">稀有度:</span>
+                <div class="filter-buttons" id="itemRarityFilter"></div>
+            </div>
+            <div class="filter-section">
+                <span class="filter-label">分类:</span>
+                <div class="filter-buttons" id="itemCategoryFilter"></div>
+            </div>
+        </div>
         <div class="item-list" id="itemList"></div>
     </div>
     <div class="item-detail" id="itemDetail">
@@ -20,14 +31,24 @@
         let isInitialized = false;
         let searchTerm = '';
 
+        // 筛选状态：稀有度 和 自定义分类
+        let selectedRarities = new Set();
+        let selectedCategories = new Set();
+
         const IMAGE_BASE_PATH = '/public/images/';
 
-        // 类型映射（根据游戏实际类型补充）
+        // 原始类型映射（用于详情显示）
         const TYPE_MAP = {
+            1: '折金票',
+            2: '嵌晶玉',
             4: '角色',
             5: '武器',
             6: '装备',
+            7: '角色经验',
             8: '材料',
+            9: '工业设备',
+            10: '核心',
+            11: '物流设备',
             12: '蓝图',
             13: '任务道具',
             14: '寻访凭证',
@@ -37,18 +58,23 @@
             25: '武器经验',
             26: '武器突破',
             27: '角色培养',
+            28: '矿点',
+            29: '源石',
+            32: '测试用道具',
             33: '礼物',
+            34: '种植道具',
             37: '行动资历',
             38: '活跃度',
             39: '配方',
             40: '升级材料',
+            41: '存放点',
             42: '信物',
             43: '自选箱',
             44: '信用',
             45: '解析晶块',
             47: '装备配方',
             48: '食物',
-            49: '配额',
+            49: '终点配额',
             51: '据点发展值',
             52: '食物',
             53: '调度券',
@@ -92,12 +118,49 @@
             91: '地区增益',
             92: '工业点数',
             95: '技能专精',
-            96: '存续痕迹',
+            96: '存续的痕迹',
             97: '理智萃取器',
             98: '理智消耗许可',
             99: '叙事',
             100: '蚀刻章'
         };
+
+        // ========== 自定义分类配置 ==========
+        // 请根据实际需求修改此映射：分类名称 -> 该分类包含的类型ID数组
+        const TYPE_MAP_REL = {
+            '贵重道具': [1, 2, 21,85,86,79,49,89,90,29,37,84,53,65,78,55,61,62,63,97,98,51,44,38],
+            '抽卡道具': [43,42,83,81,82,14],
+            '角色相关': [4,42,96,27,95,7,76],
+            '武器相关': [87,5,25,26],
+            '消耗品': [22,48,52,39,40],
+            '个性化': [66,67,68,69,70,76,58],
+            '基质': [19,60,78],
+            '基建': [10,12,54,92,9,11,64,41,28],
+            '装备':[6,88,47],
+            '材料':[8,34],
+            '物资调度': [33,56],
+            '阅读物':[99],
+            '谷地像差':[71,72,73,74,77,75],
+            '任务道具':[13],
+            '蚀刻章':[100],
+            '杂项': [32,59,80,57,45,50,91]
+        };
+        // ====================================
+
+        // 构建反向映射：类型ID -> 分类名称（如果某个ID出现在多个分类中，只取第一个匹配的）
+        const typeIdToCategory = {};
+        for (const [category, typeIds] of Object.entries(TYPE_MAP_REL)) {
+            for (const typeId of typeIds) {
+                if (!typeIdToCategory.hasOwnProperty(typeId)) {
+                    typeIdToCategory[typeId] = category;
+                }
+            }
+        }
+
+        // 获取物品的分类名称，若未定义则返回 "未分类"
+        function getItemCategory(typeId) {
+            return typeIdToCategory[typeId] || '未分类';
+        }
 
         function getCurrentShowHidden() {
             return window.akeData?.getConfig().showHidden ?? false;
@@ -107,13 +170,87 @@
             return window.parseText(text, IMAGE_BASE_PATH);
         }
 
-        function filterItemsBySearch(items) {
-            if (!searchTerm) return items;
-            const term = searchTerm.toLowerCase();
-            return items.filter(i => 
-                (i.name && i.name.toLowerCase().includes(term)) || 
-                (i.itemId && i.itemId.toLowerCase().includes(term))
-            );
+        // 合并搜索和筛选
+        function filterItems(items) {
+            return items.filter(item => {
+                // 搜索过滤
+                if (searchTerm) {
+                    const term = searchTerm.toLowerCase();
+                    const nameMatch = item.name && item.name.toLowerCase().includes(term);
+                    const idMatch = item.itemId && item.itemId.toLowerCase().includes(term);
+                    if (!nameMatch && !idMatch) return false;
+                }
+                // 稀有度筛选
+                if (selectedRarities.size > 0 && !selectedRarities.has(item.rarity)) return false;
+                // 自定义分类筛选
+                if (selectedCategories.size > 0) {
+                    const category = getItemCategory(item.type);
+                    if (!selectedCategories.has(category)) return false;
+                }
+                return true;
+            });
+        }
+
+        // 生成筛选按钮
+        function generateFilterButtons() {
+            const rarityContainer = document.getElementById('itemRarityFilter');
+            const categoryContainer = document.getElementById('itemCategoryFilter');
+            if (!rarityContainer || !categoryContainer) return;
+
+            // ---- 稀有度按钮 ----
+            const existingRarities = new Set(allItems.map(i => i.rarity));
+            rarityContainer.innerHTML = '';
+            for (let r = 1; r <= 6; r++) {
+                if (existingRarities.has(r)) {
+                    const btn = document.createElement('span');
+                    btn.className = `filter-btn ${selectedRarities.has(r) ? 'active' : ''}`;
+                    btn.dataset.rarity = r;
+                    btn.textContent = r + '星';
+                    btn.addEventListener('click', () => {
+                        if (selectedRarities.has(r)) {
+                            selectedRarities.delete(r);
+                        } else {
+                            selectedRarities.add(r);
+                        }
+                        btn.classList.toggle('active');
+                        renderItemList();
+                    });
+                    rarityContainer.appendChild(btn);
+                }
+            }
+
+            // ---- 自定义分类按钮 ----
+            // 收集所有物品实际存在的分类
+            const existingCategories = new Set();
+            allItems.forEach(item => {
+                const cat = getItemCategory(item.type);
+                existingCategories.add(cat);
+            });
+
+            // 优先显示配置中的分类顺序，最后显示“未分类”
+            const configuredCategories = Object.keys(TYPE_MAP_REL);
+            const sortedCategories = configuredCategories.filter(cat => existingCategories.has(cat));
+            if (existingCategories.has('未分类')) {
+                sortedCategories.push('未分类');
+            }
+
+            categoryContainer.innerHTML = '';
+            sortedCategories.forEach(category => {
+                const btn = document.createElement('span');
+                btn.className = `filter-btn ${selectedCategories.has(category) ? 'active' : ''}`;
+                btn.dataset.category = category;
+                btn.textContent = category;
+                btn.addEventListener('click', () => {
+                    if (selectedCategories.has(category)) {
+                        selectedCategories.delete(category);
+                    } else {
+                        selectedCategories.add(category);
+                    }
+                    btn.classList.toggle('active');
+                    renderItemList();
+                });
+                categoryContainer.appendChild(btn);
+            });
         }
 
         async function loadItemManifest(showHidden) {
@@ -135,7 +272,7 @@
             const detailContainer = document.getElementById('itemDetail');
             if (!container) return;
 
-            const filtered = filterItemsBySearch(allItems);
+            const filtered = filterItems(allItems);
 
             container.innerHTML = '';
             if (filtered.length === 0) {
@@ -217,7 +354,7 @@
         function renderDetail(data, item) {
             const name = data.name || item.name;
             const rarity = data.rarity || item.rarity;
-            const iconBig = data.icon || item.icon; // 如果有大图可单独用 data.iconbig
+            const iconBig = data.icon || item.icon;
             const typeName = TYPE_MAP[data.type] || `类型 ${data.type}`;
             
             // 获取方式
@@ -241,13 +378,11 @@
             // 合成配方
             let craftHtml = '';
             if (data.craft) {
-                // 假设 craft 对象包含材料列表，格式可能为 { materials: [{ itemId, count }] } 或类似
-                // 根据实际数据调整，这里先显示占位
                 craftHtml = `
                     <div class="detail-section">
                         <h3>合成配方</h3>
                         <div class="craft-list">
-                            ${JSON.stringify(data.craft)} <!-- 临时显示，需根据实际结构解析 -->
+                            ${JSON.stringify(data.craft)}
                         </div>
                     </div>
                 `;
@@ -297,6 +432,7 @@
             const showHidden = getCurrentShowHidden();
             const items = await loadItemManifest(showHidden);
             allItems = items;
+            generateFilterButtons();
             renderItemList();
         }
 
@@ -309,6 +445,9 @@
                 searchTerm = '';
                 const searchInput = document.getElementById('itemSearchInput');
                 if (searchInput) searchInput.value = '';
+                // 重置筛选状态
+                selectedRarities.clear();
+                selectedCategories.clear();
                 refreshModule();
             });
 
