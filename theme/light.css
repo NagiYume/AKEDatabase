@@ -389,3 +389,60 @@ body {
 .search-input:focus {
     border-color: var(--accent-color, #1e6f9f);
 }
+
+:root {
+    --tooltip-bg: #ffffff;
+    --tooltip-text: #1e2b3c;
+}
+
+/* 超链接浮窗样式 */
+.hyperlink-tooltip {
+    display: none;
+    position: absolute;
+    background: var(--tooltip-bg, #ffffff);
+    color: var(--tooltip-text, #1e2b3c);
+    border: 1px solid var(--border-color, #d9e0e8);
+    padding: 12px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    z-index: 1000;
+    max-width: 320px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+.hyperlink-tooltip .tooltip-name {
+    font-weight: 600;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border-color, #e2e7f0);
+    padding-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.hyperlink-tooltip .tooltip-desc {
+    white-space: pre-wrap;
+}
+.tag-hyperlink {
+    cursor: pointer;
+    color: var(--link-color, #1e6f9f);
+    text-decoration: underline dotted;
+}
+.inline-icon {
+    display: inline-block;
+    vertical-align: middle;
+    width: auto;
+    height: 1em;
+    object-fit: contain;
+}
+.textstyle-icon-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.textstyle-icon-text img {
+    width: 1em;
+    height: 1em;
+    object-fit: contain;
+    transform-origin: center;
+    vertical-align: middle;
+}
