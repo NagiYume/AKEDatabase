@@ -462,8 +462,7 @@
             window.textstyleConfig = {};
             window.configLoaded = Promise.all([
                 fetch('/theme/hyperlink.json?t=' + Date.now()).then(r => r.json()).then(cfg => window.hyperlinkConfig = cfg).catch(() => {}),
-                fetch('/theme/textstyle.json?t=' + Date.now()).then(r => r.json()).then(cfg => window.textstyleConfig = cfg).catch(() => {}),
-                fetch('/theme/light.css?t=' + Date.now()).then(r => r.json()).then(cfg => window.textstyleConfig = cfg).catch(() => {})
+                fetch('/theme/textstyle.json?t=' + Date.now()).then(r => r.json()).then(cfg => window.textstyleConfig = cfg).catch(() => {})
             ]);
 
             window.parseText = function(text, baseImagePath = '/public/images/', depth = 0) {
