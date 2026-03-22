@@ -30,6 +30,13 @@
     <div class="character-detail" id="characterDetail">
         <div class="loader">加载干员数据...</div>
     </div>
+    <div class="mobile-list-btn" id="characterMobileListBtn">📋 列表</div>
+    <div id="characterMobileListOverlay" class="mobile-list-overlay">
+        <div class="mobile-list-container">
+            <div class="mobile-list-header">选择角色</div>
+            <div class="mobile-list-content" id="characterMobileListContent"></div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -229,6 +236,40 @@
                 });
                 weaponContainer.appendChild(btn);
             });
+        }
+
+        const mobileBtn = document.getElementById('characterMobileListBtn');
+        const mobileOverlay = document.getElementById('characterMobileListOverlay');
+        const mobileContent = document.getElementById('characterMobileListContent');
+
+        function buildMobileList() {
+            const filtered = filterCharacters(allCharacters);
+            mobileContent.innerHTML = '';
+            filtered.forEach(char => {
+                const item = document.createElement('div');
+                item.className = 'mobile-list-item';
+                if (char.charId === activeCharId) item.classList.add('active');
+                item.innerHTML = `
+                    <div class="item-name">${char.name}</div>
+                    <div class="item-id">${char.charId}</div>
+                `;
+                item.addEventListener('click', () => {
+                    activeCharId = char.charId;
+                    loadCharacterDetail(char, document.getElementById('characterDetail'));
+                    closeMobileList();
+                    // 同步高亮（可选）
+                });
+                mobileContent.appendChild(item);
+            });
+        }
+
+        function openMobileList() {
+            buildMobileList();
+            mobileOverlay.style.display = 'flex';
+        }
+
+        function closeMobileList() {
+            mobileOverlay.style.display = 'none';
         }
 
         async function loadCharacterManifest(showHidden) {
@@ -831,6 +872,10 @@
                     return acc;
                 }, []);
             }
+            if (mobileBtn) mobileBtn.addEventListener('click', openMobileList);
+            if (mobileOverlay) mobileOverlay.addEventListener('click', (e) => {
+                if (e.target === mobileOverlay) closeMobileList();
+            });
             window.addEventListener('globalConfigChanged', (e) => {
                 searchTerm = '';
                 const searchInput = document.getElementById('characterSearchInput');

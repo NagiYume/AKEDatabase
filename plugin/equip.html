@@ -11,6 +11,14 @@
     <div class="equip-detail" id="equipDetail">
         <div class="loader">加载装备数据...</div>
     </div>
+    <!-- 移动端列表按钮（仅小屏幕显示） -->
+    <div class="mobile-list-btn" id="equipMobileListBtn">📋 列表</div>
+    <div id="equipMobileListOverlay" class="mobile-list-overlay">
+        <div class="mobile-list-container">
+            <div class="mobile-list-header">选择装备套组</div>
+            <div class="mobile-list-content" id="equipMobileListContent"></div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -21,6 +29,57 @@
         let searchTerm = '';
 
         const IMAGE_BASE_PATH = '/public/images/';
+
+        // ========== 移动端列表浮层 ==========
+        const mobileBtn = document.getElementById('equipMobileListBtn');
+        const mobileOverlay = document.getElementById('equipMobileListOverlay');
+        const mobileContent = document.getElementById('equipMobileListContent');
+
+        function buildMobileList() {
+            const filtered = filterSuitsBySearch(allSuits);
+            mobileContent.innerHTML = '';
+            filtered.forEach(suit => {
+                const item = document.createElement('div');
+                item.className = 'mobile-list-item';
+                if (suit.suitID === activeSuitId) item.classList.add('active');
+                item.innerHTML = `
+                    <div class="item-name">${escapeHtml(suit.name)}</div>
+                    <div class="item-id">${escapeHtml(suit.suitID)}</div>
+                `;
+                item.addEventListener('click', () => {
+                    activeSuitId = suit.suitID;
+                    loadEquipDetail(suit, document.getElementById('equipDetail'));
+                    closeMobileList();
+                    // 可选：同步高亮（左侧列表已隐藏，但保留状态）
+                    document.querySelectorAll('.equip-item').forEach(el => el.classList.remove('active'));
+                    const activeItem = document.querySelector(`.equip-item[data-suit-id="${suit.suitID}"]`);
+                    if (activeItem) activeItem.classList.add('active');
+                });
+                mobileContent.appendChild(item);
+            });
+        }
+
+        function openMobileList() {
+            buildMobileList();
+            mobileOverlay.style.display = 'flex';
+        }
+
+        function closeMobileList() {
+            mobileOverlay.style.display = 'none';
+        }
+
+        // 简单转义函数防止XSS（可选）
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
+                return c;
+            });
+        }
 
         function getCurrentShowHidden() {
             return window.akeData?.getConfig().showHidden ?? false;
@@ -328,6 +387,10 @@
             if (isInitialized) return;
             isInitialized = true;
             if (window.configLoaded) await window.configLoaded;
+            if (mobileBtn) mobileBtn.addEventListener('click', openMobileList);
+            if (mobileOverlay) mobileOverlay.addEventListener('click', (e) => {
+                if (e.target === mobileOverlay) closeMobileList();
+            });
 
             window.addEventListener('globalConfigChanged', (e) => {
                 searchTerm = '';

@@ -22,6 +22,13 @@
     <div class="item-detail" id="itemDetail">
         <div class="loader">加载物品数据...</div>
     </div>
+    <div class="mobile-list-btn" id="itemMobileListBtn">📋 列表</div>
+    <div id="itemMobileListOverlay" class="mobile-list-overlay">
+        <div class="mobile-list-container">
+            <div class="mobile-list-header">选择物品</div>
+            <div class="mobile-list-content" id="itemMobileListContent"></div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -253,6 +260,39 @@
             });
         }
 
+        const mobileBtn = document.getElementById('itemMobileListBtn');
+        const mobileOverlay = document.getElementById('itemMobileListOverlay');
+        const mobileContent = document.getElementById('itemMobileListContent');
+            
+        function buildMobileList() {
+            const filtered = filterItems(allItems);
+            mobileContent.innerHTML = '';
+            filtered.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'mobile-list-item';
+                if (item.itemId === activeItemId) itemDiv.classList.add('active');
+                itemDiv.innerHTML = `
+                    <div class="item-name">${item.name}</div>
+                    <div class="item-id">${item.itemId}</div>
+                `;
+                itemDiv.addEventListener('click', () => {
+                    activeItemId = item.itemId;
+                    loadItemDetail(item, document.getElementById('itemDetail'));
+                    closeMobileList();
+                });
+                mobileContent.appendChild(itemDiv);
+            });
+        }
+        
+        function openMobileList() {
+            buildMobileList();
+            mobileOverlay.style.display = 'flex';
+        }
+        
+        function closeMobileList() {
+            mobileOverlay.style.display = 'none';
+        }
+
         async function loadItemManifest(showHidden) {
             try {
                 const res = await fetch('/public/CH/item/manifest.json?t=' + Date.now());
@@ -440,6 +480,10 @@
             if (isInitialized) return;
             isInitialized = true;
             if (window.configLoaded) await window.configLoaded;
+            if (mobileBtn) mobileBtn.addEventListener('click', openMobileList);
+            if (mobileOverlay) mobileOverlay.addEventListener('click', (e) => {
+                if (e.target === mobileOverlay) closeMobileList();
+            });
 
             window.addEventListener('globalConfigChanged', (e) => {
                 searchTerm = '';

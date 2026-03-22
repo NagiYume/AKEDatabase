@@ -11,6 +11,13 @@
     <div class="achievement-detail" id="achievementDetail">
         <div class="loader">加载奖章数据...</div>
     </div>
+    <div class="mobile-list-btn" id="achievementMobileListBtn">📋 列表</div>
+    <div id="achievementMobileListOverlay" class="mobile-list-overlay">
+        <div class="mobile-list-container">
+            <div class="mobile-list-header">选择分类</div>
+            <div class="mobile-list-content" id="achievementMobileListContent"></div>
+        </div>
+    </div>
 </div>
 <script>
     (function() {
@@ -20,6 +27,39 @@
         let searchTerm = '';
 
         const IMAGE_BASE_PATH = '/public/images/';
+        
+        const mobileBtn = document.getElementById('achievementMobileListBtn');
+        const mobileOverlay = document.getElementById('achievementMobileListOverlay');
+        const mobileContent = document.getElementById('achievementMobileListContent');
+
+        function buildMobileList() {
+            const filtered = filterCategoriesBySearch(allCategories);
+            mobileContent.innerHTML = '';
+            filtered.forEach(cat => {
+                const item = document.createElement('div');
+                item.className = 'mobile-list-item';
+                if (cat.categoryId === activeCategoryId) item.classList.add('active');
+                item.innerHTML = `
+                    <div class="item-name">${cat.name}</div>
+                    <div class="item-id">${cat.categoryId}</div>
+                `;
+                item.addEventListener('click', () => {
+                    activeCategoryId = cat.categoryId;
+                    loadCategoryDetail(cat, document.getElementById('achievementDetail'));
+                    closeMobileList();
+                });
+                mobileContent.appendChild(item);
+            });
+        }
+
+        function openMobileList() {
+            buildMobileList();
+            mobileOverlay.style.display = 'flex';
+        }
+
+        function closeMobileList() {
+            mobileOverlay.style.display = 'none';
+        }
 
         function getCurrentShowHidden() {
             return window.akeData?.getConfig().showHidden ?? false;
@@ -224,6 +264,11 @@
             if (isInitialized) return;
             isInitialized = true;
             if (window.configLoaded) await window.configLoaded;
+
+            if (mobileBtn) mobileBtn.addEventListener('click', openMobileList);
+            if (mobileOverlay) mobileOverlay.addEventListener('click', (e) => {
+                if (e.target === mobileOverlay) closeMobileList();
+            });
 
             window.addEventListener('globalConfigChanged', (e) => {
                 searchTerm = '';

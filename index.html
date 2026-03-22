@@ -25,9 +25,16 @@
                 <div style="color:#7f8c9f; text-align:center; padding:20px;">加载模块清单...</div>
             </div>
             <div class="sidebar-footer">
+                <div class="menu-button" id="mobileMenuButton" title="模块列表">☰</div>
                 <div class="settings-button" id="settingsButton" title="全局设置">⚙️</div>
                 <div class="export-button" id="exportButton" title="导出长图">📸</div>
             </div>
+        </div>
+
+        <div class="mobile-bottom-bar">
+            <div class="mobile-menu-btn" id="mobileMenuBtn">☰</div>
+            <div class="mobile-settings-btn" id="mobileSettingsBtn">⚙️</div>
+            <div class="mobile-export-btn" id="mobileExportBtn">📸</div>
         </div>
 
         <div class="main-content">
@@ -92,16 +99,23 @@
             </div>
 
             <div class="about-box">
-                <p>AKEData · 版本 1.0.4</p>
+                <p>AKEData · 版本 1.0.5</p>
                 <p>游戏版本 CN_WIN_REL_1.1.9_C5769412_E5725270</p>
-                <p>Hotfix版本 5998981-12</p>
-                <p>最后更新于:2026/3/19 10:01:45(autopush)</p>
+                <p>Hotfix版本 5961872-11</p>
+                <p>最后更新于:2026/3/22 21:09:45(渚汐奏梦)</p>
             </div>
         </div>
     </div>
 
     <div id="hyperlink-tooltip-1" class="hyperlink-tooltip"></div>
     <div id="hyperlink-tooltip-2" class="hyperlink-tooltip"></div>
+
+    <div id="mobileMenuOverlay" class="mobile-menu-overlay">
+        <div class="mobile-menu-container">
+            <div class="mobile-menu-header">选择模块</div>
+            <div class="mobile-menu-list" id="mobileMenuList"></div>
+        </div>
+    </div>
 
     <script>
         (function() {
@@ -153,6 +167,72 @@
             const skillLevelContainer = document.getElementById('skillLevelCheckboxes');
             const tooltip1 = document.getElementById('hyperlink-tooltip-1');
             const tooltip2 = document.getElementById('hyperlink-tooltip-2');
+
+            // 移动端模块菜单
+            const mobileMenuButton = document.getElementById('mobileMenuButton');
+            const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+            const mobileMenuList = document.getElementById('mobileMenuList');
+
+            function buildMobileMenu() {
+                const visibleModules = filterModules(allModules);
+                const sorted = sortModulesByPriority(visibleModules);
+                mobileMenuList.innerHTML = '';
+                sorted.forEach(mod => {
+                    const item = document.createElement('div');
+                    item.className = 'mobile-menu-item';
+                    item.innerHTML = `
+                        <div class="title">${mod.icon || '📦'} ${mod.title}</div>
+                        <div class="desc">${mod.description || ''}</div>
+                    `;
+                    item.addEventListener('click', async () => {
+                        closeMobileMenu();
+                        // 加载模块
+                        const module = allModules.find(m => m.id === mod.id);
+                        if (module) {
+                            await loadModuleContent(module);
+                            activeModuleId = mod.id;
+                            // 更新左侧模块高亮（虽然侧边栏隐藏，但保留状态）
+                            document.querySelectorAll('.module-item').forEach(el => el.classList.remove('active'));
+                            const sidebarItem = document.querySelector(`.module-item[data-id="${mod.id}"]`);
+                            if (sidebarItem) sidebarItem.classList.add('active');
+                        }
+                    });
+                    mobileMenuList.appendChild(item);
+                });
+            }
+
+            function openMobileMenu() {
+                buildMobileMenu();
+                mobileMenuOverlay.style.display = 'flex';
+            }
+
+            function closeMobileMenu() {
+                mobileMenuOverlay.style.display = 'none';
+            }
+
+            mobileMenuButton.addEventListener('click', openMobileMenu);
+            mobileMenuOverlay.addEventListener('click', (e) => {
+                if (e.target === mobileMenuOverlay) closeMobileMenu();
+            });
+
+            // 移动端底部栏按钮
+            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+            const mobileSettingsBtn = document.getElementById('mobileSettingsBtn');
+            const mobileExportBtn = document.getElementById('mobileExportBtn');
+
+            if (mobileMenuBtn) {
+                mobileMenuBtn.addEventListener('click', openMobileMenu);
+            }
+            if (mobileSettingsBtn) {
+                mobileSettingsBtn.addEventListener('click', openSettings);
+            }
+            if (mobileExportBtn) {
+                mobileExportBtn.addEventListener('click', async () => {
+                    // 复制桌面端导出按钮的点击逻辑
+                    // 或者直接触发桌面端导出按钮的 click 事件
+                    document.getElementById('exportButton')?.click();
+                });
+            }
 
             // ---------- 工具函数 ----------
             function setContent(html) {

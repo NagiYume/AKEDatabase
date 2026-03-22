@@ -11,6 +11,13 @@
     <div class="enemy-detail" id="enemyDetail">
         <div class="loader">加载敌人数据...</div>
     </div>
+    <div class="mobile-list-btn" id="enemyMobileListBtn">📋 列表</div>
+    <div id="enemyMobileListOverlay" class="mobile-list-overlay">
+        <div class="mobile-list-container">
+            <div class="mobile-list-header">选择敌人</div>
+            <div class="mobile-list-content" id="enemyMobileListContent"></div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -377,6 +384,39 @@
             `;
         }
 
+        const mobileBtn = document.getElementById('enemyMobileListBtn');
+        const mobileOverlay = document.getElementById('enemyMobileListOverlay');
+        const mobileContent = document.getElementById('enemyMobileListContent');
+
+        function buildMobileList() {
+            const filtered = filterEnemiesBySearch(allEnemies);
+            mobileContent.innerHTML = '';
+            filtered.forEach(enemy => {
+                const item = document.createElement('div');
+                item.className = 'mobile-list-item';
+                if (enemy.templateId === activeEnemyId) item.classList.add('active');
+                item.innerHTML = `
+                    <div class="item-name">${enemy.name}</div>
+                    <div class="item-id">${enemy.templateId}</div>
+                `;
+                item.addEventListener('click', () => {
+                    activeEnemyId = enemy.templateId;
+                    loadEnemyDetail(enemy, document.getElementById('enemyDetail'));
+                    closeMobileList();
+                });
+                mobileContent.appendChild(item);
+            });
+        }
+
+        function openMobileList() {
+            buildMobileList();
+            mobileOverlay.style.display = 'flex';
+        }
+
+        function closeMobileList() {
+            mobileOverlay.style.display = 'none';
+        }
+
         async function refreshModule() {
             const list = document.getElementById('enemyList');
             const detail = document.getElementById('enemyDetail');
@@ -395,6 +435,10 @@
             if (settings.enabled) {
                 enemyLevelsToShow = parseLevelInput(settings.enemyLevels, 100);
             }
+            if (mobileBtn) mobileBtn.addEventListener('click', openMobileList);
+            if (mobileOverlay) mobileOverlay.addEventListener('click', (e) => {
+                if (e.target === mobileOverlay) closeMobileList();
+            });
             window.addEventListener('globalConfigChanged', (e) => {
                 searchTerm = '';
                 const searchInput = document.getElementById('enemySearchInput');

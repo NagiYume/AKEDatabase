@@ -11,6 +11,13 @@
     <div class="dungeon-detail" id="dungeonDetail">
         <div class="loader">加载副本数据...</div>
     </div>
+    <div class="mobile-list-btn" id="dungeonMobileListBtn">📋 列表</div>
+    <div id="dungeonMobileListOverlay" class="mobile-list-overlay">
+        <div class="mobile-list-container">
+            <div class="mobile-list-header">选择副本系列</div>
+            <div class="mobile-list-content" id="dungeonMobileListContent"></div>
+        </div>
+    </div>
 </div>
 <script>
     (function() {
@@ -44,6 +51,39 @@
                 (s.name && s.name.toLowerCase().includes(term)) || 
                 (s.templateId && s.templateId.toLowerCase().includes(term))
             );
+        }
+
+        const mobileBtn = document.getElementById('dungeonMobileListBtn');
+        const mobileOverlay = document.getElementById('dungeonMobileListOverlay');
+        const mobileContent = document.getElementById('dungeonMobileListContent');
+
+        function buildMobileList() {
+            const filtered = filterSeriesBySearch(allSeries);
+            mobileContent.innerHTML = '';
+            filtered.forEach(series => {
+                const item = document.createElement('div');
+                item.className = 'mobile-list-item';
+                if (series.templateId === activeSeriesId) item.classList.add('active');
+                item.innerHTML = `
+                    <div class="item-name">${series.name}</div>
+                    <div class="item-id">${series.templateId}</div>
+                `;
+                item.addEventListener('click', () => {
+                    activeSeriesId = series.templateId;
+                    loadSeriesDetail(series, document.getElementById('dungeonDetail'));
+                    closeMobileList();
+                });
+                mobileContent.appendChild(item);
+            });
+        }
+
+        function openMobileList() {
+            buildMobileList();
+            mobileOverlay.style.display = 'flex';
+        }
+
+        function closeMobileList() {
+            mobileOverlay.style.display = 'none';
         }
 
         async function loadSeriesManifest(showHidden) {
@@ -264,6 +304,11 @@
             if (isInitialized) return;
             isInitialized = true;
             if (window.configLoaded) await window.configLoaded;
+
+            if (mobileBtn) mobileBtn.addEventListener('click', openMobileList);
+            if (mobileOverlay) mobileOverlay.addEventListener('click', (e) => {
+                if (e.target === mobileOverlay) closeMobileList();
+            });
 
             window.addEventListener('globalConfigChanged', (e) => {
                 searchTerm = '';

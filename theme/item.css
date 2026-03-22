@@ -292,3 +292,89 @@
     color: white;
     border-color: var(--accent-color, #1e6f9f);
 }
+
+/* 移动端列表按钮和浮层样式（与武器模块一致，但可复用） */
+.mobile-list-btn {
+    display: none;
+    position: fixed;
+    bottom: 80px;
+    right: 16px;
+    background: var(--accent-color, #1e6f9f);
+    color: white;
+    padding: 10px 16px;
+    border-radius: 40px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    cursor: pointer;
+    z-index: 100;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+.mobile-list-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 2000;
+    justify-content: center;
+    align-items: center;
+}
+.mobile-list-container {
+    background: var(--content-bg, #ffffff);
+    width: 85%;
+    max-width: 320px;
+    border-radius: 20px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.mobile-list-header {
+    padding: 16px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-color, #e2e7f0);
+    background: var(--sidebar-bg, #f2f4f8);
+}
+.mobile-list-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+}
+.mobile-list-item {
+    padding: 12px;
+    border-radius: 12px;
+    background: var(--module-bg, white);
+    margin-bottom: 8px;
+    cursor: pointer;
+    border: 1px solid var(--border-color, #e2e7f0);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.mobile-list-item.active {
+    background: var(--active-bg, #e2eaf9);
+    border-left: 4px solid var(--accent-color, #1e6f9f);
+}
+.mobile-list-item .item-name {
+    font-weight: 500;
+    flex: 1;
+}
+.mobile-list-item .item-id {
+    font-size: 0.7rem;
+    color: #999;
+}
+@media (max-width: 999px) {
+    .left-column {
+        display: none !important;
+    }
+    .mobile-list-btn {
+        display: flex;
+    }
+}
+@media (min-width: 1000px) {
+    .mobile-list-btn, .mobile-list-overlay {
+        display: none !important;
+    }
+}

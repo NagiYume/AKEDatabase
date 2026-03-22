@@ -2,6 +2,14 @@
 <link rel="stylesheet" href="/theme/weapon.css">
 
 <div class="weapon-module">
+    <!-- 移动端左侧栏按钮（仅小屏幕显示） -->
+    <div class="mobile-list-btn" id="mobileListBtn">📋 列表</div>
+    <div id="mobileListOverlay" class="mobile-list-overlay">
+        <div class="mobile-list-container">
+            <div class="mobile-list-header">选择武器</div>
+            <div class="mobile-list-content" id="mobileListContent"></div>
+        </div>
+    </div>
     <div class="weapon-list" id="weaponList">
         <div class="list-search-fixed">
             <input type="text" id="weaponSearchInput" placeholder="搜索武器 (名称/ID)" class="search-input">
@@ -138,6 +146,51 @@
             }
             typeContainer.innerHTML = '';
             typeBtns.forEach(btn => typeContainer.appendChild(btn));
+        }
+
+        // 移动端左侧列表
+        const mobileBtn = document.getElementById('mobileListBtn');
+        const mobileOverlay = document.getElementById('mobileListOverlay');
+        const mobileContent = document.getElementById('mobileListContent');
+            
+        function buildMobileList() {
+            const filtered = filterWeapons(allWeapons);
+            mobileContent.innerHTML = '';
+            filtered.forEach(weapon => {
+                const item = document.createElement('div');
+                item.className = 'mobile-list-item';
+                if (weapon.weaponId === activeWeaponId) item.classList.add('active');
+                item.innerHTML = `
+                    <div class="item-name">${weapon.title}</div>
+                    <div class="item-id">${weapon.weaponId}</div>
+                `;
+                item.addEventListener('click', () => {
+                    // 加载武器详情
+                    activeWeaponId = weapon.weaponId;
+                    loadWeaponDetail(weapon, document.getElementById('weaponDetail'));
+                    closeMobileList();
+                    // 同步高亮（如果左侧列表可见，也应该更新，但已隐藏）
+                });
+                mobileContent.appendChild(item);
+            });
+        }
+        
+        function openMobileList() {
+            buildMobileList();
+            mobileOverlay.style.display = 'flex';
+        }
+        
+        function closeMobileList() {
+            mobileOverlay.style.display = 'none';
+        }
+        
+        if (mobileBtn) {
+            mobileBtn.addEventListener('click', openMobileList);
+        }
+        if (mobileOverlay) {
+            mobileOverlay.addEventListener('click', (e) => {
+                if (e.target === mobileOverlay) closeMobileList();
+            });
         }
 
         async function loadWeaponManifest(showHidden) {
