@@ -5,7 +5,8 @@
     <div class="about-content">
         <h2>📘 AKEData 项目介绍</h2>
         <p>观前提示：本项目大量使用了人工智能技术（包括下面的文档）</p>
-        <p>这是一个模块化终末地数据查询可视化网页，采用纯 HTML/CSS/JavaScript 实现，无框架依赖。项目结构清晰，易于扩展和维护。</p>
+        <p>本项目为《明日方舟：终末地》玩家自制作品，旨在提供便捷的游戏数据查询与展示功能。</p>
+        <p>作者：渚汐奏梦</p>
         
         <h3>✨ 核心功能（AI写的，我也看不懂）</h3>
         <ul>
@@ -26,12 +27,96 @@
             <li><strong>副本模块</strong> – 查看副本信息以及副本内怪物数据。</li>
         </ul>
 
+        <!-- 赞助支持 -->
+        <h3>✨ 赞助支持 ✨</h3>
+        <div class="sponsor-section">
+            <div class="sponsor-intro">
+                💖 您的赞助将用于服务器维护、功能开发、内容创作；您在备注中填写的内容会显示在赞助列表中（手动更新）。如不希望在赞助列表中被记录请注明；您的鼓励与认可是我维护的动力!!!（广告位招租）
+            </div>
+            <div class="qr-container">
+                <div class="qr-item">
+                    <img src="/public/images/about/wechat.png" alt="微信赞赏码" onerror="this.onerror=null; this.src='';">
+                    <p>微信</p>
+                </div>
+                <div class="qr-item">
+                    <img src="/public/images/about/alipay.png" alt="支付宝" onerror="this.onerror=null; this.src='';">
+                    <p>支付宝</p>
+                </div>
+            </div>
+            <div class="sponsor-list">
+                <h4>✨ 感谢支持 ✨</h4>
+                <div id="sponsorGrid" class="sponsor-grid">
+                    <div class="loader">加载赞助列表...</div>
+                </div>
+            </div>
+        </div>
+
         <h3>🔧 联系我们</h3>
+        <p>您可以通过以下方式联系开发者进行bug反馈和新功能提议，若您是其他工具的作者或者相关开发者需要本网站提供数据支持，也欢迎您通过下面的方式联系我</p>
         <p>BiliBili：<a href="https://space.bilibili.com/694452100" target="_blank" rel="noopener" class="text-blue-600 hover:underline" _istranslated="1">渚汐奏梦</a></p>
         <p>用户反馈群：1091817282（数据合作&bug反馈）</p>
-        <p>版本：1.0 · 最后更新：2026年3月12日</p>
+        <p>版本：1.0 · 最后更新：2026年3月22日</p>
     </div>
 </div>
 
-<!-- 可选：若需专用样式，可创建 theme/about.css 并在此处引入；若无，则上述 <link> 可移除 -->
 
+<script>
+(function() {
+    const sponsorGrid = document.getElementById('sponsorGrid');
+    if (!sponsorGrid) return;
+
+    async function loadSponsors() {
+        try {
+            const res = await fetch('/public/CH/about/sponsors.json?t=' + Date.now());
+            if (!res.ok) throw new Error('无法加载赞助数据');
+            let sponsors = await res.json();
+            if (!Array.isArray(sponsors) || sponsors.length === 0) {
+                sponsorGrid.innerHTML = '<div class="sponsor-empty">暂无赞助记录，期待您的支持！</div>';
+                return;
+            }
+            // 排序：priority 升序，priority 相同则按时间倒序（新在前）
+            sponsors.sort((a, b) => {
+                const pa = a.priority ?? Infinity;
+                const pb = b.priority ?? Infinity;
+                if (pa !== pb) return pa - pb;
+                // 时间倒序
+                return (b.time || '').localeCompare(a.time || '');
+            });
+            renderSponsors(sponsors);
+        } catch (err) {
+            console.error('加载赞助列表失败:', err);
+            sponsorGrid.innerHTML = '<div class="sponsor-empty">加载赞助列表失败，请稍后重试。</div>';
+        }
+    }
+
+    function renderSponsors(sponsors) {
+        sponsorGrid.innerHTML = '';
+        sponsors.forEach(s => {
+            const card = document.createElement('div');
+            card.className = 'sponsor-card';
+            const rarityClass = `rarity-${s.rarity || 1}`;
+            card.innerHTML = `
+                <div class="sponsor-name">${escapeHtml(s.name)}</div>
+                <div class="sponsor-money ${rarityClass}">${escapeHtml(s.money)}</div>
+                <div class="sponsor-time">${escapeHtml(s.time)}</div>
+                <div class="sponsor-content">${escapeHtml(s.content || '无备注')}</div>
+            `;
+            sponsorGrid.appendChild(card);
+        });
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
+            return c;
+        });
+    }
+
+    loadSponsors();
+})();
+</script>
