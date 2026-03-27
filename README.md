@@ -108,7 +108,7 @@ AKEData/
 
 | 支付宝 | 微信赞赏码 |
 | --- | --- |
-| ![](https://github.com/NagiYume/AKEDatabasepublic/images/about/alipay.png) | ![](https://github.com/NagiYume/AKEDatabase/public/images/about/wechat.png) |
+| ![](https://github.com/NagiYume/AKEDatabase/blob/main/public/images/about/alipay.png) | ![](https://github.com/NagiYume/AKEDatabase/blob/main/public/images/about/wechat.png) |
 
 ## 联系方式
 - Bilibili：[@渚汐奏梦](https://space.bilibili.com/694452100)
