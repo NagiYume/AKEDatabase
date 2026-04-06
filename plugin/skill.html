@@ -1,0 +1,506 @@
+<!-- plugin/skill.html -->
+<link rel="stylesheet" href="/theme/skill.css">
+
+<div class="skill-module">
+    <div class="left-column">
+        <div class="list-search">
+            <input type="text" id="skillSearchInput" placeholder="搜索技能 (ID/名称)" class="search-input">
+        </div>
+        <div class="skill-list" id="skillList"></div>
+    </div>
+    <div class="skill-detail" id="skillDetail">
+        <div class="loader">加载技能数据...</div>
+    </div>
+</div>
+
+<div class="mobile-list-btn" id="skillMobileListBtn">📋 列表</div>
+<div id="skillMobileListOverlay" class="mobile-list-overlay">
+    <div class="mobile-list-container">
+        <div class="mobile-list-header">选择技能</div>
+        <div class="mobile-list-content" id="skillMobileListContent"></div>
+    </div>
+</div>
+
+<!-- 动作详情模态框 -->
+<div id="actionDetailModal" class="action-modal">
+    <div class="action-modal-content">
+        <div class="action-modal-header">
+            <span class="action-modal-title">动作详细信息</span>
+            <span class="action-modal-close">&times;</span>
+        </div>
+        <div class="action-modal-body">
+            <pre id="actionDetailJson" class="action-json-viewer"></pre>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        let allSkills = [];
+        let activeSkillId = null;
+        let isInitialized = false;
+        let searchTerm = '';
+        let currentSkillData = null;   // 保存当前技能数据，供查看动作详情使用
+
+        const IMAGE_BASE_PATH = '/public/images/';
+
+        function getCurrentShowHidden() {
+            return window.akeData?.getConfig().showHidden ?? false;
+        }
+
+        function parseText(text) {
+            return window.parseText(text, IMAGE_BASE_PATH);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function (m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        function filterSkills(skills) {
+            if (!searchTerm) return skills;
+            const term = searchTerm.toLowerCase();
+            return skills.filter(s =>
+                (s.id && s.id.toLowerCase().includes(term)) ||
+                (s.name && s.name.toLowerCase().includes(term))
+            );
+        }
+
+        async function loadSkillManifest(showHidden) {
+            try {
+                const res = await fetch('/public/Json/SkillData/manifest.json?t=' + Date.now());
+                if (!res.ok) throw new Error('无法加载技能清单');
+                const all = await res.json();
+                let skills = showHidden ? all : all.filter(s => !s.hidden);
+                skills.sort((a, b) => (a.priority || 999) - (b.priority || 999));
+                return skills;
+            } catch (err) {
+                console.error('加载技能清单失败:', err);
+                return [];
+            }
+        }
+
+        function renderSkillList() {
+            const container = document.getElementById('skillList');
+            const detailContainer = document.getElementById('skillDetail');
+            if (!container) return;
+
+            const filtered = filterSkills(allSkills);
+            container.innerHTML = '';
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="loader">无匹配技能</div>';
+                if (detailContainer) detailContainer.innerHTML = '<div class="loader">请选择技能</div>';
+                activeSkillId = null;
+                return;
+            }
+
+            filtered.forEach((skill, index) => {
+                const item = document.createElement('div');
+                item.className = `skill-item ${skill.id === activeSkillId ? 'active' : (index === 0 && !activeSkillId ? 'active' : '')}`;
+                item.dataset.skillId = skill.id;
+                item.dataset.contentFile = skill.contentFile;
+
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'skill-info';
+                const nameSpan = document.createElement('div');
+                nameSpan.className = 'skill-name';
+                nameSpan.textContent = skill.name || skill.id;
+                const idSpan = document.createElement('div');
+                idSpan.className = 'skill-id';
+                idSpan.textContent = skill.id;
+                infoDiv.appendChild(nameSpan);
+                infoDiv.appendChild(idSpan);
+
+                item.appendChild(infoDiv);
+
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.skill-item').forEach(el => el.classList.remove('active'));
+                    item.classList.add('active');
+                    activeSkillId = skill.id;
+                    loadSkillDetail(skill, detailContainer);
+                });
+
+                container.appendChild(item);
+            });
+
+            const activeExists = filtered.some(s => s.id === activeSkillId);
+            if (!activeExists && filtered.length > 0) {
+                activeSkillId = filtered[0].id;
+                const firstItem = container.querySelector('.skill-item');
+                if (firstItem) firstItem.classList.add('active');
+                loadSkillDetail(filtered[0], detailContainer);
+            } else if (activeExists) {
+                const activeSkill = filtered.find(s => s.id === activeSkillId);
+                if (activeSkill) {
+                    const activeItem = container.querySelector(`.skill-item[data-skill-id="${activeSkillId}"]`);
+                    if (activeItem) activeItem.classList.add('active');
+                    loadSkillDetail(activeSkill, detailContainer);
+                }
+            }
+        }
+
+        // 显示动作详情模态框
+        function showActionDetail(actionData) {
+            const modal = document.getElementById('actionDetailModal');
+            const pre = document.getElementById('actionDetailJson');
+            if (!modal || !pre) return;
+            // 格式化 JSON，缩进2空格
+            const jsonStr = JSON.stringify(actionData, null, 2);
+            pre.textContent = jsonStr;
+            modal.style.display = 'flex';
+        }
+
+        function closeActionDetail() {
+            const modal = document.getElementById('actionDetailModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        async function loadSkillDetail(skill, container) {
+            container.innerHTML = '<div class="loader">加载技能数据...</div>';
+            try {
+                const data = await fetch(skill.contentFile + '?t=' + Date.now()).then(r => r.json());
+                currentSkillData = data;
+                container.innerHTML = renderDetail(data);
+                // 绑定查看完整数据的按钮（打开模态框）
+                container.querySelectorAll('.action-view-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const groupIdx = parseInt(btn.dataset.groupIndex);
+                        const actionIdx = parseInt(btn.dataset.actionIndex);
+                        const timelineActions = currentSkillData?.actionGroupData?.timelineActions;
+                        if (timelineActions && timelineActions[groupIdx]) {
+                            const action = timelineActions[groupIdx]._sequenceActionData?.actionData[actionIdx];
+                            if (action) {
+                                showActionDetail(action);
+                            } else {
+                                alert('无法获取该动作数据');
+                            }
+                        } else {
+                            alert('无法获取该动作数据');
+                        }
+                    });
+                });
+            } catch (err) {
+                container.innerHTML = `<div class="error-message">加载失败: ${err.message}</div>`;
+            }
+        }
+
+        // 格式化数值
+        function formatNumber(val) {
+            if (typeof val !== 'number') return val;
+            return val % 1 === 0 ? val.toString() : val.toFixed(2);
+        }
+
+        // 渲染消耗数据
+        function renderCost(costData) {
+            if (!costData) return '无';
+            return `${costData.costType || '?'} ${formatNumber(costData.costValue)}` +
+                (costData.atbValueThreshold ? ` (阈值: ${costData.atbValueThreshold})` : '');
+        }
+
+        // 渲染黑板参数
+        function renderBlackboard(blackboard) {
+            if (!blackboard || blackboard.length === 0) return '<p>无</p>';
+            let html = '<table class="info-table"><thead><tr><th>键</th><th>数值</th><th>动态</th></tr></thead><tbody>';
+            blackboard.forEach(bb => {
+                let value = bb.valueDouble !== undefined ? formatNumber(bb.valueDouble) : (bb.valueStr || '');
+                html += `<tr><td>${escapeHtml(bb.key)}</td><td>${escapeHtml(value)}</td><td>${bb.isDynamic ? '是' : '否'}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            return html;
+        }
+
+        // 辅助：提取简单属性（排除大型对象/数组）
+        function getSimpleProperties(obj, maxDepth = 1, currentDepth = 0) {
+            if (currentDepth > maxDepth) return [];
+            const props = [];
+            for (const [key, value] of Object.entries(obj)) {
+                if (value === null || value === undefined) continue;
+                const type = typeof value;
+                if (type === 'string' || type === 'number' || type === 'boolean') {
+                    props.push({ key, value: String(value) });
+                } else if (type === 'object' && !Array.isArray(value)) {
+                    // 递归一层，但限制深度
+                    props.push(...getSimpleProperties(value, maxDepth, currentDepth + 1).map(p => ({ key: `${key}.${p.key}`, value: p.value })));
+                } else if (Array.isArray(value) && value.length > 0 && typeof value[0] !== 'object') {
+                    // 简单数组（如字符串数组）展示前3项
+                    const arrStr = value.slice(0, 3).map(v => String(v)).join(', ') + (value.length > 3 ? '...' : '');
+                    props.push({ key, value: `[${arrStr}]` });
+                }
+                // 忽略复杂对象/数组
+            }
+            return props;
+        }
+
+        // 增强的动作摘要函数，返回完整类型、简短摘要和详细属性列表
+        function getActionSummary(action) {
+            const fullType = action.$type || '未知类型';
+            let summary = '';
+            // 优先从常见字段生成简短摘要
+            if (fullType.includes('PlayAnimationAction')) {
+                summary = `动画: ${action.animName || '?'}`;
+            } else if (fullType.includes('DamageAction')) {
+                const units = action.damageUnits;
+                if (units && units.length) {
+                    const types = units.map(u => u.damageType).join(',');
+                    summary = `伤害类型: ${types}`;
+                } else {
+                    summary = '造成伤害';
+                }
+            } else if (fullType.includes('CreateBuffAction')) {
+                const buffs = action.buffs;
+                if (buffs && buffs.length) {
+                    const ids = buffs.map(b => b.buffId).join(',');
+                    summary = `添加Buff: ${ids}`;
+                } else {
+                    summary = '添加Buff';
+                }
+            } else if (fullType.includes('FindTargetAction')) {
+                summary = `查找目标 (目标组: ${action.targetGroupKey || '?'})`;
+            } else if (fullType.includes('EffectAction')) {
+                const effect = action.effectActionCfg?.effectName;
+                summary = effect ? `特效: ${effect}` : '播放特效';
+            } else if (fullType.includes('SelfRotateAction')) {
+                summary = `自身旋转 (类型: ${action.rotateType || '?'})`;
+            } else if (fullType.includes('CustomRootMotionAction')) {
+                summary = `根运动移动 (动画: ${action.animKey || '?'})`;
+            } else if (fullType.includes('PlaySoundAction')) {
+                summary = `播放音效: ${action._soundEvent || '?'}`;
+            } else if (fullType.includes('HitStopAction')) {
+                summary = `命中停顿 (时长: ${action.duration || '?'})`;
+            } else if (fullType.includes('EnemyHurtAnimAction')) {
+                summary = `敌人受击动画 (${action.hurtAnim || '?'})`;
+            } else if (fullType.includes('ObtainCostAction')) {
+                summary = `获取能量 (${action.costType || '?'})`;
+            } else if (fullType.includes('SetSuperArmorAction')) {
+                summary = `设置霸体值: ${action.superArmorValue?.value || '?'}`;
+            } else if (fullType.includes('TimeDilationAction')) {
+                summary = `时间膨胀 (时长: ${action.duration?.value || '?'})`;
+            } else if (fullType.includes('VoiceTriggerAction')) {
+                summary = `语音触发 (${action._triggerKey || '?'})`;
+            } else if (fullType.includes('PlayAnimationWithStep')) {
+                summary = `踏步动画 (${action.animName || '?'})`;
+            } else {
+                // 默认从属性中提取前几个
+                const keys = Object.keys(action).slice(0, 3);
+                summary = `参数: ${keys.join(', ')}`;
+            }
+
+            // 提取所有简单属性（排除$type和大型嵌套）
+            const simpleProps = getSimpleProperties(action, 1);
+            // 筛选出可能重要的字段（这里全部展示，但限制数量）
+            const importantProps = simpleProps.filter(p =>
+                !p.key.includes('$type') &&
+                !p.key.includes('actionData') &&
+                !p.key.includes('sequenceActionData')
+            ).slice(0, 15); // 最多显示15个
+
+            return { fullType, summary, details: importantProps };
+        }
+
+        // 渲染动作组详细内容
+        function renderActionGroup(timelineActions) {
+            if (!timelineActions || timelineActions.length === 0) return '<p>无动作数据</p>';
+            let html = '<div class="action-group-list">';
+            timelineActions.forEach((actionGroup, groupIdx) => {
+                const start = actionGroup._startFrame;
+                const end = actionGroup._endFrame;
+                const actions = actionGroup._sequenceActionData?.actionData || [];
+                html += `
+                    <div class="action-group">
+                        <div class="action-group-header">
+                            <span class="action-group-title">动作组 ${groupIdx + 1}</span>
+                            <span class="action-group-range">帧范围 [${start}, ${end}]</span>
+                            <span class="action-group-count">${actions.length} 个动作</span>
+                        </div>
+                        <div class="action-group-content">
+                `;
+                if (actions.length === 0) {
+                    html += '<div class="action-item">无具体动作数据</div>';
+                } else {
+                    actions.forEach((act, actIdx) => {
+                        const { fullType, summary, details } = getActionSummary(act);
+                        let detailsHtml = '';
+                        if (details.length > 0) {
+                            detailsHtml = '<div class="action-props">' + details.map(d =>
+                                `<span class="action-prop"><span class="prop-key">${escapeHtml(d.key)}</span>=<span class="prop-value">${escapeHtml(d.value)}</span></span>`
+                            ).join('') + '</div>';
+                        }
+                        html += `
+                            <div class="action-item">
+                                <div class="action-index">${actIdx + 1}</div>
+                                <div class="action-details">
+                                    <div class="action-type">${escapeHtml(fullType)}</div>
+                                    <div class="action-summary">${escapeHtml(summary)}</div>
+                                    ${detailsHtml}
+                                </div>
+                                <div class="action-actions">
+                                    <button class="action-view-btn" data-group-index="${groupIdx}" data-action-index="${actIdx}" title="查看详细信息">🔍</button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+                html += `</div></div>`;
+            });
+            html += '</div>';
+            return html;
+        }
+
+        function renderDetail(data) {
+            const id = data.skillId || data.id || '未知';
+            const level = data.level || 1;
+            const skillName = data.skillName || '';
+            const iconBgType = data.iconBgType || '未知';
+            const attackRangeType = data.attackRangeType || '未知';
+            const castType = data.castType || '未知';
+            const skillSpec = data.skillSpecification || '未知';
+            const cooldown = data.castData?.cooldownTime ?? '无';
+            const maxCharge = data.castData?.maxChargeTime ?? 1;
+            const costHtml = renderCost(data.castData?.costData);
+            const durationFrame = data.durationFrame ?? '未知';
+            const exclusiveFrame = data.exclusiveFrame ?? '未知';
+            const canMove = data.canMove ? '是' : '否';
+            const canCastInAir = data.canCastInAir ? '是' : '否';
+            const timelineCount = data.actionGroupData?.timelineActions?.length || 0;
+            const blackboardHtml = renderBlackboard(data.blackboard);
+            const actionGroupHtml = renderActionGroup(data.actionGroupData?.timelineActions);
+
+            return `
+                <div class="skill-detail-container">
+                    <div class="detail-header">
+                        <div class="detail-info">
+                            <div class="detail-title-row">
+                                <span class="detail-name">${escapeHtml(id)}</span>
+                                <span class="detail-level">Lv.${level}</span>
+                            </div>
+                            ${skillName ? `<div class="detail-skillname">${escapeHtml(skillName)}</div>` : ''}
+                            <div class="detail-meta">
+                                <div>图标背景类型: ${escapeHtml(iconBgType)}</div>
+                                <div>攻击范围类型: ${escapeHtml(attackRangeType)}</div>
+                                <div>施法类型: ${escapeHtml(castType)}</div>
+                                <div>技能规格: ${escapeHtml(skillSpec)}</div>
+                                <div>冷却时间: ${cooldown}</div>
+                                <div>最大充能次数: ${maxCharge}</div>
+                                <div>消耗: ${escapeHtml(costHtml)}</div>
+                                <div>持续时间帧: ${durationFrame}</div>
+                                <div>独占帧: ${exclusiveFrame}</div>
+                                <div>可移动: ${canMove}</div>
+                                <div>空中施放: ${canCastInAir}</div>
+                                <div>动作组数量: ${timelineCount}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>使用参数</h3>
+                        ${blackboardHtml}
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>动作组详情</h3>
+                        ${actionGroupHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function refreshModule() {
+            const list = document.getElementById('skillList');
+            const detail = document.getElementById('skillDetail');
+            if (!list || !detail) return;
+            const showHidden = getCurrentShowHidden();
+            const skills = await loadSkillManifest(showHidden);
+            allSkills = skills;
+            renderSkillList();
+            if (mobileOverlay?.style.display === 'flex') buildMobileList();
+        }
+
+        // 移动端列表
+        const mobileBtn = document.getElementById('skillMobileListBtn');
+        const mobileOverlay = document.getElementById('skillMobileListOverlay');
+        const mobileContent = document.getElementById('skillMobileListContent');
+
+        function buildMobileList() {
+            if (!mobileContent) return;
+            const filtered = filterSkills(allSkills);
+            mobileContent.innerHTML = '';
+            filtered.forEach(skill => {
+                const item = document.createElement('div');
+                item.className = 'mobile-list-item';
+                if (skill.id === activeSkillId) item.classList.add('active');
+                item.innerHTML = `
+                    <div class="item-name">${escapeHtml(skill.name || skill.id)}</div>
+                    <div class="item-id">${escapeHtml(skill.id)}</div>
+                `;
+                item.addEventListener('click', () => {
+                    activeSkillId = skill.id;
+                    loadSkillDetail(skill, document.getElementById('skillDetail'));
+                    closeMobileList();
+                    document.querySelectorAll('.skill-item').forEach(el => el.classList.remove('active'));
+                    const activeItem = document.querySelector(`.skill-item[data-skill-id="${skill.id}"]`);
+                    if (activeItem) activeItem.classList.add('active');
+                });
+                mobileContent.appendChild(item);
+            });
+        }
+
+        function openMobileList() {
+            buildMobileList();
+            if (mobileOverlay) mobileOverlay.style.display = 'flex';
+        }
+
+        function closeMobileList() {
+            if (mobileOverlay) mobileOverlay.style.display = 'none';
+        }
+
+        async function initModule() {
+            if (isInitialized) return;
+            isInitialized = true;
+            if (window.configLoaded) await window.configLoaded;
+
+            window.addEventListener('globalConfigChanged', (e) => {
+                searchTerm = '';
+                const searchInput = document.getElementById('skillSearchInput');
+                if (searchInput) searchInput.value = '';
+                refreshModule();
+            });
+
+            document.getElementById('skillSearchInput')?.addEventListener('input', (e) => {
+                searchTerm = e.target.value;
+                renderSkillList();
+                if (mobileOverlay?.style.display === 'flex') buildMobileList();
+            });
+
+            if (mobileBtn) mobileBtn.addEventListener('click', openMobileList);
+            if (mobileOverlay) mobileOverlay.addEventListener('click', (e) => {
+                if (e.target === mobileOverlay) closeMobileList();
+            });
+
+            // 模态框关闭事件
+            const modal = document.getElementById('actionDetailModal');
+            const closeBtn = document.querySelector('.action-modal-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeActionDetail);
+            }
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) closeActionDetail();
+                });
+            }
+
+            await refreshModule();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initModule);
+        } else {
+            initModule();
+        }
+    })();
+</script>

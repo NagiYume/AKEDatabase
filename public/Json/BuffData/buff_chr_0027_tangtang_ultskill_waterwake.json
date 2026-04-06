@@ -1,0 +1,1227 @@
+{
+  "id": "buff_chr_0027_tangtang_ultskill_waterwake",
+  "iconConfig": {
+    "_spritePath": "",
+    "showInHeadBarCommon": false,
+    "showInHeadBarAttached": false,
+    "showInSquadIcon": false,
+    "blinkInMainCharHpBar": false,
+    "onlyShowForMainCharacter": false,
+    "iconStyleInSquad": "Default",
+    "_orderPriorityConfig": {
+      "useDirectoryValue": false,
+      "priorityValue": 0,
+      "priorityEnum": "CommonCharBuff"
+    },
+    "showWarningBackground": false,
+    "playStrongInAnimation": false,
+    "hasCharHpBarVfxType": false,
+    "charHpBarVfxType": "Fire"
+  },
+  "ignoreTagImmune": false,
+  "useTimeDilationDt": false,
+  "finishOnRepatriate": false,
+  "hasAddingCooldown": false,
+  "addingCooldown": {
+    "useBlackboardKey": true,
+    "value": 0.0,
+    "blackboardKey": ""
+  },
+  "ignoreCooldownWhenAdding": false,
+  "attributeModifier": {
+    "isConvertedAttribute": false,
+    "attributeModifiers": []
+  },
+  "damageModifier": [],
+  "healModifier": [],
+  "poiseModifier": [],
+  "globalModifier": [],
+  "shieldConfigs": [],
+  "applyTags": [],
+  "lifeType": "Limited",
+  "duration": {
+    "useBlackboardKey": false,
+    "value": 1.0,
+    "blackboardKey": "duration"
+  },
+  "triggerInterval": {
+    "useBlackboardKey": false,
+    "value": -1.0,
+    "blackboardKey": ""
+  },
+  "waitFirstTriggerInterval": false,
+  "maxTriggerCnt": {
+    "useBlackboardKey": false,
+    "value": -1,
+    "blackboardKey": "duration"
+  },
+  "stackingSettings": {
+    "identifierType": "Id",
+    "stackingType": "Unlimited",
+    "stackingKey": "",
+    "usePriorityKey": false,
+    "priorityKey": "",
+    "negatePriority": false,
+    "priority": 0.0,
+    "useMaxStackCntKey": false,
+    "maxStackCntKey": "water_stack",
+    "maxStackCnt": 1,
+    "isNeedStackEffect": false,
+    "stackEffects": []
+  },
+  "dispelConfig": {
+    "canBeDispelled": false,
+    "dispelledLevel": "Default"
+  },
+  "buffEventAction": [],
+  "abilityEventAction": [],
+  "igniteEventAction": [],
+  "timelineActions": [
+    {
+      "_startFrame": 0,
+      "_endFrame": 1,
+      "_sequenceActionData": {
+        "actionData": [
+          {
+            "$type": "Beyond.Gameplay.Core.FindTargetAction+FindTargetActionData, Gameplay.Beyond",
+            "isEnable": true,
+            "priorityLevel": "Default",
+            "priorityOffset": 0,
+            "serverActionIndex": 0,
+            "targetGroupKey": "water",
+            "center": "ActionSource",
+            "centerContextKey": "",
+            "useCenterEntityMountPoint": false,
+            "centerMountPoint": "None",
+            "centerToGround": false,
+            "selectorOwner": "ActionOwner",
+            "selectorOwnerContextKey": "",
+            "selectorData": {
+              "finderData": {
+                "$type": "Beyond.Gameplay.Core.Selector+OwnerSpawnedEntityFinder+Data, Gameplay.Beyond",
+                "spawnedObjectType": "AbilityEntity"
+              },
+              "validatorData": [
+                {
+                  "$type": "Beyond.Gameplay.Core.Selector+TagValidator+Data, Gameplay.Beyond",
+                  "query": {
+                    "queryType": "HasAny",
+                    "tags": [
+                      {
+                        "tagName": "Skill/Character/chr_0027_tangtang/ComboSkillWater",
+                        "tagId": 45117620
+                      }
+                    ]
+                  }
+                }
+              ],
+              "postProcessorData": []
+            },
+            "selectorDirection": "SourceForward",
+            "target": "ActionSource",
+            "contextKey": "",
+            "useAdvancedDirectionSetting": false,
+            "advancedSelectorDirection": {
+              "directionType": "SourceForward",
+              "sourceMountPoint": "None",
+              "targetMountPoint": "None",
+              "customSourceAndTarget": false,
+              "clampToXZ": true,
+              "invertDirection": false
+            }
+          },
+          {
+            "$type": "Beyond.Gameplay.Core.FindTargetAction+FindTargetActionData, Gameplay.Beyond",
+            "isEnable": true,
+            "priorityLevel": "Default",
+            "priorityOffset": 0,
+            "serverActionIndex": 1,
+            "targetGroupKey": "ultwater_abilityentity",
+            "center": "ActionSource",
+            "centerContextKey": "",
+            "useCenterEntityMountPoint": false,
+            "centerMountPoint": "None",
+            "centerToGround": false,
+            "selectorOwner": "ActionOwner",
+            "selectorOwnerContextKey": "",
+            "selectorData": {
+              "finderData": {
+                "$type": "Beyond.Gameplay.Core.Selector+OwnerSpawnedEntityFinder+Data, Gameplay.Beyond",
+                "spawnedObjectType": "AbilityEntity"
+              },
+              "validatorData": [
+                {
+                  "$type": "Beyond.Gameplay.Core.Selector+TagValidator+Data, Gameplay.Beyond",
+                  "query": {
+                    "queryType": "HasAny",
+                    "tags": [
+                      {
+                        "tagName": "Skill/Character/chr_0027_tangtang/UltSkillWater",
+                        "tagId": -171713892
+                      }
+                    ]
+                  }
+                }
+              ],
+              "postProcessorData": []
+            },
+            "selectorDirection": "SourceForward",
+            "target": "ActionSource",
+            "contextKey": "",
+            "useAdvancedDirectionSetting": false,
+            "advancedSelectorDirection": {
+              "directionType": "SourceForward",
+              "sourceMountPoint": "None",
+              "targetMountPoint": "None",
+              "customSourceAndTarget": false,
+              "clampToXZ": true,
+              "invertDirection": false
+            }
+          },
+          {
+            "$type": "Beyond.Gameplay.Core.ModifyDynamicBlackboard+Data, Gameplay.Beyond",
+            "isEnable": true,
+            "priorityLevel": "Default",
+            "priorityOffset": 0,
+            "serverActionIndex": 2,
+            "key": "tornado_atk_scale01",
+            "operation": "Assign",
+            "directValue": true,
+            "value": {
+              "useBlackboardKey": true,
+              "value": 0.0,
+              "blackboardKey": "EntityBB_abilityentity_water01"
+            },
+            "calculationTarget": {
+              "targetSource": "Owner",
+              "targetGroupKey": "",
+              "selectorOwner": "ActionOwner",
+              "ownerContextKey": "",
+              "centerType": "ActionSource",
+              "centerContextKey": "",
+              "centerToGround": false,
+              "selectorData": {
+                "validatorData": [],
+                "postProcessorData": []
+              },
+              "enableAdvancedDirection": false,
+              "advancedDirection": {
+                "directionType": "SourceForward",
+                "sourceMountPoint": "None",
+                "targetMountPoint": "None",
+                "customSourceAndTarget": false,
+                "clampToXZ": true,
+                "invertDirection": false
+              },
+              "selectorDirection": "SourceForward",
+              "target": "ActionSource",
+              "targetContextKey": ""
+            },
+            "calculateType": "HpRatio"
+          },
+          {
+            "$type": "Beyond.Gameplay.Core.ModifyDynamicBlackboard+Data, Gameplay.Beyond",
+            "isEnable": true,
+            "priorityLevel": "Default",
+            "priorityOffset": 0,
+            "serverActionIndex": 3,
+            "key": "tornado_atk_scale02",
+            "operation": "Assign",
+            "directValue": true,
+            "value": {
+              "useBlackboardKey": true,
+              "value": 0.0,
+              "blackboardKey": "EntityBB_abilityentity_water02"
+            },
+            "calculationTarget": {
+              "targetSource": "Owner",
+              "targetGroupKey": "",
+              "selectorOwner": "ActionOwner",
+              "ownerContextKey": "",
+              "centerType": "ActionSource",
+              "centerContextKey": "",
+              "centerToGround": false,
+              "selectorData": {
+                "validatorData": [],
+                "postProcessorData": []
+              },
+              "enableAdvancedDirection": false,
+              "advancedDirection": {
+                "directionType": "SourceForward",
+                "sourceMountPoint": "None",
+                "targetMountPoint": "None",
+                "customSourceAndTarget": false,
+                "clampToXZ": true,
+                "invertDirection": false
+              },
+              "selectorDirection": "SourceForward",
+              "target": "ActionSource",
+              "targetContextKey": ""
+            },
+            "calculateType": "HpRatio"
+          },
+          {
+            "$type": "Beyond.Gameplay.Core.ModifyDynamicBlackboard+Data, Gameplay.Beyond",
+            "isEnable": true,
+            "priorityLevel": "Default",
+            "priorityOffset": 0,
+            "serverActionIndex": 4,
+            "key": "tornado_atk_scale03",
+            "operation": "Assign",
+            "directValue": true,
+            "value": {
+              "useBlackboardKey": true,
+              "value": 0.0,
+              "blackboardKey": "EntityBB_abilityentity_water03"
+            },
+            "calculationTarget": {
+              "targetSource": "Owner",
+              "targetGroupKey": "",
+              "selectorOwner": "ActionOwner",
+              "ownerContextKey": "",
+              "centerType": "ActionSource",
+              "centerContextKey": "",
+              "centerToGround": false,
+              "selectorData": {
+                "validatorData": [],
+                "postProcessorData": []
+              },
+              "enableAdvancedDirection": false,
+              "advancedDirection": {
+                "directionType": "SourceForward",
+                "sourceMountPoint": "None",
+                "targetMountPoint": "None",
+                "customSourceAndTarget": false,
+                "clampToXZ": true,
+                "invertDirection": false
+              },
+              "selectorDirection": "SourceForward",
+              "target": "ActionSource",
+              "targetContextKey": ""
+            },
+            "calculateType": "HpRatio"
+          },
+          {
+            "$type": "Beyond.Gameplay.Core.IfElseAction+IfElseActionData, Gameplay.Beyond",
+            "isEnable": true,
+            "priorityLevel": "Default",
+            "priorityOffset": 0,
+            "serverActionIndex": 5,
+            "conditionAction": {
+              "actionData": [
+                {
+                  "$type": "Beyond.Gameplay.Core.Conditions.CheckEntityNum+Data, Gameplay.Beyond",
+                  "isEnable": true,
+                  "priorityLevel": "Default",
+                  "priorityOffset": 0,
+                  "serverActionIndex": 6,
+                  "checkTarget": {
+                    "targetSource": "Context",
+                    "targetGroupKey": "water",
+                    "selectorOwner": "ActionOwner",
+                    "ownerContextKey": "",
+                    "centerType": "ActionSource",
+                    "centerContextKey": "",
+                    "centerToGround": false,
+                    "selectorData": {
+                      "validatorData": [],
+                      "postProcessorData": []
+                    },
+                    "enableAdvancedDirection": false,
+                    "advancedDirection": {
+                      "directionType": "SourceForward",
+                      "sourceMountPoint": "None",
+                      "targetMountPoint": "None",
+                      "customSourceAndTarget": false,
+                      "clampToXZ": true,
+                      "invertDirection": false
+                    },
+                    "selectorDirection": "SourceForward",
+                    "target": "ActionSource",
+                    "targetContextKey": ""
+                  },
+                  "minNum": 1,
+                  "containsHittableTarget": false,
+                  "compareType": "GE",
+                  "storeKey": ""
+                }
+              ],
+              "onlyExecuteWhenSourceIsMainChar": false,
+              "onlyExecuteWhenSourceIsGuard": false
+            },
+            "succeedActions": {
+              "actionData": [
+                {
+                  "$type": "Beyond.Gameplay.Core.ForEachAction+Data, Gameplay.Beyond",
+                  "isEnable": true,
+                  "priorityLevel": "Default",
+                  "priorityOffset": 0,
+                  "serverActionIndex": 7,
+                  "target": {
+                    "targetSource": "Context",
+                    "targetGroupKey": "water",
+                    "selectorOwner": "ActionOwner",
+                    "ownerContextKey": "",
+                    "centerType": "ActionSource",
+                    "centerContextKey": "",
+                    "centerToGround": false,
+                    "selectorData": {
+                      "validatorData": [],
+                      "postProcessorData": []
+                    },
+                    "enableAdvancedDirection": false,
+                    "advancedDirection": {
+                      "directionType": "SourceForward",
+                      "sourceMountPoint": "None",
+                      "targetMountPoint": "None",
+                      "customSourceAndTarget": false,
+                      "clampToXZ": true,
+                      "invertDirection": false
+                    },
+                    "selectorDirection": "SourceForward",
+                    "target": "ActionSource",
+                    "targetContextKey": ""
+                  },
+                  "action": {
+                    "actionData": [
+                      {
+                        "$type": "Beyond.Gameplay.Core.IfElseAction+IfElseActionData, Gameplay.Beyond",
+                        "isEnable": true,
+                        "priorityLevel": "Default",
+                        "priorityOffset": 0,
+                        "serverActionIndex": 8,
+                        "conditionAction": {
+                          "actionData": [
+                            {
+                              "$type": "Beyond.Gameplay.Core.CheckDistanceCondition+Data, Gameplay.Beyond",
+                              "isEnable": true,
+                              "priorityLevel": "Default",
+                              "priorityOffset": 0,
+                              "serverActionIndex": 9,
+                              "source": {
+                                "targetSource": "Owner",
+                                "targetGroupKey": "",
+                                "selectorOwner": "ActionOwner",
+                                "ownerContextKey": "",
+                                "centerType": "ActionSource",
+                                "centerContextKey": "",
+                                "centerToGround": false,
+                                "selectorData": {
+                                  "validatorData": [],
+                                  "postProcessorData": []
+                                },
+                                "enableAdvancedDirection": false,
+                                "advancedDirection": {
+                                  "directionType": "SourceForward",
+                                  "sourceMountPoint": "None",
+                                  "targetMountPoint": "None",
+                                  "customSourceAndTarget": false,
+                                  "clampToXZ": true,
+                                  "invertDirection": false
+                                },
+                                "selectorDirection": "SourceForward",
+                                "target": "ActionSource",
+                                "targetContextKey": ""
+                              },
+                              "target": {
+                                "targetSource": "Target",
+                                "targetGroupKey": "water",
+                                "selectorOwner": "ActionOwner",
+                                "ownerContextKey": "",
+                                "centerType": "ActionSource",
+                                "centerContextKey": "",
+                                "centerToGround": false,
+                                "selectorData": {
+                                  "validatorData": [],
+                                  "postProcessorData": []
+                                },
+                                "enableAdvancedDirection": false,
+                                "advancedDirection": {
+                                  "directionType": "SourceForward",
+                                  "sourceMountPoint": "None",
+                                  "targetMountPoint": "None",
+                                  "customSourceAndTarget": false,
+                                  "clampToXZ": true,
+                                  "invertDirection": false
+                                },
+                                "selectorDirection": "SourceForward",
+                                "target": "ActionSource",
+                                "targetContextKey": ""
+                              },
+                              "distance": 50.0,
+                              "lessThan": true,
+                              "includeTargetRadius": false
+                            }
+                          ],
+                          "onlyExecuteWhenSourceIsMainChar": false,
+                          "onlyExecuteWhenSourceIsGuard": false
+                        },
+                        "succeedActions": {
+                          "actionData": [
+                            {
+                              "$type": "Beyond.Gameplay.Core.ModifyDynamicBlackboard+Data, Gameplay.Beyond",
+                              "isEnable": true,
+                              "priorityLevel": "Default",
+                              "priorityOffset": 0,
+                              "serverActionIndex": 10,
+                              "key": "water_cnt",
+                              "operation": "Add",
+                              "directValue": true,
+                              "value": {
+                                "useBlackboardKey": false,
+                                "value": 1.0,
+                                "blackboardKey": ""
+                              },
+                              "calculationTarget": {
+                                "targetSource": "Owner",
+                                "targetGroupKey": "",
+                                "selectorOwner": "ActionOwner",
+                                "ownerContextKey": "",
+                                "centerType": "ActionSource",
+                                "centerContextKey": "",
+                                "centerToGround": false,
+                                "selectorData": {
+                                  "validatorData": [],
+                                  "postProcessorData": []
+                                },
+                                "enableAdvancedDirection": false,
+                                "advancedDirection": {
+                                  "directionType": "SourceForward",
+                                  "sourceMountPoint": "None",
+                                  "targetMountPoint": "None",
+                                  "customSourceAndTarget": false,
+                                  "clampToXZ": true,
+                                  "invertDirection": false
+                                },
+                                "selectorDirection": "SourceForward",
+                                "target": "ActionSource",
+                                "targetContextKey": ""
+                              },
+                              "calculateType": "HpRatio"
+                            },
+                            {
+                              "$type": "Beyond.Gameplay.Core.CreateBuffAction+Data, Gameplay.Beyond",
+                              "isEnable": true,
+                              "priorityLevel": "Default",
+                              "priorityOffset": 0,
+                              "serverActionIndex": 11,
+                              "buffs": [
+                                {
+                                  "buffId": "buff_chr_0027_tangtang_water_ultskillwake",
+                                  "assignBlackboard": false,
+                                  "assignItems": [],
+                                  "readIdFromBlackboard": false,
+                                  "buffIdKey": ""
+                                }
+                              ],
+                              "count": {
+                                "useBlackboardKey": false,
+                                "value": 1.0,
+                                "blackboardKey": ""
+                              },
+                              "targetSettings": {
+                                "targetSource": "Target",
+                                "targetGroupKey": "water",
+                                "selectorOwner": "ActionOwner",
+                                "ownerContextKey": "",
+                                "centerType": "ActionSource",
+                                "centerContextKey": "",
+                                "centerToGround": false,
+                                "selectorData": {
+                                  "validatorData": [],
+                                  "postProcessorData": []
+                                },
+                                "enableAdvancedDirection": false,
+                                "advancedDirection": {
+                                  "directionType": "SourceForward",
+                                  "sourceMountPoint": "None",
+                                  "targetMountPoint": "None",
+                                  "customSourceAndTarget": false,
+                                  "clampToXZ": true,
+                                  "invertDirection": false
+                                },
+                                "selectorDirection": "SourceForward",
+                                "target": "ActionSource",
+                                "targetContextKey": ""
+                              },
+                              "buffSource": "ActionSource",
+                              "contextKey": "",
+                              "autoFinishByAction": false,
+                              "inheritSkillIdList": [],
+                              "asChildBuff": false,
+                              "inheritSourceSkillCastId": false,
+                              "inheritSourceSkillCastInfo": true,
+                              "isExtra": false
+                            }
+                          ],
+                          "onlyExecuteWhenSourceIsMainChar": false,
+                          "onlyExecuteWhenSourceIsGuard": false
+                        },
+                        "failActions": {
+                          "actionData": [],
+                          "onlyExecuteWhenSourceIsMainChar": false,
+                          "onlyExecuteWhenSourceIsGuard": false
+                        },
+                        "alwaysNext": true
+                      }
+                    ],
+                    "onlyExecuteWhenSourceIsMainChar": false,
+                    "onlyExecuteWhenSourceIsGuard": false
+                  }
+                },
+                {
+                  "$type": "Beyond.Gameplay.Core.SpawnAbilityEntity+Data, Gameplay.Beyond",
+                  "isEnable": true,
+                  "priorityLevel": "Default",
+                  "priorityOffset": 0,
+                  "serverActionIndex": 12,
+                  "abilityEntityId": "abilityentity_chr_0027_tangtang_normal_skill_move",
+                  "abilityEntitySkillId": "chr_0027_tangtang_ult_skill_abilityentitymove",
+                  "assignEntityBlackboard": false,
+                  "assignPairs": [],
+                  "bornAt": {
+                    "targetSource": "Context",
+                    "targetGroupKey": "ultwater_abilityentity",
+                    "selectorOwner": "ActionOwner",
+                    "ownerContextKey": "",
+                    "centerType": "ActionSource",
+                    "centerContextKey": "",
+                    "centerToGround": false,
+                    "selectorData": {
+                      "validatorData": [],
+                      "postProcessorData": []
+                    },
+                    "enableAdvancedDirection": false,
+                    "advancedDirection": {
+                      "directionType": "SourceForward",
+                      "sourceMountPoint": "None",
+                      "targetMountPoint": "None",
+                      "customSourceAndTarget": false,
+                      "clampToXZ": true,
+                      "invertDirection": false
+                    },
+                    "selectorDirection": "SourceForward",
+                    "target": "ActionSource",
+                    "targetContextKey": ""
+                  },
+                  "attachToClosestMeshPoint": false,
+                  "bornPosOffset": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "yRotateFromBoneToCurPos": false,
+                  "bornRotation": "Default",
+                  "clampToXZPlane": false,
+                  "applyBornRotationOffset": false,
+                  "bornRotationOffset": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0,
+                    "w": 1.0
+                  },
+                  "setAbilityEntitySource": true,
+                  "abilityEntitySource": "ActionSource",
+                  "overrideDuration": false,
+                  "duration": {
+                    "useBlackboardKey": false,
+                    "value": 0.0,
+                    "blackboardKey": ""
+                  },
+                  "setAbilityEntityTarget": true,
+                  "abilityEntityTarget": {
+                    "targetSource": "Source",
+                    "targetGroupKey": "",
+                    "selectorOwner": "ActionOwner",
+                    "ownerContextKey": "",
+                    "centerType": "ActionSource",
+                    "centerContextKey": "",
+                    "centerToGround": false,
+                    "selectorData": {
+                      "validatorData": [],
+                      "postProcessorData": []
+                    },
+                    "enableAdvancedDirection": false,
+                    "advancedDirection": {
+                      "directionType": "SourceForward",
+                      "sourceMountPoint": "None",
+                      "targetMountPoint": "None",
+                      "customSourceAndTarget": false,
+                      "clampToXZ": true,
+                      "invertDirection": false
+                    },
+                    "selectorDirection": "SourceForward",
+                    "target": "ActionSource",
+                    "targetContextKey": ""
+                  },
+                  "assignBlackboard": true,
+                  "saveToContext": true,
+                  "contextKey": "ultskill_watermove",
+                  "pauseEffectOnEnd": false,
+                  "inheritSourceSkillCastId": true
+                },
+                {
+                  "$type": "Beyond.Gameplay.Core.CreateBuffAction+Data, Gameplay.Beyond",
+                  "isEnable": true,
+                  "priorityLevel": "Default",
+                  "priorityOffset": 0,
+                  "serverActionIndex": 13,
+                  "buffs": [
+                    {
+                      "buffId": "buff_chr_0027_tangtang_ultskill_abilityentity_1",
+                      "assignBlackboard": false,
+                      "assignItems": [],
+                      "readIdFromBlackboard": false,
+                      "buffIdKey": ""
+                    }
+                  ],
+                  "count": {
+                    "useBlackboardKey": false,
+                    "value": 1.0,
+                    "blackboardKey": ""
+                  },
+                  "targetSettings": {
+                    "targetSource": "Context",
+                    "targetGroupKey": "ultskill_watermove",
+                    "selectorOwner": "ActionOwner",
+                    "ownerContextKey": "",
+                    "centerType": "ActionSource",
+                    "centerContextKey": "",
+                    "centerToGround": false,
+                    "selectorData": {
+                      "validatorData": [],
+                      "postProcessorData": []
+                    },
+                    "enableAdvancedDirection": false,
+                    "advancedDirection": {
+                      "directionType": "SourceForward",
+                      "sourceMountPoint": "None",
+                      "targetMountPoint": "None",
+                      "customSourceAndTarget": false,
+                      "clampToXZ": true,
+                      "invertDirection": false
+                    },
+                    "selectorDirection": "SourceForward",
+                    "target": "ActionSource",
+                    "targetContextKey": ""
+                  },
+                  "buffSource": "ActionSource",
+                  "contextKey": "",
+                  "autoFinishByAction": false,
+                  "inheritSkillIdList": [],
+                  "asChildBuff": false,
+                  "inheritSourceSkillCastId": false,
+                  "inheritSourceSkillCastInfo": true,
+                  "isExtra": false
+                }
+              ],
+              "onlyExecuteWhenSourceIsMainChar": false,
+              "onlyExecuteWhenSourceIsGuard": false
+            },
+            "failActions": {
+              "actionData": [
+                {
+                  "$type": "Beyond.Gameplay.Core.SpawnAbilityEntity+Data, Gameplay.Beyond",
+                  "isEnable": true,
+                  "priorityLevel": "Default",
+                  "priorityOffset": 0,
+                  "serverActionIndex": 14,
+                  "abilityEntityId": "abilityentity_chr_0027_tangtang_normal_skill_move",
+                  "abilityEntitySkillId": "chr_0027_tangtang_ult_skill_abilityentitymove",
+                  "assignEntityBlackboard": false,
+                  "assignPairs": [],
+                  "bornAt": {
+                    "targetSource": "Context",
+                    "targetGroupKey": "ultwater_abilityentity",
+                    "selectorOwner": "ActionOwner",
+                    "ownerContextKey": "",
+                    "centerType": "ActionSource",
+                    "centerContextKey": "",
+                    "centerToGround": false,
+                    "selectorData": {
+                      "validatorData": [],
+                      "postProcessorData": []
+                    },
+                    "enableAdvancedDirection": false,
+                    "advancedDirection": {
+                      "directionType": "SourceForward",
+                      "sourceMountPoint": "None",
+                      "targetMountPoint": "None",
+                      "customSourceAndTarget": false,
+                      "clampToXZ": true,
+                      "invertDirection": false
+                    },
+                    "selectorDirection": "SourceForward",
+                    "target": "ActionSource",
+                    "targetContextKey": ""
+                  },
+                  "attachToClosestMeshPoint": false,
+                  "bornPosOffset": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "yRotateFromBoneToCurPos": false,
+                  "bornRotation": "Default",
+                  "clampToXZPlane": false,
+                  "applyBornRotationOffset": false,
+                  "bornRotationOffset": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0,
+                    "w": 1.0
+                  },
+                  "setAbilityEntitySource": true,
+                  "abilityEntitySource": "ActionSource",
+                  "overrideDuration": false,
+                  "duration": {
+                    "useBlackboardKey": false,
+                    "value": 0.0,
+                    "blackboardKey": ""
+                  },
+                  "setAbilityEntityTarget": true,
+                  "abilityEntityTarget": {
+                    "targetSource": "Source",
+                    "targetGroupKey": "",
+                    "selectorOwner": "ActionOwner",
+                    "ownerContextKey": "",
+                    "centerType": "ActionSource",
+                    "centerContextKey": "",
+                    "centerToGround": false,
+                    "selectorData": {
+                      "validatorData": [],
+                      "postProcessorData": []
+                    },
+                    "enableAdvancedDirection": false,
+                    "advancedDirection": {
+                      "directionType": "SourceForward",
+                      "sourceMountPoint": "None",
+                      "targetMountPoint": "None",
+                      "customSourceAndTarget": false,
+                      "clampToXZ": true,
+                      "invertDirection": false
+                    },
+                    "selectorDirection": "SourceForward",
+                    "target": "ActionSource",
+                    "targetContextKey": ""
+                  },
+                  "assignBlackboard": true,
+                  "saveToContext": true,
+                  "contextKey": "ultskill_watermove",
+                  "pauseEffectOnEnd": false,
+                  "inheritSourceSkillCastId": true
+                },
+                {
+                  "$type": "Beyond.Gameplay.Core.CreateBuffAction+Data, Gameplay.Beyond",
+                  "isEnable": true,
+                  "priorityLevel": "Default",
+                  "priorityOffset": 0,
+                  "serverActionIndex": 15,
+                  "buffs": [
+                    {
+                      "buffId": "buff_chr_0027_tangtang_ultskill_abilityentity_1",
+                      "assignBlackboard": false,
+                      "assignItems": [],
+                      "readIdFromBlackboard": false,
+                      "buffIdKey": ""
+                    }
+                  ],
+                  "count": {
+                    "useBlackboardKey": false,
+                    "value": 1.0,
+                    "blackboardKey": ""
+                  },
+                  "targetSettings": {
+                    "targetSource": "Context",
+                    "targetGroupKey": "ultskill_watermove",
+                    "selectorOwner": "ActionOwner",
+                    "ownerContextKey": "",
+                    "centerType": "ActionSource",
+                    "centerContextKey": "",
+                    "centerToGround": false,
+                    "selectorData": {
+                      "validatorData": [],
+                      "postProcessorData": []
+                    },
+                    "enableAdvancedDirection": false,
+                    "advancedDirection": {
+                      "directionType": "SourceForward",
+                      "sourceMountPoint": "None",
+                      "targetMountPoint": "None",
+                      "customSourceAndTarget": false,
+                      "clampToXZ": true,
+                      "invertDirection": false
+                    },
+                    "selectorDirection": "SourceForward",
+                    "target": "ActionSource",
+                    "targetContextKey": ""
+                  },
+                  "buffSource": "ActionSource",
+                  "contextKey": "",
+                  "autoFinishByAction": false,
+                  "inheritSkillIdList": [],
+                  "asChildBuff": false,
+                  "inheritSourceSkillCastId": false,
+                  "inheritSourceSkillCastInfo": true,
+                  "isExtra": false
+                }
+              ],
+              "onlyExecuteWhenSourceIsMainChar": false,
+              "onlyExecuteWhenSourceIsGuard": false
+            },
+            "alwaysNext": true
+          }
+        ],
+        "onlyExecuteWhenSourceIsMainChar": false,
+        "onlyExecuteWhenSourceIsGuard": false
+      },
+      "forceSyncAnimData": {
+        "forceSync": false,
+        "montageName": "",
+        "targetFrame": 0,
+        "playbackSpeed": 0.0
+      }
+    },
+    {
+      "_startFrame": 12,
+      "_endFrame": 13,
+      "_sequenceActionData": {
+        "actionData": [
+          {
+            "$type": "Beyond.Gameplay.Core.FindTargetAction+FindTargetActionData, Gameplay.Beyond",
+            "isEnable": true,
+            "priorityLevel": "Default",
+            "priorityOffset": 0,
+            "serverActionIndex": 16,
+            "targetGroupKey": "ultwater_move",
+            "center": "ActionSource",
+            "centerContextKey": "",
+            "useCenterEntityMountPoint": false,
+            "centerMountPoint": "None",
+            "centerToGround": false,
+            "selectorOwner": "ActionOwner",
+            "selectorOwnerContextKey": "",
+            "selectorData": {
+              "finderData": {
+                "$type": "Beyond.Gameplay.Core.Selector+OwnerSpawnedEntityFinder+Data, Gameplay.Beyond",
+                "spawnedObjectType": "AbilityEntity"
+              },
+              "validatorData": [
+                {
+                  "$type": "Beyond.Gameplay.Core.Selector+TagValidator+Data, Gameplay.Beyond",
+                  "query": {
+                    "queryType": "HasAny",
+                    "tags": [
+                      {
+                        "tagName": "Skill/Character/chr_0027_tangtang/NormalSkillWaterMove",
+                        "tagId": 77793925
+                      }
+                    ]
+                  }
+                },
+                {
+                  "$type": "Beyond.Gameplay.Core.Selector+SkillCastIdValidator+Data, Gameplay.Beyond"
+                }
+              ],
+              "postProcessorData": []
+            },
+            "selectorDirection": "SourceForward",
+            "target": "ActionSource",
+            "contextKey": "",
+            "useAdvancedDirectionSetting": false,
+            "advancedSelectorDirection": {
+              "directionType": "SourceForward",
+              "sourceMountPoint": "None",
+              "targetMountPoint": "None",
+              "customSourceAndTarget": false,
+              "clampToXZ": true,
+              "invertDirection": false
+            }
+          },
+          {
+            "$type": "Beyond.Gameplay.Core.Conditions.CheckEntityNum+Data, Gameplay.Beyond",
+            "isEnable": true,
+            "priorityLevel": "Default",
+            "priorityOffset": 0,
+            "serverActionIndex": 17,
+            "checkTarget": {
+              "targetSource": "Context",
+              "targetGroupKey": "ultwater_move",
+              "selectorOwner": "ActionOwner",
+              "ownerContextKey": "",
+              "centerType": "ActionSource",
+              "centerContextKey": "",
+              "centerToGround": false,
+              "selectorData": {
+                "validatorData": [],
+                "postProcessorData": []
+              },
+              "enableAdvancedDirection": false,
+              "advancedDirection": {
+                "directionType": "SourceForward",
+                "sourceMountPoint": "None",
+                "targetMountPoint": "None",
+                "customSourceAndTarget": false,
+                "clampToXZ": true,
+                "invertDirection": false
+              },
+              "selectorDirection": "SourceForward",
+              "target": "ActionSource",
+              "targetContextKey": ""
+            },
+            "minNum": 1,
+            "containsHittableTarget": false,
+            "compareType": "GE",
+            "storeKey": "water_cnt"
+          },
+          {
+            "$type": "Beyond.Gameplay.Core.ForEachAction+Data, Gameplay.Beyond",
+            "isEnable": true,
+            "priorityLevel": "Default",
+            "priorityOffset": 0,
+            "serverActionIndex": 18,
+            "target": {
+              "targetSource": "Context",
+              "targetGroupKey": "ultwater_move",
+              "selectorOwner": "ActionOwner",
+              "ownerContextKey": "",
+              "centerType": "ActionSource",
+              "centerContextKey": "",
+              "centerToGround": false,
+              "selectorData": {
+                "validatorData": [],
+                "postProcessorData": []
+              },
+              "enableAdvancedDirection": false,
+              "advancedDirection": {
+                "directionType": "SourceForward",
+                "sourceMountPoint": "None",
+                "targetMountPoint": "None",
+                "customSourceAndTarget": false,
+                "clampToXZ": true,
+                "invertDirection": false
+              },
+              "selectorDirection": "SourceForward",
+              "target": "ActionSource",
+              "targetContextKey": ""
+            },
+            "action": {
+              "actionData": [
+                {
+                  "$type": "Beyond.Gameplay.Core.CheckDistanceCondition+Data, Gameplay.Beyond",
+                  "isEnable": true,
+                  "priorityLevel": "Default",
+                  "priorityOffset": 0,
+                  "serverActionIndex": 19,
+                  "source": {
+                    "targetSource": "Owner",
+                    "targetGroupKey": "",
+                    "selectorOwner": "ActionOwner",
+                    "ownerContextKey": "",
+                    "centerType": "ActionSource",
+                    "centerContextKey": "",
+                    "centerToGround": false,
+                    "selectorData": {
+                      "validatorData": [],
+                      "postProcessorData": []
+                    },
+                    "enableAdvancedDirection": false,
+                    "advancedDirection": {
+                      "directionType": "SourceForward",
+                      "sourceMountPoint": "None",
+                      "targetMountPoint": "None",
+                      "customSourceAndTarget": false,
+                      "clampToXZ": true,
+                      "invertDirection": false
+                    },
+                    "selectorDirection": "SourceForward",
+                    "target": "ActionSource",
+                    "targetContextKey": ""
+                  },
+                  "target": {
+                    "targetSource": "Context",
+                    "targetGroupKey": "ultwater_move",
+                    "selectorOwner": "ActionOwner",
+                    "ownerContextKey": "",
+                    "centerType": "ActionSource",
+                    "centerContextKey": "",
+                    "centerToGround": false,
+                    "selectorData": {
+                      "validatorData": [],
+                      "postProcessorData": []
+                    },
+                    "enableAdvancedDirection": false,
+                    "advancedDirection": {
+                      "directionType": "SourceForward",
+                      "sourceMountPoint": "None",
+                      "targetMountPoint": "None",
+                      "customSourceAndTarget": false,
+                      "clampToXZ": true,
+                      "invertDirection": false
+                    },
+                    "selectorDirection": "SourceForward",
+                    "target": "ActionSource",
+                    "targetContextKey": ""
+                  },
+                  "distance": 50.0,
+                  "lessThan": true,
+                  "includeTargetRadius": false
+                },
+                {
+                  "$type": "Beyond.Gameplay.Core.CreateBuffAction+Data, Gameplay.Beyond",
+                  "isEnable": true,
+                  "priorityLevel": "Default",
+                  "priorityOffset": 0,
+                  "serverActionIndex": 20,
+                  "buffs": [
+                    {
+                      "buffId": "buff_chr_0027_tangtang_ultskill_abilityentity_2",
+                      "assignBlackboard": false,
+                      "assignItems": [],
+                      "readIdFromBlackboard": false,
+                      "buffIdKey": ""
+                    }
+                  ],
+                  "count": {
+                    "useBlackboardKey": false,
+                    "value": 1.0,
+                    "blackboardKey": ""
+                  },
+                  "targetSettings": {
+                    "targetSource": "Context",
+                    "targetGroupKey": "ultwater_move",
+                    "selectorOwner": "ActionOwner",
+                    "ownerContextKey": "",
+                    "centerType": "ActionSource",
+                    "centerContextKey": "",
+                    "centerToGround": false,
+                    "selectorData": {
+                      "validatorData": [],
+                      "postProcessorData": []
+                    },
+                    "enableAdvancedDirection": false,
+                    "advancedDirection": {
+                      "directionType": "SourceForward",
+                      "sourceMountPoint": "None",
+                      "targetMountPoint": "None",
+                      "customSourceAndTarget": false,
+                      "clampToXZ": true,
+                      "invertDirection": false
+                    },
+                    "selectorDirection": "SourceForward",
+                    "target": "ActionSource",
+                    "targetContextKey": ""
+                  },
+                  "buffSource": "ActionSource",
+                  "contextKey": "",
+                  "autoFinishByAction": false,
+                  "inheritSkillIdList": [],
+                  "asChildBuff": false,
+                  "inheritSourceSkillCastId": false,
+                  "inheritSourceSkillCastInfo": true,
+                  "isExtra": false
+                }
+              ],
+              "onlyExecuteWhenSourceIsMainChar": false,
+              "onlyExecuteWhenSourceIsGuard": false
+            }
+          }
+        ],
+        "onlyExecuteWhenSourceIsMainChar": false,
+        "onlyExecuteWhenSourceIsGuard": false
+      },
+      "forceSyncAnimData": {
+        "forceSync": false,
+        "montageName": "",
+        "targetFrame": 0,
+        "playbackSpeed": 0.0
+      }
+    }
+  ],
+  "blackboard": [
+    {
+      "key": "hit_duration",
+      "valueDouble": 5.0,
+      "valueStr": "",
+      "isDynamic": false
+    },
+    {
+      "key": "water_cnt",
+      "valueDouble": 0.0,
+      "valueStr": "",
+      "isDynamic": true
+    },
+    {
+      "key": "poise_tomado",
+      "valueDouble": 0.0,
+      "valueStr": "",
+      "isDynamic": false
+    },
+    {
+      "key": "duration",
+      "valueDouble": 5.0,
+      "valueStr": "",
+      "isDynamic": false
+    },
+    {
+      "key": "hit_cnt",
+      "valueDouble": 4.0,
+      "valueStr": "",
+      "isDynamic": false
+    },
+    {
+      "key": "hit_cntmax",
+      "valueDouble": 10.0,
+      "valueStr": "",
+      "isDynamic": false
+    },
+    {
+      "key": "tornado_atk_scale01",
+      "valueDouble": 0.0,
+      "valueStr": "",
+      "isDynamic": true
+    },
+    {
+      "key": "tornado_atk_scale02",
+      "valueDouble": 0.0,
+      "valueStr": "",
+      "isDynamic": true
+    },
+    {
+      "key": "tornado_atk_scale03",
+      "valueDouble": 0.0,
+      "valueStr": "",
+      "isDynamic": true
+    },
+    {
+      "key": "dmg_up_water_ult",
+      "valueDouble": 0.0,
+      "valueStr": "",
+      "isDynamic": true
+    },
+    {
+      "key": "talent2_ultskill",
+      "valueDouble": 0.0,
+      "valueStr": "",
+      "isDynamic": true
+    },
+    {
+      "key": "rate_spellvulnerable",
+      "valueDouble": 0.0,
+      "valueStr": "",
+      "isDynamic": true
+    },
+    {
+      "key": "rate_spellvulnerable_02",
+      "valueDouble": 0.0,
+      "valueStr": "",
+      "isDynamic": true
+    },
+    {
+      "key": "duration_spellvulnerable",
+      "valueDouble": 0.0,
+      "valueStr": "",
+      "isDynamic": true
+    }
+  ]
+}

@@ -1,0 +1,555 @@
+<!-- plugin/buff.html -->
+<link rel="stylesheet" href="/theme/buff.css">
+
+<div class="buff-module">
+    <div class="left-column">
+        <div class="list-search">
+            <input type="text" id="buffSearchInput" placeholder="搜索效果 (ID/名称)" class="search-input">
+        </div>
+        <div class="buff-list" id="buffList"></div>
+    </div>
+    <div class="buff-detail" id="buffDetail">
+        <div class="loader">加载效果数据...</div>
+    </div>
+</div>
+
+<div class="mobile-list-btn" id="buffMobileListBtn">📋 列表</div>
+<div id="buffMobileListOverlay" class="mobile-list-overlay">
+    <div class="mobile-list-container">
+        <div class="mobile-list-header">选择效果</div>
+        <div class="mobile-list-content" id="buffMobileListContent"></div>
+    </div>
+</div>
+
+<!-- 动作详情模态框 -->
+<div id="actionDetailModal" class="action-modal">
+    <div class="action-modal-content">
+        <div class="action-modal-header">
+            <span class="action-modal-title">动作详细信息</span>
+            <span class="action-modal-close">&times;</span>
+        </div>
+        <div class="action-modal-body">
+            <pre id="actionDetailJson" class="action-json-viewer"></pre>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        let allBuffs = [];
+        let activeBuffId = null;
+        let isInitialized = false;
+        let searchTerm = '';
+        let currentBuffData = null;   // 保存当前buff数据，供查看动作详情使用
+
+        const IMAGE_BASE_PATH = '/public/images/';
+
+        function getCurrentShowHidden() {
+            return window.akeData?.getConfig().showHidden ?? false;
+        }
+
+        function parseText(text) {
+            return window.parseText(text, IMAGE_BASE_PATH);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function (m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        function filterBuffs(buffs) {
+            if (!searchTerm) return buffs;
+            const term = searchTerm.toLowerCase();
+            return buffs.filter(b =>
+                (b.id && b.id.toLowerCase().includes(term)) ||
+                (b.name && b.name.toLowerCase().includes(term))
+            );
+        }
+
+        async function loadBuffManifest(showHidden) {
+            try {
+                const res = await fetch('/public/Json/BuffData/manifest.json?t=' + Date.now());
+                if (!res.ok) throw new Error('无法加载效果清单');
+                const all = await res.json();
+                let buffs = showHidden ? all : all.filter(b => !b.hidden);
+                buffs.sort((a, b) => (a.priority || 999) - (b.priority || 999));
+                return buffs;
+            } catch (err) {
+                console.error('加载效果清单失败:', err);
+                return [];
+            }
+        }
+
+        function renderBuffList() {
+            const container = document.getElementById('buffList');
+            const detailContainer = document.getElementById('buffDetail');
+            if (!container) return;
+
+            const filtered = filterBuffs(allBuffs);
+            container.innerHTML = '';
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="loader">无匹配效果</div>';
+                if (detailContainer) detailContainer.innerHTML = '<div class="loader">请选择效果</div>';
+                activeBuffId = null;
+                return;
+            }
+
+            filtered.forEach((buff, index) => {
+                const item = document.createElement('div');
+                item.className = `buff-item ${buff.id === activeBuffId ? 'active' : (index === 0 && !activeBuffId ? 'active' : '')}`;
+                item.dataset.buffId = buff.id;
+                item.dataset.contentFile = buff.contentFile;
+
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'buff-info';
+                const nameSpan = document.createElement('div');
+                nameSpan.className = 'buff-name';
+                nameSpan.textContent = buff.name || buff.id;
+                const idSpan = document.createElement('div');
+                idSpan.className = 'buff-id';
+                idSpan.textContent = buff.id;
+                infoDiv.appendChild(nameSpan);
+                infoDiv.appendChild(idSpan);
+
+                item.appendChild(infoDiv);
+
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.buff-item').forEach(el => el.classList.remove('active'));
+                    item.classList.add('active');
+                    activeBuffId = buff.id;
+                    loadBuffDetail(buff, detailContainer);
+                });
+
+                container.appendChild(item);
+            });
+
+            const activeExists = filtered.some(b => b.id === activeBuffId);
+            if (!activeExists && filtered.length > 0) {
+                activeBuffId = filtered[0].id;
+                const firstItem = container.querySelector('.buff-item');
+                if (firstItem) firstItem.classList.add('active');
+                loadBuffDetail(filtered[0], detailContainer);
+            } else if (activeExists) {
+                const activeBuff = filtered.find(b => b.id === activeBuffId);
+                if (activeBuff) {
+                    const activeItem = container.querySelector(`.buff-item[data-buff-id="${activeBuffId}"]`);
+                    if (activeItem) activeItem.classList.add('active');
+                    loadBuffDetail(activeBuff, detailContainer);
+                }
+            }
+        }
+
+        // 显示动作详情模态框
+        function showActionDetail(actionData) {
+            const modal = document.getElementById('actionDetailModal');
+            const pre = document.getElementById('actionDetailJson');
+            if (!modal || !pre) return;
+            const jsonStr = JSON.stringify(actionData, null, 2);
+            pre.textContent = jsonStr;
+            modal.style.display = 'flex';
+        }
+
+        function closeActionDetail() {
+            const modal = document.getElementById('actionDetailModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        async function loadBuffDetail(buff, container) {
+            container.innerHTML = '<div class="loader">加载效果数据...</div>';
+            try {
+                const data = await fetch(buff.contentFile + '?t=' + Date.now()).then(r => r.json());
+                currentBuffData = data;
+                container.innerHTML = renderDetail(data);
+                // 绑定查看完整数据的按钮
+                container.querySelectorAll('.action-view-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const actionType = btn.dataset.actionType;
+                        const actionIndex = parseInt(btn.dataset.actionIndex);
+                        let action = null;
+                        if (actionType === 'buffEvent' && currentBuffData?.buffEventAction && currentBuffData.buffEventAction[actionIndex]) {
+                            action = currentBuffData.buffEventAction[actionIndex];
+                        } else if (actionType === 'abilityEvent' && currentBuffData?.abilityEventAction && currentBuffData.abilityEventAction[actionIndex]) {
+                            action = currentBuffData.abilityEventAction[actionIndex];
+                        } else if (actionType === 'igniteEvent' && currentBuffData?.igniteEventAction && currentBuffData.igniteEventAction[actionIndex]) {
+                            action = currentBuffData.igniteEventAction[actionIndex];
+                        } else if (actionType === 'timeline' && currentBuffData?.timelineActions && currentBuffData.timelineActions[actionIndex]) {
+                            action = currentBuffData.timelineActions[actionIndex];
+                        }
+                        if (action) {
+                            showActionDetail(action);
+                        } else {
+                            alert('无法获取该动作数据');
+                        }
+                    });
+                });
+            } catch (err) {
+                container.innerHTML = `<div class="error-message">加载失败: ${err.message}</div>`;
+            }
+        }
+
+        // 辅助：格式化数值
+        function formatNumber(val) {
+            if (typeof val !== 'number') return val;
+            return val % 1 === 0 ? val.toString() : val.toFixed(2);
+        }
+
+        // 渲染属性修改器
+        function renderAttributeModifiers(modifiers) {
+            if (!modifiers || modifiers.length === 0) return '<p>无</p>';
+            let html = '<table class="info-table"><thead><tr><th>属性类型</th><th>公式</th><th>参数值</th></tr></thead><tbody>';
+            modifiers.forEach(mod => {
+                const attrType = mod.attributeType || '未知';
+                const formula = mod.formulaItem || '未知';
+                let paramValue = '';
+                if (mod.param) {
+                    if (mod.param.useBlackboardKey) {
+                        paramValue = `键: ${mod.param.blackboardKey} (默认: ${mod.param.value})`;
+                    } else {
+                        paramValue = formatNumber(mod.param.value);
+                    }
+                }
+                html += `<tr><td>${escapeHtml(attrType)}</td><td>${escapeHtml(formula)}</td><td>${escapeHtml(paramValue)}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            return html;
+        }
+
+        // 渲染黑板参数
+        function renderBlackboard(blackboard) {
+            if (!blackboard || blackboard.length === 0) return '<p>无</p>';
+            let html = '<table class="info-table"><thead><tr><th>键</th><th>数值</th><th>动态</th></tr></thead><tbody>';
+            blackboard.forEach(bb => {
+                let value = bb.valueDouble !== undefined ? formatNumber(bb.valueDouble) : (bb.valueStr || '');
+                html += `<tr><td>${escapeHtml(bb.key)}</td><td>${escapeHtml(value)}</td><td>${bb.isDynamic ? '是' : '否'}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            return html;
+        }
+
+        // 渲染堆叠设置
+        function renderStacking(settings) {
+            if (!settings) return '<p>无</p>';
+            return `
+                <div class="info-section">
+                    <div>标识类型: ${escapeHtml(settings.identifierType || '未知')}</div>
+                    <div>堆叠类型: ${escapeHtml(settings.stackingType || '未知')}</div>
+                    <div>最大堆叠层数: ${settings.maxStackCnt ?? '不限'}</div>
+                    <div>优先级: ${settings.priority ?? 0}</div>
+                </div>
+            `;
+        }
+
+        // ---------- 动作展示相关函数（复用技能模块）----------
+        function getSimpleProperties(obj, maxDepth = 1, currentDepth = 0) {
+            if (currentDepth > maxDepth) return [];
+            const props = [];
+            for (const [key, value] of Object.entries(obj)) {
+                if (value === null || value === undefined) continue;
+                const type = typeof value;
+                if (type === 'string' || type === 'number' || type === 'boolean') {
+                    props.push({ key, value: String(value) });
+                } else if (type === 'object' && !Array.isArray(value)) {
+                    props.push(...getSimpleProperties(value, maxDepth, currentDepth + 1).map(p => ({ key: `${key}.${p.key}`, value: p.value })));
+                } else if (Array.isArray(value) && value.length > 0 && typeof value[0] !== 'object') {
+                    const arrStr = value.slice(0, 3).map(v => String(v)).join(', ') + (value.length > 3 ? '...' : '');
+                    props.push({ key, value: `[${arrStr}]` });
+                }
+            }
+            return props;
+        }
+
+        function getActionSummary(action) {
+            const fullType = action.$type || '未知类型';
+            let summary = '';
+            if (fullType.includes('PlayAnimationAction')) {
+                summary = `动画: ${action.animName || '?'}`;
+            } else if (fullType.includes('DamageAction')) {
+                const units = action.damageUnits;
+                if (units && units.length) {
+                    const types = units.map(u => u.damageType).join(',');
+                    summary = `伤害类型: ${types}`;
+                } else {
+                    summary = '造成伤害';
+                }
+            } else if (fullType.includes('CreateBuffAction')) {
+                const buffs = action.buffs;
+                if (buffs && buffs.length) {
+                    const ids = buffs.map(b => b.buffId).join(',');
+                    summary = `添加Buff: ${ids}`;
+                } else {
+                    summary = '添加Buff';
+                }
+            } else if (fullType.includes('FindTargetAction')) {
+                summary = `查找目标 (目标组: ${action.targetGroupKey || '?'})`;
+            } else if (fullType.includes('EffectAction')) {
+                const effect = action.effectActionCfg?.effectName;
+                summary = effect ? `特效: ${effect}` : '播放特效';
+            } else if (fullType.includes('SelfRotateAction')) {
+                summary = `自身旋转 (类型: ${action.rotateType || '?'})`;
+            } else if (fullType.includes('CustomRootMotionAction')) {
+                summary = `根运动移动 (动画: ${action.animKey || '?'})`;
+            } else if (fullType.includes('PlaySoundAction')) {
+                summary = `播放音效: ${action._soundEvent || '?'}`;
+            } else if (fullType.includes('HitStopAction')) {
+                summary = `命中停顿 (时长: ${action.duration || '?'})`;
+            } else if (fullType.includes('EnemyHurtAnimAction')) {
+                summary = `敌人受击动画 (${action.hurtAnim || '?'})`;
+            } else if (fullType.includes('ObtainCostAction')) {
+                summary = `获取能量 (${action.costType || '?'})`;
+            } else if (fullType.includes('SetSuperArmorAction')) {
+                summary = `设置霸体值: ${action.superArmorValue?.value || '?'}`;
+            } else if (fullType.includes('TimeDilationAction')) {
+                summary = `时间膨胀 (时长: ${action.duration?.value || '?'})`;
+            } else if (fullType.includes('VoiceTriggerAction')) {
+                summary = `语音触发 (${action._triggerKey || '?'})`;
+            } else if (fullType.includes('PlayAnimationWithStep')) {
+                summary = `踏步动画 (${action.animName || '?'})`;
+            } else {
+                const keys = Object.keys(action).slice(0, 3);
+                summary = `参数: ${keys.join(', ')}`;
+            }
+            const simpleProps = getSimpleProperties(action, 1);
+            const importantProps = simpleProps.filter(p =>
+                !p.key.includes('$type') &&
+                !p.key.includes('actionData') &&
+                !p.key.includes('sequenceActionData')
+            ).slice(0, 15);
+            return { fullType, summary, details: importantProps };
+        }
+
+        function renderActionList(actions, title, actionTypeKey) {
+            if (!actions || actions.length === 0) return '';
+            let html = `<div class="detail-section"><h3>${title}</h3><div class="action-group-list">`;
+            actions.forEach((action, idx) => {
+                const { fullType, summary, details } = getActionSummary(action);
+                let detailsHtml = '';
+                if (details.length > 0) {
+                    detailsHtml = '<div class="action-props">' + details.map(d =>
+                        `<span class="action-prop"><span class="prop-key">${escapeHtml(d.key)}</span>=<span class="prop-value">${escapeHtml(d.value)}</span></span>`
+                    ).join('') + '</div>';
+                }
+                html += `
+                    <div class="action-item">
+                        <div class="action-index">${idx + 1}</div>
+                        <div class="action-details">
+                            <div class="action-type">${escapeHtml(fullType)}</div>
+                            <div class="action-summary">${escapeHtml(summary)}</div>
+                            ${detailsHtml}
+                        </div>
+                        <div class="action-actions">
+                            <button class="action-view-btn" data-action-type="${actionTypeKey}" data-action-index="${idx}" title="查看详细信息">🔍</button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div></div>';
+            return html;
+        }
+
+        // 渲染timelineActions（可能存在于buff中，结构类似技能的动作组）
+        function renderTimelineActions(timelineActions) {
+            if (!timelineActions || timelineActions.length === 0) return '';
+            let html = '<div class="detail-section"><h3>时间轴动作</h3><div class="action-group-list">';
+            timelineActions.forEach((actionGroup, groupIdx) => {
+                const start = actionGroup._startFrame;
+                const end = actionGroup._endFrame;
+                const actions = actionGroup._sequenceActionData?.actionData || [];
+                html += `
+                    <div class="action-group">
+                        <div class="action-group-header">
+                            <span class="action-group-title">动作组 ${groupIdx + 1}</span>
+                            <span class="action-group-range">帧范围 [${start}, ${end}]</span>
+                            <span class="action-group-count">${actions.length} 个动作</span>
+                        </div>
+                        <div class="action-group-content">
+                `;
+                if (actions.length === 0) {
+                    html += '<div class="action-item">无具体动作数据</div>';
+                } else {
+                    actions.forEach((act, actIdx) => {
+                        const { fullType, summary, details } = getActionSummary(act);
+                        let detailsHtml = '';
+                        if (details.length > 0) {
+                            detailsHtml = '<div class="action-props">' + details.map(d =>
+                                `<span class="action-prop"><span class="prop-key">${escapeHtml(d.key)}</span>=<span class="prop-value">${escapeHtml(d.value)}</span></span>`
+                            ).join('') + '</div>';
+                        }
+                        html += `
+                            <div class="action-item">
+                                <div class="action-index">${actIdx + 1}</div>
+                                <div class="action-details">
+                                    <div class="action-type">${escapeHtml(fullType)}</div>
+                                    <div class="action-summary">${escapeHtml(summary)}</div>
+                                    ${detailsHtml}
+                                </div>
+                                <div class="action-actions">
+                                    <button class="action-view-btn" data-action-type="timeline" data-action-index="${groupIdx}_${actIdx}" title="查看详细信息">🔍</button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+                html += `</div></div>`;
+            });
+            html += '</div></div>';
+            return html;
+        }
+
+        function renderDetail(data) {
+            const id = data.id || '未知';
+            const lifeType = data.lifeType || '未知';
+            const duration = data.duration?.value ?? '无';
+            const triggerInterval = data.triggerInterval?.value ?? '无';
+            const maxTriggerCnt = data.maxTriggerCnt?.value ?? '无限制';
+            const canBeDispelled = data.dispelConfig?.canBeDispelled ? '是' : '否';
+
+            const attrModifiersHtml = renderAttributeModifiers(data.attributeModifier?.attributeModifiers);
+            const blackboardHtml = renderBlackboard(data.blackboard);
+            const stackingHtml = renderStacking(data.stackingSettings);
+
+            // 渲染各类动作列表
+            const buffEventHtml = renderActionList(data.buffEventAction, 'Buff触发事件', 'buffEvent');
+            const abilityEventHtml = renderActionList(data.abilityEventAction, '能力事件', 'abilityEvent');
+            const igniteEventHtml = renderActionList(data.igniteEventAction, '点燃事件', 'igniteEvent');
+            const timelineHtml = renderTimelineActions(data.timelineActions);
+
+            return `
+                <div class="buff-detail-container">
+                    <div class="detail-header">
+                        <div class="detail-info">
+                            <div class="detail-title-row">
+                                <span class="detail-name">${escapeHtml(id)}</span>
+                            </div>
+                            <div class="detail-meta">
+                                <div>生命周期: ${escapeHtml(lifeType)}</div>
+                                <div>持续时间: ${duration}</div>
+                                <div>触发间隔: ${triggerInterval}</div>
+                                <div>最大触发次数: ${maxTriggerCnt}</div>
+                                <div>可被驱散: ${canBeDispelled}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>属性修改器</h3>
+                        ${attrModifiersHtml}
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>使用参数</h3>
+                        ${blackboardHtml}
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>堆叠规则</h3>
+                        ${stackingHtml}
+                    </div>
+
+                    ${buffEventHtml}
+                    ${abilityEventHtml}
+                    ${igniteEventHtml}
+                    ${timelineHtml}
+                </div>
+            `;
+        }
+
+        async function refreshModule() {
+            const list = document.getElementById('buffList');
+            const detail = document.getElementById('buffDetail');
+            if (!list || !detail) return;
+            const showHidden = getCurrentShowHidden();
+            const buffs = await loadBuffManifest(showHidden);
+            allBuffs = buffs;
+            renderBuffList();
+            if (mobileOverlay?.style.display === 'flex') buildMobileList();
+        }
+
+        // 移动端列表
+        const mobileBtn = document.getElementById('buffMobileListBtn');
+        const mobileOverlay = document.getElementById('buffMobileListOverlay');
+        const mobileContent = document.getElementById('buffMobileListContent');
+
+        function buildMobileList() {
+            if (!mobileContent) return;
+            const filtered = filterBuffs(allBuffs);
+            mobileContent.innerHTML = '';
+            filtered.forEach(buff => {
+                const item = document.createElement('div');
+                item.className = 'mobile-list-item';
+                if (buff.id === activeBuffId) item.classList.add('active');
+                item.innerHTML = `
+                    <div class="item-name">${escapeHtml(buff.name || buff.id)}</div>
+                    <div class="item-id">${escapeHtml(buff.id)}</div>
+                `;
+                item.addEventListener('click', () => {
+                    activeBuffId = buff.id;
+                    loadBuffDetail(buff, document.getElementById('buffDetail'));
+                    closeMobileList();
+                    document.querySelectorAll('.buff-item').forEach(el => el.classList.remove('active'));
+                    const activeItem = document.querySelector(`.buff-item[data-buff-id="${buff.id}"]`);
+                    if (activeItem) activeItem.classList.add('active');
+                });
+                mobileContent.appendChild(item);
+            });
+        }
+
+        function openMobileList() {
+            buildMobileList();
+            if (mobileOverlay) mobileOverlay.style.display = 'flex';
+        }
+
+        function closeMobileList() {
+            if (mobileOverlay) mobileOverlay.style.display = 'none';
+        }
+
+        async function initModule() {
+            if (isInitialized) return;
+            isInitialized = true;
+            if (window.configLoaded) await window.configLoaded;
+
+            window.addEventListener('globalConfigChanged', (e) => {
+                searchTerm = '';
+                const searchInput = document.getElementById('buffSearchInput');
+                if (searchInput) searchInput.value = '';
+                refreshModule();
+            });
+
+            document.getElementById('buffSearchInput')?.addEventListener('input', (e) => {
+                searchTerm = e.target.value;
+                renderBuffList();
+                if (mobileOverlay?.style.display === 'flex') buildMobileList();
+            });
+
+            if (mobileBtn) mobileBtn.addEventListener('click', openMobileList);
+            if (mobileOverlay) mobileOverlay.addEventListener('click', (e) => {
+                if (e.target === mobileOverlay) closeMobileList();
+            });
+
+            // 模态框关闭事件
+            const modal = document.getElementById('actionDetailModal');
+            const closeBtn = document.querySelector('.action-modal-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeActionDetail);
+            }
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) closeActionDetail();
+                });
+            }
+
+            await refreshModule();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initModule);
+        } else {
+            initModule();
+        }
+    })();
+</script>

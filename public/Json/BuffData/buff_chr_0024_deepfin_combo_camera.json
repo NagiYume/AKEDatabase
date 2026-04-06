@@ -1,0 +1,826 @@
+{
+  "id": "buff_chr_0024_deepfin_combo_camera",
+  "iconConfig": {
+    "_spritePath": "",
+    "showInHeadBarCommon": false,
+    "showInHeadBarAttached": false,
+    "showInSquadIcon": false,
+    "blinkInMainCharHpBar": false,
+    "onlyShowForMainCharacter": false,
+    "iconStyleInSquad": "Default",
+    "_orderPriorityConfig": {
+      "useDirectoryValue": false,
+      "priorityValue": 0,
+      "priorityEnum": "CommonCharBuff"
+    },
+    "showWarningBackground": false,
+    "playStrongInAnimation": false,
+    "hasCharHpBarVfxType": false,
+    "charHpBarVfxType": "Fire"
+  },
+  "ignoreTagImmune": false,
+  "useTimeDilationDt": false,
+  "finishOnRepatriate": false,
+  "hasAddingCooldown": false,
+  "addingCooldown": {
+    "useBlackboardKey": false,
+    "value": 0.0,
+    "blackboardKey": ""
+  },
+  "ignoreCooldownWhenAdding": false,
+  "attributeModifier": {
+    "isConvertedAttribute": false,
+    "attributeModifiers": []
+  },
+  "damageModifier": [],
+  "healModifier": [],
+  "poiseModifier": [],
+  "globalModifier": [],
+  "shieldConfigs": [],
+  "applyTags": [],
+  "lifeType": "Limited",
+  "duration": {
+    "useBlackboardKey": false,
+    "value": 1.0,
+    "blackboardKey": ""
+  },
+  "triggerInterval": {
+    "useBlackboardKey": false,
+    "value": -1.0,
+    "blackboardKey": ""
+  },
+  "waitFirstTriggerInterval": false,
+  "maxTriggerCnt": {
+    "useBlackboardKey": false,
+    "value": 1,
+    "blackboardKey": "duration"
+  },
+  "stackingSettings": {
+    "identifierType": "Id",
+    "stackingType": "Unlimited",
+    "stackingKey": "",
+    "usePriorityKey": false,
+    "priorityKey": "",
+    "negatePriority": false,
+    "priority": 0.0,
+    "useMaxStackCntKey": false,
+    "maxStackCntKey": "",
+    "maxStackCnt": 2,
+    "isNeedStackEffect": true,
+    "stackEffects": []
+  },
+  "dispelConfig": {
+    "canBeDispelled": false,
+    "dispelledLevel": "Default"
+  },
+  "buffEventAction": [],
+  "abilityEventAction": [],
+  "igniteEventAction": [],
+  "timelineActions": [
+    {
+      "_startFrame": 0,
+      "_endFrame": 16,
+      "_sequenceActionData": {
+        "actionData": [
+          {
+            "$type": "Beyond.Gameplay.Core.TimeDilationAction+Data, Gameplay.Beyond",
+            "isEnable": true,
+            "priorityLevel": "Default",
+            "priorityOffset": 0,
+            "serverActionIndex": 0,
+            "layer": "Global",
+            "slot": {
+              "tagName": "",
+              "tagId": 0
+            },
+            "timeDilationPriority": {
+              "tagName": "TimeDilation/Priority/ComboSkill",
+              "tagId": -593023102
+            },
+            "duration": {
+              "useBlackboardKey": false,
+              "value": 0.63,
+              "blackboardKey": ""
+            },
+            "useCurveKey": true,
+            "curveKey": "ComboSkill",
+            "timeScaleCurve": {},
+            "finishByAction": false,
+            "ignoreTargets": [
+              {
+                "targetSource": "Owner",
+                "targetGroupKey": "",
+                "selectorOwner": "ActionOwner",
+                "ownerContextKey": "",
+                "centerType": "ActionSource",
+                "centerContextKey": "",
+                "centerToGround": false,
+                "selectorData": {
+                  "validatorData": [],
+                  "postProcessorData": []
+                },
+                "enableAdvancedDirection": false,
+                "advancedDirection": {
+                  "directionType": "SourceForward",
+                  "sourceMountPoint": "None",
+                  "targetMountPoint": "None",
+                  "customSourceAndTarget": false,
+                  "clampToXZ": true,
+                  "invertDirection": false
+                },
+                "selectorDirection": "SourceForward",
+                "target": "ActionSource",
+                "targetContextKey": ""
+              },
+              {
+                "targetSource": "InstantSearch",
+                "targetGroupKey": "",
+                "selectorOwner": "ActionOwner",
+                "ownerContextKey": "",
+                "centerType": "ActionSource",
+                "centerContextKey": "",
+                "centerToGround": false,
+                "selectorData": {
+                  "finderData": {
+                    "$type": "Beyond.Gameplay.Core.Selector+OwnerSpawnedEntityFinder+Data, Gameplay.Beyond",
+                    "spawnedObjectType": "AbilityEntity"
+                  },
+                  "validatorData": [],
+                  "postProcessorData": []
+                },
+                "enableAdvancedDirection": false,
+                "advancedDirection": {
+                  "directionType": "SourceForward",
+                  "sourceMountPoint": "None",
+                  "targetMountPoint": "None",
+                  "customSourceAndTarget": false,
+                  "clampToXZ": true,
+                  "invertDirection": false
+                },
+                "selectorDirection": "SourceForward",
+                "target": "ActionSource",
+                "targetContextKey": ""
+              }
+            ],
+            "effectTargets": [],
+            "useTimeScaleForSkillCdTick": true,
+            "influenceSkillCdTime": {
+              "useBlackboardKey": false,
+              "value": 0.3,
+              "blackboardKey": ""
+            }
+          }
+        ],
+        "onlyExecuteWhenSourceIsMainChar": false,
+        "onlyExecuteWhenSourceIsGuard": false
+      },
+      "forceSyncAnimData": {
+        "forceSync": false,
+        "montageName": "",
+        "targetFrame": 0,
+        "playbackSpeed": 0.0
+      }
+    },
+    {
+      "_startFrame": 0,
+      "_endFrame": 16,
+      "_sequenceActionData": {
+        "actionData": [
+          {
+            "$type": "Beyond.Gameplay.Core.IfElseAction+IfElseActionData, Gameplay.Beyond",
+            "isEnable": true,
+            "priorityLevel": "Default",
+            "priorityOffset": 0,
+            "serverActionIndex": 1,
+            "conditionAction": {
+              "actionData": [
+                {
+                  "$type": "Beyond.Gameplay.Core.Conditions.CheckMainCharacterCondition+Data, Gameplay.Beyond",
+                  "isEnable": true,
+                  "priorityLevel": "Default",
+                  "priorityOffset": 0,
+                  "serverActionIndex": 2,
+                  "checkTarget": {
+                    "targetSource": "Owner",
+                    "targetGroupKey": "",
+                    "selectorOwner": "ActionOwner",
+                    "ownerContextKey": "",
+                    "centerType": "ActionSource",
+                    "centerContextKey": "",
+                    "centerToGround": false,
+                    "selectorData": {
+                      "validatorData": [],
+                      "postProcessorData": []
+                    },
+                    "enableAdvancedDirection": false,
+                    "advancedDirection": {
+                      "directionType": "SourceForward",
+                      "sourceMountPoint": "None",
+                      "targetMountPoint": "None",
+                      "customSourceAndTarget": false,
+                      "clampToXZ": true,
+                      "invertDirection": false
+                    },
+                    "selectorDirection": "SourceForward",
+                    "target": "ActionSource",
+                    "targetContextKey": ""
+                  }
+                }
+              ],
+              "onlyExecuteWhenSourceIsMainChar": false,
+              "onlyExecuteWhenSourceIsGuard": false
+            },
+            "succeedActions": {
+              "actionData": [],
+              "onlyExecuteWhenSourceIsMainChar": false,
+              "onlyExecuteWhenSourceIsGuard": false
+            },
+            "failActions": {
+              "actionData": [
+                {
+                  "$type": "Beyond.Gameplay.Core.FindTargetAction+FindTargetActionData, Gameplay.Beyond",
+                  "isEnable": true,
+                  "priorityLevel": "Default",
+                  "priorityOffset": 0,
+                  "serverActionIndex": 3,
+                  "targetGroupKey": "mainchar",
+                  "center": "ActionSource",
+                  "centerContextKey": "",
+                  "useCenterEntityMountPoint": false,
+                  "centerMountPoint": "None",
+                  "centerToGround": false,
+                  "selectorOwner": "ActionOwner",
+                  "selectorOwnerContextKey": "",
+                  "selectorData": {
+                    "finderData": {
+                      "$type": "Beyond.Gameplay.Core.Selector+CharacterTeamFinder+Data, Gameplay.Beyond"
+                    },
+                    "validatorData": [
+                      {
+                        "$type": "Beyond.Gameplay.Core.Selector+MainCharacterValidator+Data, Gameplay.Beyond"
+                      }
+                    ],
+                    "postProcessorData": []
+                  },
+                  "selectorDirection": "SourceForward",
+                  "target": "ActionSource",
+                  "contextKey": "",
+                  "useAdvancedDirectionSetting": false,
+                  "advancedSelectorDirection": {
+                    "directionType": "SourceForward",
+                    "sourceMountPoint": "None",
+                    "targetMountPoint": "None",
+                    "customSourceAndTarget": false,
+                    "clampToXZ": true,
+                    "invertDirection": false
+                  }
+                },
+                {
+                  "$type": "Beyond.Gameplay.Core.SaveTargetDistanceAction+Data, Gameplay.Beyond",
+                  "isEnable": true,
+                  "priorityLevel": "Default",
+                  "priorityOffset": 0,
+                  "serverActionIndex": 4,
+                  "source": {
+                    "targetSource": "Context",
+                    "targetGroupKey": "mainchar",
+                    "selectorOwner": "ActionOwner",
+                    "ownerContextKey": "",
+                    "centerType": "ActionSource",
+                    "centerContextKey": "",
+                    "centerToGround": false,
+                    "selectorData": {
+                      "validatorData": [],
+                      "postProcessorData": []
+                    },
+                    "enableAdvancedDirection": false,
+                    "advancedDirection": {
+                      "directionType": "SourceForward",
+                      "sourceMountPoint": "None",
+                      "targetMountPoint": "None",
+                      "customSourceAndTarget": false,
+                      "clampToXZ": true,
+                      "invertDirection": false
+                    },
+                    "selectorDirection": "SourceForward",
+                    "target": "ActionSource",
+                    "targetContextKey": ""
+                  },
+                  "target": {
+                    "targetSource": "Owner",
+                    "targetGroupKey": "",
+                    "selectorOwner": "ActionOwner",
+                    "ownerContextKey": "",
+                    "centerType": "ActionSource",
+                    "centerContextKey": "",
+                    "centerToGround": false,
+                    "selectorData": {
+                      "validatorData": [],
+                      "postProcessorData": []
+                    },
+                    "enableAdvancedDirection": false,
+                    "advancedDirection": {
+                      "directionType": "SourceForward",
+                      "sourceMountPoint": "None",
+                      "targetMountPoint": "None",
+                      "customSourceAndTarget": false,
+                      "clampToXZ": true,
+                      "invertDirection": false
+                    },
+                    "selectorDirection": "SourceForward",
+                    "target": "ActionSource",
+                    "targetContextKey": ""
+                  },
+                  "bbKey": "owner_mainchar_distance"
+                },
+                {
+                  "$type": "Beyond.Gameplay.Core.IfElseAction+IfElseActionData, Gameplay.Beyond",
+                  "isEnable": true,
+                  "priorityLevel": "Default",
+                  "priorityOffset": 0,
+                  "serverActionIndex": 5,
+                  "conditionAction": {
+                    "actionData": [
+                      {
+                        "$type": "Beyond.Gameplay.Core.CheckComboSkillCameraAlphaSetting+Data, Gameplay.Beyond",
+                        "isEnable": true,
+                        "priorityLevel": "Default",
+                        "priorityOffset": 0,
+                        "serverActionIndex": 6,
+                        "desiredAlphaSetting": "Strong"
+                      }
+                    ],
+                    "onlyExecuteWhenSourceIsMainChar": false,
+                    "onlyExecuteWhenSourceIsGuard": false
+                  },
+                  "succeedActions": {
+                    "actionData": [
+                      {
+                        "$type": "Beyond.Gameplay.Core.CurveEvaluateFloat+Data, Gameplay.Beyond",
+                        "isEnable": true,
+                        "priorityLevel": "Default",
+                        "priorityOffset": 0,
+                        "serverActionIndex": 7,
+                        "inputValue": {
+                          "useBlackboardKey": true,
+                          "value": 0.0,
+                          "blackboardKey": "owner_mainchar_distance"
+                        },
+                        "useCustomCurve": true,
+                        "customCurve": {},
+                        "curveTemplate": "Linear",
+                        "key": "owner_mainchar_alpha"
+                      },
+                      {
+                        "$type": "Beyond.Gameplay.Core.OverrideCameraFollowAction+OverrideCameraFollowActionData, Gameplay.Beyond",
+                        "isEnable": true,
+                        "priorityLevel": "Default",
+                        "priorityOffset": 0,
+                        "serverActionIndex": 8,
+                        "targetSettings": {
+                          "targetSource": "Owner",
+                          "targetGroupKey": "",
+                          "selectorOwner": "ActionOwner",
+                          "ownerContextKey": "",
+                          "centerType": "ActionSource",
+                          "centerContextKey": "",
+                          "centerToGround": false,
+                          "selectorData": {
+                            "validatorData": [],
+                            "postProcessorData": []
+                          },
+                          "enableAdvancedDirection": false,
+                          "advancedDirection": {
+                            "directionType": "SourceForward",
+                            "sourceMountPoint": "None",
+                            "targetMountPoint": "None",
+                            "customSourceAndTarget": false,
+                            "clampToXZ": true,
+                            "invertDirection": false
+                          },
+                          "selectorDirection": "SourceForward",
+                          "target": "ActionSource",
+                          "targetContextKey": ""
+                        },
+                        "targetSettings2": {
+                          "targetSource": "InstantSearch",
+                          "targetGroupKey": "mainchar",
+                          "selectorOwner": "ActionOwner",
+                          "ownerContextKey": "",
+                          "centerType": "ActionSource",
+                          "centerContextKey": "",
+                          "centerToGround": false,
+                          "selectorData": {
+                            "finderData": {
+                              "$type": "Beyond.Gameplay.Core.Selector+CharacterTeamFinder+Data, Gameplay.Beyond"
+                            },
+                            "validatorData": [
+                              {
+                                "$type": "Beyond.Gameplay.Core.Selector+MainCharacterValidator+Data, Gameplay.Beyond"
+                              }
+                            ],
+                            "postProcessorData": []
+                          },
+                          "enableAdvancedDirection": false,
+                          "advancedDirection": {
+                            "directionType": "SourceForward",
+                            "sourceMountPoint": "None",
+                            "targetMountPoint": "None",
+                            "customSourceAndTarget": false,
+                            "clampToXZ": true,
+                            "invertDirection": false
+                          },
+                          "selectorDirection": "SourceForward",
+                          "target": "ActionSource",
+                          "targetContextKey": ""
+                        },
+                        "targetAlpha": {
+                          "useBlackboardKey": true,
+                          "value": 0.3,
+                          "blackboardKey": "owner_mainchar_alpha"
+                        },
+                        "blendInStyle": "EaseInOut",
+                        "blendInTime": {
+                          "useBlackboardKey": false,
+                          "value": 0.2,
+                          "blackboardKey": ""
+                        },
+                        "blendOutStyle": "EaseInOut",
+                        "blendOutTime": {
+                          "useBlackboardKey": false,
+                          "value": 0.7,
+                          "blackboardKey": ""
+                        },
+                        "ccsPriority": {
+                          "useBlackboardKey": false,
+                          "value": 20.0,
+                          "blackboardKey": ""
+                        }
+                      }
+                    ],
+                    "onlyExecuteWhenSourceIsMainChar": false,
+                    "onlyExecuteWhenSourceIsGuard": false
+                  },
+                  "failActions": {
+                    "actionData": [
+                      {
+                        "$type": "Beyond.Gameplay.Core.CurveEvaluateFloat+Data, Gameplay.Beyond",
+                        "isEnable": true,
+                        "priorityLevel": "Default",
+                        "priorityOffset": 0,
+                        "serverActionIndex": 9,
+                        "inputValue": {
+                          "useBlackboardKey": true,
+                          "value": 0.0,
+                          "blackboardKey": "owner_mainchar_distance"
+                        },
+                        "useCustomCurve": true,
+                        "customCurve": {},
+                        "curveTemplate": "Linear",
+                        "key": "owner_mainchar_alpha"
+                      },
+                      {
+                        "$type": "Beyond.Gameplay.Core.OverrideCameraFollowAction+OverrideCameraFollowActionData, Gameplay.Beyond",
+                        "isEnable": true,
+                        "priorityLevel": "Default",
+                        "priorityOffset": 0,
+                        "serverActionIndex": 10,
+                        "targetSettings": {
+                          "targetSource": "Owner",
+                          "targetGroupKey": "",
+                          "selectorOwner": "ActionOwner",
+                          "ownerContextKey": "",
+                          "centerType": "ActionSource",
+                          "centerContextKey": "",
+                          "centerToGround": false,
+                          "selectorData": {
+                            "validatorData": [],
+                            "postProcessorData": []
+                          },
+                          "enableAdvancedDirection": false,
+                          "advancedDirection": {
+                            "directionType": "SourceForward",
+                            "sourceMountPoint": "None",
+                            "targetMountPoint": "None",
+                            "customSourceAndTarget": false,
+                            "clampToXZ": true,
+                            "invertDirection": false
+                          },
+                          "selectorDirection": "SourceForward",
+                          "target": "ActionSource",
+                          "targetContextKey": ""
+                        },
+                        "targetSettings2": {
+                          "targetSource": "InstantSearch",
+                          "targetGroupKey": "mainchar",
+                          "selectorOwner": "ActionOwner",
+                          "ownerContextKey": "",
+                          "centerType": "ActionSource",
+                          "centerContextKey": "",
+                          "centerToGround": false,
+                          "selectorData": {
+                            "finderData": {
+                              "$type": "Beyond.Gameplay.Core.Selector+CharacterTeamFinder+Data, Gameplay.Beyond"
+                            },
+                            "validatorData": [
+                              {
+                                "$type": "Beyond.Gameplay.Core.Selector+MainCharacterValidator+Data, Gameplay.Beyond"
+                              }
+                            ],
+                            "postProcessorData": []
+                          },
+                          "enableAdvancedDirection": false,
+                          "advancedDirection": {
+                            "directionType": "SourceForward",
+                            "sourceMountPoint": "None",
+                            "targetMountPoint": "None",
+                            "customSourceAndTarget": false,
+                            "clampToXZ": true,
+                            "invertDirection": false
+                          },
+                          "selectorDirection": "SourceForward",
+                          "target": "ActionSource",
+                          "targetContextKey": ""
+                        },
+                        "targetAlpha": {
+                          "useBlackboardKey": true,
+                          "value": 0.3,
+                          "blackboardKey": "owner_mainchar_alpha"
+                        },
+                        "blendInStyle": "EaseInOut",
+                        "blendInTime": {
+                          "useBlackboardKey": false,
+                          "value": 0.2,
+                          "blackboardKey": ""
+                        },
+                        "blendOutStyle": "EaseInOut",
+                        "blendOutTime": {
+                          "useBlackboardKey": false,
+                          "value": 0.7,
+                          "blackboardKey": ""
+                        },
+                        "ccsPriority": {
+                          "useBlackboardKey": false,
+                          "value": 20.0,
+                          "blackboardKey": ""
+                        }
+                      }
+                    ],
+                    "onlyExecuteWhenSourceIsMainChar": false,
+                    "onlyExecuteWhenSourceIsGuard": false
+                  },
+                  "alwaysNext": true
+                }
+              ],
+              "onlyExecuteWhenSourceIsMainChar": false,
+              "onlyExecuteWhenSourceIsGuard": false
+            },
+            "alwaysNext": true
+          }
+        ],
+        "onlyExecuteWhenSourceIsMainChar": false,
+        "onlyExecuteWhenSourceIsGuard": false
+      },
+      "forceSyncAnimData": {
+        "forceSync": false,
+        "montageName": "",
+        "targetFrame": 0,
+        "playbackSpeed": 0.0
+      }
+    },
+    {
+      "_startFrame": 0,
+      "_endFrame": 17,
+      "_sequenceActionData": {
+        "actionData": [
+          {
+            "$type": "Beyond.Gameplay.Core.IfElseAction+IfElseActionData, Gameplay.Beyond",
+            "isEnable": true,
+            "priorityLevel": "Default",
+            "priorityOffset": 0,
+            "serverActionIndex": 11,
+            "conditionAction": {
+              "actionData": [
+                {
+                  "$type": "Beyond.Gameplay.Core.Conditions.CheckMainCharacterCondition+Data, Gameplay.Beyond",
+                  "isEnable": true,
+                  "priorityLevel": "Default",
+                  "priorityOffset": 0,
+                  "serverActionIndex": 12,
+                  "checkTarget": {
+                    "targetSource": "Owner",
+                    "targetGroupKey": "",
+                    "selectorOwner": "ActionOwner",
+                    "ownerContextKey": "",
+                    "centerType": "ActionSource",
+                    "centerContextKey": "",
+                    "centerToGround": false,
+                    "selectorData": {
+                      "validatorData": [],
+                      "postProcessorData": []
+                    },
+                    "enableAdvancedDirection": false,
+                    "advancedDirection": {
+                      "directionType": "SourceForward",
+                      "sourceMountPoint": "None",
+                      "targetMountPoint": "None",
+                      "customSourceAndTarget": false,
+                      "clampToXZ": true,
+                      "invertDirection": false
+                    },
+                    "selectorDirection": "SourceForward",
+                    "target": "ActionSource",
+                    "targetContextKey": ""
+                  }
+                }
+              ],
+              "onlyExecuteWhenSourceIsMainChar": false,
+              "onlyExecuteWhenSourceIsGuard": false
+            },
+            "succeedActions": {
+              "actionData": [],
+              "onlyExecuteWhenSourceIsMainChar": false,
+              "onlyExecuteWhenSourceIsGuard": false
+            },
+            "failActions": {
+              "actionData": [
+                {
+                  "$type": "Beyond.Gameplay.Core.TemporaryUnlockAction+Data, Gameplay.Beyond",
+                  "isEnable": true,
+                  "priorityLevel": "Default",
+                  "priorityOffset": 0,
+                  "serverActionIndex": 13,
+                  "compareTarget": false,
+                  "targetSettings": {
+                    "targetSource": "Target",
+                    "targetGroupKey": "",
+                    "selectorOwner": "ActionOwner",
+                    "ownerContextKey": "",
+                    "centerType": "ActionSource",
+                    "centerContextKey": "",
+                    "centerToGround": false,
+                    "selectorData": {
+                      "validatorData": [],
+                      "postProcessorData": []
+                    },
+                    "enableAdvancedDirection": false,
+                    "advancedDirection": {
+                      "directionType": "SourceForward",
+                      "sourceMountPoint": "None",
+                      "targetMountPoint": "None",
+                      "customSourceAndTarget": false,
+                      "clampToXZ": true,
+                      "invertDirection": false
+                    },
+                    "selectorDirection": "SourceForward",
+                    "target": "ActionSource",
+                    "targetContextKey": ""
+                  },
+                  "disableLockAimPriority": 30.0
+                }
+              ],
+              "onlyExecuteWhenSourceIsMainChar": false,
+              "onlyExecuteWhenSourceIsGuard": false
+            },
+            "alwaysNext": true
+          }
+        ],
+        "onlyExecuteWhenSourceIsMainChar": false,
+        "onlyExecuteWhenSourceIsGuard": false
+      },
+      "forceSyncAnimData": {
+        "forceSync": false,
+        "montageName": "",
+        "targetFrame": 0,
+        "playbackSpeed": 0.0
+      }
+    },
+    {
+      "_startFrame": 0,
+      "_endFrame": 23,
+      "_sequenceActionData": {
+        "actionData": [
+          {
+            "$type": "Beyond.Gameplay.Core.OverrideCameraFollowAction+OverrideCameraFollowActionData, Gameplay.Beyond",
+            "isEnable": true,
+            "priorityLevel": "Default",
+            "priorityOffset": 0,
+            "serverActionIndex": 14,
+            "targetSettings": {
+              "targetSource": "Owner",
+              "targetGroupKey": "",
+              "selectorOwner": "ActionOwner",
+              "ownerContextKey": "",
+              "centerType": "ActionSource",
+              "centerContextKey": "",
+              "centerToGround": false,
+              "selectorData": {
+                "validatorData": [],
+                "postProcessorData": []
+              },
+              "enableAdvancedDirection": false,
+              "advancedDirection": {
+                "directionType": "SourceForward",
+                "sourceMountPoint": "None",
+                "targetMountPoint": "None",
+                "customSourceAndTarget": false,
+                "clampToXZ": true,
+                "invertDirection": false
+              },
+              "selectorDirection": "SourceForward",
+              "target": "ActionSource",
+              "targetContextKey": ""
+            },
+            "targetSettings2": {
+              "targetSource": "Target",
+              "targetGroupKey": "",
+              "selectorOwner": "ActionOwner",
+              "ownerContextKey": "",
+              "centerType": "ActionSource",
+              "centerContextKey": "",
+              "centerToGround": false,
+              "selectorData": {
+                "validatorData": [],
+                "postProcessorData": []
+              },
+              "enableAdvancedDirection": false,
+              "advancedDirection": {
+                "directionType": "SourceForward",
+                "sourceMountPoint": "None",
+                "targetMountPoint": "None",
+                "customSourceAndTarget": false,
+                "clampToXZ": true,
+                "invertDirection": false
+              },
+              "selectorDirection": "SourceForward",
+              "target": "ActionSource",
+              "targetContextKey": ""
+            },
+            "targetAlpha": {
+              "useBlackboardKey": false,
+              "value": 0.0,
+              "blackboardKey": ""
+            },
+            "blendInStyle": "EaseInOut",
+            "blendInTime": {
+              "useBlackboardKey": false,
+              "value": 0.2,
+              "blackboardKey": ""
+            },
+            "blendOutStyle": "EaseInOut",
+            "blendOutTime": {
+              "useBlackboardKey": false,
+              "value": 0.5,
+              "blackboardKey": ""
+            },
+            "ccsPriority": {
+              "useBlackboardKey": false,
+              "value": 20.0,
+              "blackboardKey": ""
+            }
+          }
+        ],
+        "onlyExecuteWhenSourceIsMainChar": true,
+        "onlyExecuteWhenSourceIsGuard": false
+      },
+      "forceSyncAnimData": {
+        "forceSync": false,
+        "montageName": "",
+        "targetFrame": 0,
+        "playbackSpeed": 0.0
+      }
+    }
+  ],
+  "blackboard": [
+    {
+      "key": "usp",
+      "valueDouble": 10.0,
+      "valueStr": "",
+      "isDynamic": false
+    },
+    {
+      "key": "count",
+      "valueDouble": 0.0,
+      "valueStr": "",
+      "isDynamic": true
+    },
+    {
+      "key": "CD",
+      "valueDouble": 0.0,
+      "valueStr": "",
+      "isDynamic": false
+    },
+    {
+      "key": "owner_mainchar_distance",
+      "valueDouble": 0.0,
+      "valueStr": "",
+      "isDynamic": true
+    },
+    {
+      "key": "owner_mainchar_alpha",
+      "valueDouble": 0.0,
+      "valueStr": "",
+      "isDynamic": true
+    }
+  ]
+}
