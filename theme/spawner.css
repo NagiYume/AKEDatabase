@@ -1,0 +1,699 @@
+/* spawner.css - 生成配置模块样式 */
+.spawner-module {
+    display: flex;
+    gap: 20px;
+    height: 100%;
+    min-height: 500px;
+}
+
+/* ========== 左侧分组列表 - 与 skill 风格统一 ========== */
+.spawner-module .left-column {
+    width: 350px;
+    /* 与 skill 左侧宽度一致 */
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    flex-shrink: 0;
+    background: var(--sidebar-bg, #f2f4f8);
+    border-radius: 12px;
+    border: 1px solid var(--border-color, #d9e0e8);
+    overflow: hidden;
+    /* 确保圆角生效，内部滚动由 .group-list 负责 */
+}
+
+.list-search {
+    padding: 8px;
+    border-bottom: 1px solid var(--border-color, #d9e0e8);
+    flex-shrink: 0;
+    background: var(--sidebar-bg, #f2f4f8);
+}
+
+.search-input {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--input-bg, white);
+    border: 1px solid var(--border-color, #d9e0e8);
+    border-radius: 20px;
+    color: var(--text-color, #1e2b3c);
+    font-size: 14px;
+}
+
+.group-list {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--sidebar-bg, #f2f4f8);
+    padding: 16px;
+    border-top: none;
+    /* 移除原有的 display: flex; flex-direction: column; gap，改为块级布局，每个 .group-item 独立 */
+    display: block;
+}
+
+.group-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 12px;
+    margin-bottom: 8px;
+    background: var(--module-bg, white);
+    border-radius: 12px;
+    border: 1px solid var(--border-color, #e2e7f0);
+    cursor: pointer;
+    transition: all 0.2s;
+    /* 原有 border-left 样式移除，使用 skill 的悬停效果 */
+    border-left: none;
+}
+
+.group-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.group-item.active {
+    background: var(--active-bg, #e2eaf9);
+    border-left: 5px solid var(--accent-color, #1e6f9f);
+}
+
+/* 分组名称与ID的布局（与 skill-info 类似） */
+.group-name {
+    flex: 1;
+    font-weight: 600;
+    color: var(--text-color, #1e2b3c);
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.group-id {
+    font-size: 11px;
+    color: var(--desc-color, #5b6f86);
+    font-family: monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-left: 8px;
+}
+
+/* 右侧区域保持不变 */
+.spawner-right {
+    flex: 1;
+    background: var(--module-bg, #ffffff);
+    border-radius: 12px;
+    border: 1px solid var(--border-color, #d9e0e8);
+    padding: 20px;
+    overflow-y: auto;
+}
+
+/* 其余样式（卡片、波次、路线等）保持不变，但为了完整保留原有效果，以下为原样拷贝 */
+.right-list-area,
+.right-detail-area {
+    width: 100%;
+    height: 100%;
+}
+
+/* Spawner 卡片网格 */
+.spawner-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+.spawner-card {
+    background: var(--content-bg, #f8fafd);
+    border: 1px solid var(--border-color, #d9e0e8);
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.spawner-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.1);
+    border-color: var(--accent-color, #1e6f9f);
+}
+
+.card-name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text-color, #1e2b3c);
+    margin-bottom: 6px;
+}
+
+.card-id {
+    font-size: 0.75rem;
+    color: var(--desc-color, #5b6f86);
+    font-family: monospace;
+}
+
+/* 返回按钮 */
+.back-button {
+    background: var(--button-bg, #e0e8f0);
+    border: 1px solid var(--border-color, #cbd5e1);
+    border-radius: 30px;
+    padding: 6px 16px;
+    margin-bottom: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+}
+
+.back-button:hover {
+    background: var(--active-bg, #d2dceb);
+}
+
+/* 详情样式（复用之前的） */
+.detail-header {
+    margin-bottom: 24px;
+    border-bottom: 2px solid var(--border-color, #d9e0e8);
+    padding-bottom: 12px;
+}
+
+.detail-header h2 {
+    margin: 0 0 8px 0;
+    color: var(--text-color, #1e2b3c);
+    font-size: 1.8rem;
+}
+
+.detail-id {
+    font-family: monospace;
+    color: var(--desc-color, #5b6f86);
+    font-size: 13px;
+}
+
+.settings-card,
+.wave-card,
+.group-card,
+.action-card,
+.routes-section {
+    background: var(--content-bg, #f8fafd);
+    border-radius: 12px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color, #d9e0e8);
+    overflow: hidden;
+}
+
+.section-header {
+    font-weight: bold;
+    padding: 12px 16px;
+    background: var(--table-header-bg, #eef3fa);
+    border-bottom: 1px solid var(--border-color, #d9e0e8);
+    color: var(--text-color, #1e2b3c);
+    font-size: 1.1rem;
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    padding: 16px;
+}
+
+.wave-header {
+    background: var(--active-bg, #e2eaf9);
+    padding: 10px 16px;
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    font-weight: 500;
+    border-bottom: 1px solid var(--border-color, #d9e0e8);
+}
+
+.wave-key {
+    color: var(--accent-color, #1e6f9f);
+    font-weight: bold;
+}
+
+.wave-mode,
+.wave-kill {
+    font-size: 13px;
+    background: rgba(0, 0, 0, 0.05);
+    padding: 2px 8px;
+    border-radius: 20px;
+}
+
+.wave-hidden {
+    color: #f44336;
+    font-size: 12px;
+}
+
+.groups-container {
+    padding: 12px;
+}
+
+.group-card {
+    margin-bottom: 16px;
+    border: 1px solid var(--border-color, #d9e0e8);
+    border-radius: 10px;
+    background: var(--module-bg, white);
+}
+
+.group-header {
+    padding: 8px 12px;
+    background: var(--table-header-bg, #eef3fa);
+    display: flex;
+    gap: 15px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border-color, #d9e0e8);
+}
+
+.actions-container {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.action-card {
+    background: var(--content-bg, #f8fafd);
+    border-left: 4px solid var(--accent-color, #1e6f9f);
+}
+
+.action-header {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.03);
+    border-bottom: 1px solid var(--border-color, #d9e0e8);
+    font-size: 13px;
+}
+
+.action-detail {
+    padding: 12px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.action-detail .label {
+    font-weight: 600;
+    color: var(--accent-color, #1e6f9f);
+    margin-right: 8px;
+}
+
+.buffs-section {
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border-color, #d9e0e8);
+}
+
+.buffs-list {
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.buff-item {
+    background: var(--tag-bg, #e0e8f2);
+    padding: 4px 8px;
+    border-radius: 16px;
+    font-size: 12px;
+    color: var(--tag-text, #2c4b6e);
+}
+
+.buff-id {
+    font-weight: 600;
+    margin-right: 6px;
+}
+
+.buff-params {
+    font-size: 10px;
+    color: var(--desc-color, #5b6f86);
+    margin-top: 2px;
+}
+
+.routes-section .routes-content {
+    padding: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.routes-content.collapsed {
+    display: none;
+}
+
+.route-item {
+    font-family: monospace;
+    font-size: 12px;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--border-color, #d9e0e8);
+}
+
+/* 移动端适配 */
+@media (max-width: 999px) {
+    .spawner-module .left-column {
+        display: none;
+    }
+
+    .mobile-list-btn {
+        position: fixed;
+        bottom: 80px;
+        right: 20px;
+        background: var(--accent-color, #1e6f9f);
+        color: white;
+        padding: 12px 18px;
+        border-radius: 40px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+        z-index: 1000;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .mobile-list-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 1100;
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .mobile-list-container {
+        background: var(--module-bg, white);
+        width: 85%;
+        max-width: 320px;
+        border-radius: 20px;
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .mobile-list-header {
+        padding: 16px;
+        font-weight: bold;
+        border-bottom: 1px solid var(--border-color, #d9e0e8);
+        background: var(--sidebar-bg, #f2f4f8);
+    }
+
+    .mobile-list-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+    }
+
+    .mobile-group-item {
+        padding: 12px;
+        border-radius: 12px;
+        background: var(--content-bg, #f8fafd);
+        margin-bottom: 8px;
+        cursor: pointer;
+        border: 1px solid var(--border-color, #d9e0e8);
+    }
+
+    .mobile-group-item .group-name {
+        font-weight: 600;
+    }
+
+    .mobile-group-item .group-id {
+        font-size: 0.7rem;
+        color: var(--desc-color, #5b6f86);
+        font-family: monospace;
+    }
+}
+
+@media (min-width: 1000px) {
+
+    .mobile-list-btn,
+    .mobile-list-overlay {
+        display: none !important;
+    }
+}
+
+.loader,
+.error-message,
+.list-empty,
+.no-data {
+    text-align: center;
+    padding: 40px;
+    color: var(--desc-color, #5b6f86);
+}
+
+.error-message {
+    color: #f44336;
+}
+
+/* 分组头部信息 */
+.group-header-info {
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--border-color, #d9e0e8);
+}
+
+.group-header-info h2 {
+    margin: 0 0 6px 0;
+    color: var(--text-color, #1e2b3c);
+}
+
+.group-header-info .group-id {
+    font-family: monospace;
+    color: var(--desc-color, #5b6f86);
+    font-size: 0.85rem;
+}
+
+/* 关卡卡片（每个 spawner） */
+.spawner-card {
+    background: var(--module-bg, #ffffff);
+    border: 1px solid var(--border-color, #d9e0e8);
+    border-radius: 16px;
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.collapse-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: var(--content-bg, #f8fafd);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+}
+
+.collapse-header:hover {
+    background: var(--active-bg, #e2eaf9);
+}
+
+.collapse-header .toggle-icon {
+    font-size: 14px;
+    width: 20px;
+}
+
+.collapse-header .card-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--text-color, #1e2b3c);
+}
+
+.collapse-header .card-id {
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: var(--desc-color, #5b6f86);
+    margin-left: auto;
+}
+
+.collapse-content {
+    padding: 20px;
+    border-top: 1px solid var(--border-color, #e2e7f0);
+    display: block;
+}
+
+/* 错误卡片 */
+.spawner-card.error-card {
+    background: var(--error-bg, #ffe8f0);
+    border-color: #ffb3c6;
+}
+
+.card-error {
+    padding: 12px 20px 20px;
+    color: #b0003a;
+}
+
+/* 路由折叠独立样式 */
+.routes-section {
+    margin-top: 16px;
+}
+
+.routes-toggle {
+    padding: 8px 12px;
+    background: var(--table-header-bg, #eef3fa);
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+    display: inline-block;
+    margin-bottom: 8px;
+}
+
+.routes-content {
+    padding: 8px 12px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.routes-content.collapsed {
+    display: none;
+}
+
+/* ========== 模态框样式（与 skill.css 保持一致） ========== */
+.action-modal {
+    display: none;
+    position: fixed;
+    z-index: 3000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    justify-content: center;
+    align-items: center;
+}
+
+.action-modal-content {
+    background: var(--content-bg, #ffffff);
+    border-radius: 20px;
+    width: 85%;
+    max-width: 900px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    animation: modalFadeIn 0.2s;
+}
+
+.action-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color, #e2e7f0);
+    background: var(--sidebar-bg, #f2f4f8);
+    border-radius: 20px 20px 0 0;
+}
+
+.action-modal-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-color, #1e2b3c);
+}
+
+.action-modal-close {
+    font-size: 1.8rem;
+    cursor: pointer;
+    color: var(--desc-color, #5b6f86);
+    line-height: 1;
+}
+
+.action-modal-close:hover {
+    color: var(--accent-color, #1e6f9f);
+}
+
+.action-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+}
+
+.action-json-viewer {
+    margin: 0;
+    padding: 12px;
+    background: var(--module-bg, #f8fafd);
+    border-radius: 12px;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--text-color, #1e2b3c);
+    border: 1px solid var(--border-color, #e2e7f0);
+    max-height: calc(85vh - 100px);
+    overflow: auto;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* 放大镜按钮 */
+.json-view-btn,
+.json-view-btn-small {
+    background: none;
+    border: none;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0 4px;
+    margin-left: 8px;
+    color: var(--accent-color, #1e6f9f);
+    transition: transform 0.1s;
+}
+
+.json-view-btn:hover,
+.json-view-btn-small:hover {
+    transform: scale(1.1);
+}
+
+.json-view-btn-small {
+    font-size: 0.8rem;
+    background: var(--button-bg, #e0e8f0);
+    border-radius: 12px;
+    padding: 2px 8px;
+    margin-top: 8px;
+}
+
+/* 路线卡片增强 */
+.route-item-card {
+    background: var(--content-bg, #f8fafd);
+    border: 1px solid var(--border-color, #d9e0e8);
+    border-radius: 10px;
+    margin-bottom: 12px;
+    padding: 12px;
+}
+
+.route-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-weight: bold;
+    border-bottom: 1px dashed var(--border-color, #d9e0e8);
+    padding-bottom: 6px;
+}
+
+.route-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+    font-size: 0.85rem;
+}
+
+.route-details .label {
+    font-weight: 600;
+    color: var(--accent-color, #1e6f9f);
+}
+
+.routes-header {
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin: 16px 0 12px 0;
+    color: var(--text-color, #1e2b3c);
+}
+
+.routes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}

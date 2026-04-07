@@ -1,0 +1,543 @@
+<link rel="stylesheet" href="/theme/spawner.css">
+
+<div class="spawner-module">
+    <!-- 左侧分组列表（仅一级） -->
+    <div class="left-column">
+        <div class="list-search">
+            <input type="text" id="spawnerGroupSearch" placeholder="搜索分组..." class="search-input">
+        </div>
+        <div class="group-list" id="groupList"></div>
+    </div>
+
+    <!-- 右侧内容区：直接展示所有关卡波次 -->
+    <div class="spawner-right" id="spawnerRight">
+        <div class="loader">请从左侧选择一个分组</div>
+    </div>
+
+    <!-- 移动端浮层：分组列表 -->
+    <div class="mobile-list-btn" id="spawnerMobileListBtn">📋 分组</div>
+    <div id="spawnerMobileListOverlay" class="mobile-list-overlay">
+        <div class="mobile-list-container">
+            <div class="mobile-list-header">选择分组</div>
+            <div class="mobile-list-content" id="mobileGroupList"></div>
+        </div>
+    </div>
+</div>
+
+<!-- JSON 查看模态框 - 样式与skill保持一致 -->
+<div id="spawnerJsonModal" class="action-modal">
+    <div class="action-modal-content">
+        <div class="action-modal-header">
+            <span class="action-modal-title">JSON数据详情</span>
+            <span class="action-modal-close">&times;</span>
+        </div>
+        <div class="action-modal-body">
+            <pre id="jsonModalPre" class="action-json-viewer"></pre>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        let groups = [];            // [{ id, name, manifestPath, spawners: null }]
+        let currentGroup = null;
+        let searchTerm = '';
+        let isInitialized = false;
+        let abortController = null;
+
+        const IMAGE_BASE_PATH = '/public/images/spawner/';
+
+        // 辅助函数
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function (m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        function parseText(text) {
+            return window.parseText(text, IMAGE_BASE_PATH);
+        }
+
+        // JSON 模态框（使用新样式）
+        function showJsonModal(data, title) {
+            const modal = document.getElementById('spawnerJsonModal');
+            const pre = document.getElementById('jsonModalPre');
+            if (!modal || !pre) return;
+            let jsonStr = '';
+            try {
+                jsonStr = JSON.stringify(data, null, 2);
+            } catch (e) {
+                jsonStr = '无法序列化数据';
+            }
+            if (title) {
+                pre.textContent = `// ${title}\n${jsonStr}`;
+            } else {
+                pre.textContent = jsonStr;
+            }
+            modal.style.display = 'flex';
+        }
+
+        function closeJsonModal() {
+            const modal = document.getElementById('spawnerJsonModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        // ---------- 加载根清单 ----------
+        async function loadRootManifest() {
+            const url = '/public/Json/SpawnerConfig/manifest.json?t=' + Date.now();
+            try {
+                const resp = await fetch(url);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const items = await resp.json();
+                const showHidden = window.akeData?.getConfig().showHidden ?? false;
+                let filtered = showHidden ? items : items.filter(item => !item.hidden);
+                filtered.sort((a, b) => (a.priority || 999) - (b.priority || 999));
+                groups = filtered.map(item => ({
+                    id: item.id,
+                    name: item.name || item.id,
+                    manifestPath: item.contentFile,
+                    spawners: null
+                }));
+                return groups;
+            } catch (err) {
+                console.error('加载根清单失败:', err);
+                return [];
+            }
+        }
+
+        // 按需加载分组的子清单
+        async function loadGroupSpawners(group) {
+            if (group.spawners !== null) return group.spawners;
+            const url = group.manifestPath + '?t=' + Date.now();
+            try {
+                const resp = await fetch(url);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const items = await resp.json();
+                const showHidden = window.akeData?.getConfig().showHidden ?? false;
+                let filtered = showHidden ? items : items.filter(item => !item.hidden);
+                filtered.sort((a, b) => (a.priority || 999) - (b.priority || 999));
+                group.spawners = filtered.map(item => ({
+                    id: item.id,
+                    name: item.name || item.id,
+                    dataPath: item.contentFile
+                }));
+                return group.spawners;
+            } catch (err) {
+                console.error(`加载分组 ${group.id} 子清单失败:`, err);
+                group.spawners = [];
+                return [];
+            }
+        }
+
+        // 渲染左侧分组列表
+        function renderGroupList() {
+            const container = document.getElementById('groupList');
+            if (!container) return;
+            let filteredGroups = groups;
+            if (searchTerm.trim()) {
+                const lower = searchTerm.toLowerCase();
+                filteredGroups = groups.filter(g =>
+                    g.name.toLowerCase().includes(lower) || g.id.toLowerCase().includes(lower)
+                );
+            }
+            if (filteredGroups.length === 0) {
+                container.innerHTML = '<div class="list-empty">无匹配分组</div>';
+                return;
+            }
+            let html = '';
+            filteredGroups.forEach(group => {
+                const activeClass = (currentGroup && currentGroup.id === group.id) ? 'active' : '';
+                html += `<div class="group-item ${activeClass}" data-group-id="${escapeHtml(group.id)}">
+                        <div class="group-name">${escapeHtml(group.name)}</div>
+                        <div class="group-id">${escapeHtml(group.id)}</div>
+                    </div>`;
+            });
+            container.innerHTML = html;
+            container.querySelectorAll('.group-item').forEach(el => {
+                el.addEventListener('click', async () => {
+                    const groupId = el.getAttribute('data-group-id');
+                    const group = groups.find(g => g.id === groupId);
+                    if (group) {
+                        await onGroupSelected(group);
+                    }
+                });
+            });
+        }
+
+        // 选中分组：加载所有关卡详情并直接展示波次
+        async function onGroupSelected(group) {
+            if (abortController) abortController.abort();
+            abortController = new AbortController();
+
+            currentGroup = group;
+            renderGroupList();
+            const rightContainer = document.getElementById('spawnerRight');
+            rightContainer.innerHTML = '<div class="loader">加载关卡数据中...</div>';
+
+            const spawners = await loadGroupSpawners(group);
+            if (!spawners.length) {
+                rightContainer.innerHTML = '<div class="loader">该分组下暂无关卡数据</div>';
+                return;
+            }
+
+            const fetchPromises = spawners.map(async (spawner) => {
+                try {
+                    const url = spawner.dataPath + '?t=' + Date.now();
+                    const resp = await fetch(url, { signal: abortController.signal });
+                    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                    const data = await resp.json();
+                    return { spawner, data };
+                } catch (err) {
+                    if (err.name === 'AbortError') throw err;
+                    console.error(`加载 ${spawner.name} 失败:`, err);
+                    return { spawner, data: null, error: err.message };
+                }
+            });
+
+            let results;
+            try {
+                results = await Promise.all(fetchPromises);
+            } catch (err) {
+                if (err.name === 'AbortError') return;
+                rightContainer.innerHTML = `<div class="error-message">加载失败：${err.message}</div>`;
+                return;
+            }
+
+            renderAllSpawners(results, group);
+        }
+
+        // 生成路线详细信息的 HTML（增强版）
+        function renderRouteDetails(routeMap) {
+            if (!routeMap || Object.keys(routeMap).length === 0) return '';
+            let routesHtml = '<div class="routes-section"><div class="routes-header">📌 路线数据</div><div class="routes-list">';
+            for (const [routeId, route] of Object.entries(routeMap)) {
+                const patrol = route.patrolData || {};
+                const actionsCount = (patrol.actions || []).length;
+                routesHtml += `
+                <div class="route-item-card">
+                    <div class="route-header">
+                        <strong>Route ${routeId}</strong>
+                        <button class="json-view-btn" data-json='${escapeHtml(JSON.stringify(route))}'>🔍</button>
+                    </div>
+                    <div class="route-details">
+                        <div><span class="label">循环模式:</span> ${patrol.loop || 'None'}</div>
+                        <div><span class="label">附着方式:</span> ${patrol.snap || '-'}</div>
+                        <div><span class="label">移动类型:</span> ${patrol.motionType || 'None'}</div>
+                        <div><span class="label">出生移动速度:</span> ${patrol.bornOverrideSpeed ?? '默认'} (${patrol.enableBornSpeedOverride ? '启用覆盖' : '未覆盖'})</div>
+                        <div><span class="label">出生等待时间:</span> ${patrol.bornPositionWaitDuration ?? 0}s</div>
+                        <div><span class="label">是否使用世界偏移:</span> ${patrol.useWorldOffset ? '是' : '否'}</div>
+                        <div><span class="label">是否本地空间:</span> ${patrol.inLocalSpace ? '是' : '否'}</div>
+                        <div><span class="label">路径点数量:</span> ${actionsCount}</div>
+                        <div><span class="label">停止行走原地:</span> ${patrol.stopWalkInplace ? '是' : '否'}</div>
+                        <div><span class="label">禁止NPC交互:</span> ${patrol.forbidNpcInteract ? '是' : '否'}</div>
+                    </div>
+                </div>
+            `;
+            }
+            routesHtml += '</div></div>';
+            return routesHtml;
+        }
+
+        // 生成单个 spawner 的详情 HTML（增加放大镜按钮）
+        function renderSpawnerDetailHtml(data, name, id) {
+            const configId = data.configId || id;
+            const settings = data.settings || {};
+            const waveMap = data.waveMap || {};
+            const enemyLibrary = data.enemyLibrary || [];
+
+            const enemyMap = new Map();
+            enemyLibrary.forEach(e => {
+                enemyMap.set(e.key, {
+                    enemyId: e.enemyId,
+                    level: e.enemyLevel,
+                    buffs: e.bornBuffList || [],
+                    overrideAIConfig: e.overrideAIConfig,
+                    preWarnTime: e.preWarnTime,
+                    patrolGait: e.patrolGait,
+                    raw: e  // 保存原始数据用于 JSON 查看
+                });
+            });
+
+            // 生成波次 HTML（带放大镜）
+            let wavesHtml = '';
+            const waveKeys = Object.keys(waveMap).sort((a, b) => parseInt(a) - parseInt(b));
+            for (const waveKey of waveKeys) {
+                const wave = waveMap[waveKey];
+                wavesHtml += `
+                <div class="wave-card">
+                    <div class="wave-header">
+                        <span class="wave-key">第 ${waveKey} 波</span>
+                        <span class="wave-mode">模式: ${wave.waveMode}</span>
+                        ${wave.waveModeKillCount ? `<span class="wave-kill">需击杀: ${wave.waveModeKillCount}</span>` : ''}
+                        ${wave.isHidden ? '<span class="wave-hidden">隐藏波次</span>' : ''}
+                        <button class="json-view-btn" data-json='${escapeHtml(JSON.stringify(wave))}'>🔍</button>
+                    </div>
+                    <div class="groups-container">
+            `;
+                const groupMap = wave.groupMap || {};
+                for (const groupId in groupMap) {
+                    const group = groupMap[groupId];
+                    wavesHtml += `
+                    <div class="group-card">
+                        <div class="group-header">
+                            <span class="group-id">组 ${groupId}</span>
+                            <span class="group-mode">模式: ${group.groupMode}</span>
+                            ${group.groupModeKillCount ? `<span class="group-kill">需击杀: ${group.groupModeKillCount}</span>` : ''}
+                            <button class="json-view-btn" data-json='${escapeHtml(JSON.stringify(group))}'>🔍</button>
+                        </div>
+                        <div class="actions-container">
+                `;
+                    const actionMap = group.actionMap || {};
+                    for (const actionId in actionMap) {
+                        const action = actionMap[actionId];
+                        const libraryKey = action.libraryKey;
+                        const enemyInfo = enemyMap.get(libraryKey) || {};
+                        const buffsHtml = (enemyInfo.buffs || []).map(buff => {
+                            let params = '';
+                            if (buff.blackboard && buff.blackboard.length) {
+                                params = '<div class="buff-params">' + buff.blackboard.map(p => `${p.key}=${p.valueFloat ?? p.valueString ?? '?'}`).join(', ') + '</div>';
+                            }
+                            return `<div class="buff-item"><span class="buff-id">${escapeHtml(buff.buffId)}</span>${params}</div>`;
+                        }).join('');
+
+                        wavesHtml += `
+                        <div class="action-card">
+                            <div class="action-header">
+                                <span class="action-time">⏱️ ${action.timestamp}s</span>
+                                <span class="action-count">数量: ${action.spawnCount}</span>
+                                <button class="json-view-btn" data-json='${escapeHtml(JSON.stringify(action))}'>🔍</button>
+                            </div>
+                            <div class="action-detail">
+                                <div><span class="label">敌人ID：</span>${escapeHtml(enemyInfo.enemyId || libraryKey)}</div>
+                                <div><span class="label">等级：</span>${enemyInfo.level ?? '?'}</div>
+                                <div><span class="label">位置：</span>(${action.position?.x ?? 0}, ${action.position?.y ?? 0}, ${action.position?.z ?? 0})</div>
+                                <div><span class="label">朝向：</span>${action.rotation?.y ?? 0}°</div>
+                                ${enemyInfo.overrideAIConfig ? `<div><span class="label">AI配置：</span>${enemyInfo.overrideAIConfig}</div>` : ''}
+                                ${enemyInfo.preWarnTime ? `<div><span class="label">预警告时间：</span>${enemyInfo.preWarnTime}s</div>` : ''}
+                                ${enemyInfo.patrolGait ? `<div><span class="label">移动方式：</span>${enemyInfo.patrolGait}</div>` : ''}
+                                ${buffsHtml ? `<div class="buffs-section"><span class="label">携带Buff：</span><div class="buffs-list">${buffsHtml}</div></div>` : ''}
+                                ${enemyInfo.raw ? `<button class="json-view-btn-small" data-json='${escapeHtml(JSON.stringify(enemyInfo.raw))}'>查看怪物原始数据</button>` : ''}
+                            </div>
+                        </div>
+                    `;
+                    }
+                    wavesHtml += `</div></div>`;
+                }
+                wavesHtml += `</div></div>`;
+            }
+
+            // 全局设置卡片
+            const settingsHtml = `
+            <div class="settings-card">
+                <div class="section-header">⚙️ 全局设置 <button class="json-view-btn" data-json='${escapeHtml(JSON.stringify(settings))}'>🔍</button></div>
+                <div class="settings-grid">
+                    <div>自动完成: ${settings.autoComplete ? '是' : '否'}</div>
+                    <div>禁止掉落: ${settings.forbidDrop ? '是' : '否'}</div>
+                    <div>停止探索音乐: ${settings.stopExploreMusic ? '是' : '否'}</div>
+                    <div>等级受世界等级影响: ${settings.enemyLevelUseLevelGrade ? '是' : '否'}</div>
+                </div>
+            </div>
+        `;
+
+            // 增强的路线数据展示
+            const routeMap = data.routeMap || {};
+            const routesHtml = renderRouteDetails(routeMap);
+
+            return `
+            <div class="spawner-card">
+                <div class="collapse-header">
+                    <span class="toggle-icon">▼</span>
+                    <span class="card-name">${escapeHtml(name)}</span>
+                    <span class="card-id">${escapeHtml(id)}</span>
+                    <button class="json-view-btn" data-json='${escapeHtml(JSON.stringify(data))}'>🔍 完整数据</button>
+                </div>
+                <div class="collapse-content">
+                    <div class="detail-id">ConfigId: ${escapeHtml(configId)}</div>
+                    ${settingsHtml}
+                    <div class="waves-section">
+                        <div class="section-header">🌊 波次与生成逻辑</div>
+                        ${wavesHtml || '<div class="no-data">无波次数据</div>'}
+                    </div>
+                    ${routesHtml}
+                </div>
+            </div>
+        `;
+        }
+
+        // 渲染所有关卡
+        function renderAllSpawners(results, group) {
+            const container = document.getElementById('spawnerRight');
+            if (!container) return;
+            if (results.length === 0) {
+                container.innerHTML = '<div class="loader">无有效数据</div>';
+                return;
+            }
+
+            let html = `<div class="group-header-info">
+                        <h2>${escapeHtml(group.name)}</h2>
+                        <div class="group-id">${escapeHtml(group.id)}</div>
+                    </div>`;
+
+            for (let i = 0; i < results.length; i++) {
+                const { spawner, data, error } = results[i];
+                if (error || !data) {
+                    html += `<div class="spawner-card error-card">
+                            <div class="card-header">
+                                <span class="card-name">${escapeHtml(spawner.name)}</span>
+                                <span class="card-id">${escapeHtml(spawner.id)}</span>
+                            </div>
+                            <div class="card-error">加载失败: ${escapeHtml(error)}</div>
+                        </div>`;
+                    continue;
+                }
+                html += renderSpawnerDetailHtml(data, spawner.name, spawner.id);
+            }
+
+            container.innerHTML = html;
+
+            // 绑定折叠
+            container.querySelectorAll('.spawner-card .collapse-header').forEach(header => {
+                header.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('json-view-btn')) return;
+                    const card = header.closest('.spawner-card');
+                    const content = card.querySelector('.collapse-content');
+                    const icon = header.querySelector('.toggle-icon');
+                    if (content.style.display === 'none') {
+                        content.style.display = 'block';
+                        icon.textContent = '▼';
+                    } else {
+                        content.style.display = 'none';
+                        icon.textContent = '▶';
+                    }
+                });
+            });
+
+            // 绑定所有 JSON 查看按钮
+            container.querySelectorAll('.json-view-btn, .json-view-btn-small').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const jsonStr = btn.getAttribute('data-json');
+                    if (jsonStr) {
+                        try {
+                            const data = JSON.parse(jsonStr);
+                            showJsonModal(data, 'Auto generated via akedata.top');
+                        } catch (e) {
+                            showJsonModal({ raw: jsonStr }, '原始文本');
+                        }
+                    }
+                });
+            });
+        }
+
+        // 移动端分组列表
+        function buildMobileGroupList() {
+            const container = document.getElementById('mobileGroupList');
+            if (!container) return;
+            let filteredGroups = groups;
+            if (searchTerm.trim()) {
+                const lower = searchTerm.toLowerCase();
+                filteredGroups = groups.filter(g => g.name.toLowerCase().includes(lower) || g.id.toLowerCase().includes(lower));
+            }
+            if (filteredGroups.length === 0) {
+                container.innerHTML = '<div class="mobile-list-empty">无分组</div>';
+                return;
+            }
+            let html = '';
+            filteredGroups.forEach(group => {
+                html += `<div class="mobile-group-item" data-group-id="${escapeHtml(group.id)}">
+                        <div class="group-name">${escapeHtml(group.name)}</div>
+                        <div class="group-id">${escapeHtml(group.id)}</div>
+                    </div>`;
+            });
+            container.innerHTML = html;
+            container.querySelectorAll('.mobile-group-item').forEach(el => {
+                el.addEventListener('click', async () => {
+                    const groupId = el.getAttribute('data-group-id');
+                    const group = groups.find(g => g.id === groupId);
+                    if (group) {
+                        await onGroupSelected(group);
+                        closeMobileList();
+                    }
+                });
+            });
+        }
+
+        function openMobileList() {
+            buildMobileGroupList();
+            const overlay = document.getElementById('spawnerMobileListOverlay');
+            if (overlay) overlay.style.display = 'flex';
+        }
+
+        function closeMobileList() {
+            const overlay = document.getElementById('spawnerMobileListOverlay');
+            if (overlay) overlay.style.display = 'none';
+        }
+
+        async function refreshModule() {
+            if (abortController) abortController.abort();
+            abortController = new AbortController();
+            await loadRootManifest();
+            searchTerm = '';
+            const searchInput = document.getElementById('spawnerGroupSearch');
+            if (searchInput) searchInput.value = '';
+            currentGroup = null;
+            renderGroupList();
+            const rightContainer = document.getElementById('spawnerRight');
+            if (rightContainer) rightContainer.innerHTML = '<div class="loader">请从左侧选择一个分组</div>';
+        }
+
+        async function initModule() {
+            if (isInitialized) return;
+            isInitialized = true;
+            if (window.configLoaded) await window.configLoaded;
+
+            window.addEventListener('globalConfigChanged', async () => {
+                searchTerm = '';
+                if (document.getElementById('spawnerGroupSearch'))
+                    document.getElementById('spawnerGroupSearch').value = '';
+                await refreshModule();
+            });
+
+            const searchInput = document.getElementById('spawnerGroupSearch');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    searchTerm = e.target.value;
+                    renderGroupList();
+                });
+            }
+
+            const mobileBtn = document.getElementById('spawnerMobileListBtn');
+            const overlay = document.getElementById('spawnerMobileListOverlay');
+            if (mobileBtn && overlay) {
+                mobileBtn.addEventListener('click', openMobileList);
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) closeMobileList();
+                });
+            }
+
+            // 模态框事件绑定（新样式）
+            const modal = document.getElementById('spawnerJsonModal');
+            const closeBtn = modal?.querySelector('.action-modal-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeJsonModal);
+            }
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) closeJsonModal();
+                });
+            }
+
+            await refreshModule();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initModule);
+        } else {
+            initModule();
+        }
+    })();
+</script>
