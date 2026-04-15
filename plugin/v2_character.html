@@ -1,0 +1,675 @@
+<!-- plugin/v2_character.html -->
+<link rel="stylesheet" href="/theme/character.css">
+
+<div class="character-module">
+    <div class="left-column">
+        <div class="list-search">
+            <input type="text" id="v2charSearchInput" placeholder="搜索角色 (名称/ID)" class="search-input">
+        </div>
+        <!-- 筛选栏 -->
+        <div class="filter-bar" id="v2charFilterBar">
+            <div class="filter-section">
+                <span class="filter-label">星级:</span>
+                <div class="filter-buttons" id="v2charRarityFilter"></div>
+            </div>
+            <div class="filter-section">
+                <span class="filter-label">属性:</span>
+                <div class="filter-buttons" id="v2charTypeFilter"></div>
+            </div>
+            <div class="filter-section">
+                <span class="filter-label">职业:</span>
+                <div class="filter-buttons" id="v2charProfessionFilter"></div>
+            </div>
+            <div class="filter-section">
+                <span class="filter-label">武器:</span>
+                <div class="filter-buttons" id="v2charWeaponFilter"></div>
+            </div>
+        </div>
+        <div class="character-list" id="v2characterList"></div>
+    </div>
+    <div class="character-detail" id="v2characterDetail">
+        <div class="loader">加载干员数据...</div>
+    </div>
+    <div class="mobile-list-btn" id="v2charMobileListBtn">📋 列表</div>
+    <div id="v2charMobileListOverlay" class="mobile-list-overlay">
+        <div class="mobile-list-container">
+            <div class="mobile-list-header">选择角色</div>
+            <div class="mobile-list-content" id="v2charMobileListContent"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        let allCharacters = [];
+        let activeCharId = null;
+        let isInitialized = false;
+        let attrMap = {};
+        let charTypeMap = {};
+        let weaponMap = {};
+        let professionMap = {};
+        let searchTerm = '';
+        let currentCharacter = null;
+        let currentCharData = null;
+
+        // 筛选状态
+        let selectedRarities = new Set();
+        let selectedCharTypes = new Set();
+        let selectedProfessions = new Set();
+        let selectedWeaponTypes = new Set();
+
+        const TYPE_CLASS_MAP = {
+            '物理': 'physical',
+            '自然': 'nature',
+            '寒冷': 'cold',
+            '灼热': 'hot',
+            '电磁': 'electro'
+        };
+
+        const IMAGE_BASE_PATH = '/public/images/bufficon/';
+
+        function getCurrentLanguage() {
+            const lang = window.akeData?.getLanguage?.() || 'CH';
+            return lang === 'CN' ? 'CH' : lang;
+        }
+
+        function getCurrentShowHidden() {
+            return window.akeData?.getConfig().showHidden ?? false;
+        }
+
+        function parseText(text) {
+            return window.parseText(text, IMAGE_BASE_PATH);
+        }
+
+        async function loadMaps() {
+            try {
+                const res = await fetch('/public/CH/maps.json?t=' + Date.now());
+                if (!res.ok) throw new Error('无法加载映射数据');
+                const data = await res.json();
+                attrMap = data.ATTR_MAP || {};
+                charTypeMap = data.char_type_map || {};
+                weaponMap = data.weapon_map || {};
+                professionMap = data.profession_map || {};
+            } catch (err) {
+                console.error('加载映射数据失败:', err);
+                attrMap = {};
+                charTypeMap = {};
+                weaponMap = {};
+                professionMap = {};
+            }
+        }
+
+        function getAttrName(attrType) {
+            return attrMap[attrType] || `属性${attrType}`;
+        }
+
+        function getCharTypeName(charType) {
+            return charTypeMap[charType] || charType;
+        }
+
+        function getWeaponName(weapon) {
+            return weaponMap[weapon] || weapon;
+        }
+
+        function getProfessionName(prof) {
+            return professionMap[prof] || prof;
+        }
+
+        function filterCharacters(chars) {
+            return chars.filter(c => {
+                // 搜索过滤
+                if (searchTerm) {
+                    const term = searchTerm.toLowerCase();
+                    const nameMatch = c.name && c.name.toLowerCase().includes(term);
+                    const idMatch = c.charId && c.charId.toLowerCase().includes(term);
+                    if (!nameMatch && !idMatch) return false;
+                }
+                // 稀有度筛选
+                if (selectedRarities.size > 0 && !selectedRarities.has(c.rarity)) return false;
+                // 属性筛选
+                if (selectedCharTypes.size > 0 && !selectedCharTypes.has(c.charType)) return false;
+                // 职业筛选
+                if (selectedProfessions.size > 0 && !selectedProfessions.has(c.profession)) return false;
+                // 武器类型筛选
+                if (selectedWeaponTypes.size > 0 && !selectedWeaponTypes.has(c.weapontype)) return false;
+                return true;
+            });
+        }
+
+        // 生成筛选按钮
+        function generateFilterButtons() {
+            const rarityContainer = document.getElementById('v2charRarityFilter');
+            const typeContainer = document.getElementById('v2charTypeFilter');
+            const profContainer = document.getElementById('v2charProfessionFilter');
+            const weaponContainer = document.getElementById('v2charWeaponFilter');
+            if (!rarityContainer || !typeContainer || !profContainer || !weaponContainer) return;
+
+            // 稀有度按钮
+            const existingRarities = new Set(allCharacters.map(c => c.rarity));
+            rarityContainer.innerHTML = '';
+            for (let r = 1; r <= 6; r++) {
+                if (existingRarities.has(r)) {
+                    const btn = document.createElement('span');
+                    btn.className = `filter-btn ${selectedRarities.has(r) ? 'active' : ''}`;
+                    btn.dataset.rarity = r;
+                    btn.textContent = r + '星';
+                    btn.addEventListener('click', () => {
+                        if (selectedRarities.has(r)) {
+                            selectedRarities.delete(r);
+                        } else {
+                            selectedRarities.add(r);
+                        }
+                        btn.classList.toggle('active');
+                        renderCharacterList();
+                    });
+                    rarityContainer.appendChild(btn);
+                }
+            }
+
+            // 属性按钮
+            const existingTypes = new Set(allCharacters.map(c => c.charType).filter(t => t));
+            typeContainer.innerHTML = '';
+            existingTypes.forEach(type => {
+                const btn = document.createElement('span');
+                const tName = getCharTypeName(type) || type;
+                btn.className = `filter-btn ${selectedCharTypes.has(type) ? 'active' : ''}`;
+                btn.dataset.type = type;
+                btn.textContent = tName;
+                btn.addEventListener('click', () => {
+                    if (selectedCharTypes.has(type)) {
+                        selectedCharTypes.delete(type);
+                    } else {
+                        selectedCharTypes.add(type);
+                    }
+                    btn.classList.toggle('active');
+                    renderCharacterList();
+                });
+                typeContainer.appendChild(btn);
+            });
+
+            // 职业按钮
+            const existingProfessions = new Set(allCharacters.map(c => c.profession).filter(p => p));
+            profContainer.innerHTML = '';
+            existingProfessions.forEach(prof => {
+                const btn = document.createElement('span');
+                const pName = getProfessionName(prof) || prof;
+                btn.className = `filter-btn ${selectedProfessions.has(prof) ? 'active' : ''}`;
+                btn.dataset.profession = prof;
+                btn.textContent = pName;
+                btn.addEventListener('click', () => {
+                    if (selectedProfessions.has(prof)) {
+                        selectedProfessions.delete(prof);
+                    } else {
+                        selectedProfessions.add(prof);
+                    }
+                    btn.classList.toggle('active');
+                    renderCharacterList();
+                });
+                profContainer.appendChild(btn);
+            });
+
+            // 武器类型按钮
+            const existingWeapons = new Set(allCharacters.map(c => c.weapontype).filter(w => w));
+            weaponContainer.innerHTML = '';
+            existingWeapons.forEach(weapon => {
+                const btn = document.createElement('span');
+                const wName = getWeaponName(weapon) || weapon;
+                btn.className = `filter-btn ${selectedWeaponTypes.has(weapon) ? 'active' : ''}`;
+                btn.dataset.weapon = weapon;
+                btn.textContent = wName;
+                btn.addEventListener('click', () => {
+                    if (selectedWeaponTypes.has(weapon)) {
+                        selectedWeaponTypes.delete(weapon);
+                    } else {
+                        selectedWeaponTypes.add(weapon);
+                    }
+                    btn.classList.toggle('active');
+                    renderCharacterList();
+                });
+                weaponContainer.appendChild(btn);
+            });
+        }
+
+        const mobileBtn = document.getElementById('v2charMobileListBtn');
+        const mobileOverlay = document.getElementById('v2charMobileListOverlay');
+        const mobileContent = document.getElementById('v2charMobileListContent');
+
+        function buildMobileList() {
+            const filtered = filterCharacters(allCharacters);
+            mobileContent.innerHTML = '';
+            filtered.forEach(char => {
+                const item = document.createElement('div');
+                item.className = 'mobile-list-item';
+                if (char.charId === activeCharId) item.classList.add('active');
+                item.innerHTML = `
+                    <div class="item-name">${char.name}</div>
+                    <div class="item-id">${char.charId}</div>
+                `;
+                item.addEventListener('click', () => {
+                    activeCharId = char.charId;
+                    loadCharacterDetail(char, document.getElementById('v2characterDetail'));
+                    closeMobileList();
+                });
+                mobileContent.appendChild(item);
+            });
+        }
+
+        function openMobileList() {
+            buildMobileList();
+            mobileOverlay.style.display = 'flex';
+        }
+
+        function closeMobileList() {
+            mobileOverlay.style.display = 'none';
+        }
+
+        async function loadCharacterManifest(showHidden) {
+            try {
+                const lang = getCurrentLanguage();
+                const res = await fetch(`/public/${lang}/v2_character/manifest.json?t=` + Date.now());
+                if (!res.ok) throw new Error('无法加载角色清单');
+                const allChars = await res.json();
+                let chars = showHidden ? allChars : allChars.filter(c => !c.hidden);
+                chars.sort((a, b) => (a.priority || 999) - (b.priority || 999));
+                return chars;
+            } catch (err) {
+                console.error('加载角色清单失败:', err);
+                return [];
+            }
+        }
+
+        function renderCharacterList() {
+            const container = document.getElementById('v2characterList');
+            const detailContainer = document.getElementById('v2characterDetail');
+            if (!container) return;
+
+            const filtered = filterCharacters(allCharacters);
+
+            container.innerHTML = '';
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="loader">无匹配角色</div>';
+                if (detailContainer) detailContainer.innerHTML = '<div class="loader">请选择角色</div>';
+                activeCharId = null;
+                return;
+            }
+
+            filtered.forEach((char, index) => {
+                const item = document.createElement('div');
+                item.className = `character-item ${char.charId === activeCharId ? 'active' : (index === 0 && !activeCharId ? 'active' : '')}`;
+                item.dataset.charId = char.charId;
+                item.dataset.contentFile = char.contentFile;
+
+                const rarityBar = document.createElement('span');
+                rarityBar.className = `rarity-bar rarity-${char.rarity}`;
+                rarityBar.title = `稀有度 ${char.rarity}`;
+
+                const icon = document.createElement('img');
+                icon.className = 'character-icon';
+                // Handle image paths robustly (remove absolute leading slash initially if so)
+                icon.src = (char.icon || '').replace(/^\//, '');
+                icon.onerror = function() { this.onerror = null; this.src = ''; };
+
+                const textContainer = document.createElement('div');
+                textContainer.className = 'character-info';
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'character-name';
+                nameDiv.textContent = char.name;
+                const idDiv = document.createElement('div');
+                idDiv.className = 'character-id';
+                idDiv.textContent = char.charId;
+                textContainer.appendChild(nameDiv);
+                textContainer.appendChild(idDiv);
+
+                const typeDisplayName = getCharTypeName(char.charType) || char.charType || '未知';
+                const typeClass = TYPE_CLASS_MAP[typeDisplayName] || 'unknown';
+                const typeDot = document.createElement('span');
+                typeDot.className = `char-type-dot type-${typeClass}`;
+                typeDot.title = typeDisplayName;
+
+                item.appendChild(rarityBar);
+                item.appendChild(icon);
+                item.appendChild(textContainer);
+                item.appendChild(typeDot);
+
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.character-item').forEach(el => el.classList.remove('active'));
+                    item.classList.add('active');
+                    activeCharId = char.charId;
+                    loadCharacterDetail(char, detailContainer);
+                });
+
+                container.appendChild(item);
+            });
+
+            const activeExists = filtered.some(c => c.charId === activeCharId);
+            if (!activeExists && filtered.length > 0) {
+                activeCharId = filtered[0].charId;
+                const firstItem = container.querySelector('.character-item');
+                if (firstItem) firstItem.classList.add('active');
+                loadCharacterDetail(filtered[0], detailContainer);
+            } else if (activeExists) {
+                const activeChar = filtered.find(c => c.charId === activeCharId);
+                if (activeChar) {
+                    const activeItem = container.querySelector(`.character-item[data-char-id="${activeCharId}"]`);
+                    if (activeItem) activeItem.classList.add('active');
+                    loadCharacterDetail(activeChar, detailContainer);
+                }
+            }
+        }
+
+        async function loadCharacterDetail(character, container) {
+            container.innerHTML = '<div class="loader">加载干员数据...</div>';
+            try {
+                // Replace CN with current language and absolute path issues
+                const lang = getCurrentLanguage();
+                let contentFile = character.contentFile.replace('/public/CN/', `/public/${lang}/`);
+                contentFile = contentFile.replace(/^\//, '/'); // Ensure absolute path formatting correctness
+                const data = await fetch(contentFile + '?t=' + Date.now()).then(r => r.json());
+                currentCharData = data;
+                currentCharacter = character;
+                container.innerHTML = renderDetail(character, data);
+
+                container.querySelectorAll('.section-header').forEach(header => {
+                    header.addEventListener('click', () => {
+                        const indicator = header.querySelector('.collapse-indicator');
+                        const content = header.nextElementSibling;
+                        if (content && content.classList.contains('collapse-content')) {
+                            const isHidden = content.style.display === 'none';
+                            content.style.display = isHidden ? '' : 'none';
+                            indicator.textContent = isHidden ? '▼' : '▶';
+                        }
+                    });
+                });
+            } catch (err) {
+                container.innerHTML = `<div class="error-message">加载失败: ${err.message}</div>`;
+            }
+        }
+
+        function renderDetail(baseInfo, data) {
+            const typeDisplayName = getCharTypeName(baseInfo.charType) || baseInfo.charType || '-';
+            const weaponDisplayName = getWeaponName(baseInfo.weapontype) || baseInfo.weapontype || '-';
+            const profDisplayName = getProfessionName(baseInfo.profession) || baseInfo.profession || '-';
+
+            const basicHtml = `
+                <div class="detail-header">
+                    <div class="detail-left">
+                        <div class="detail-icon">
+                            <img src="${(baseInfo.icon || '').replace(/^\//, '/')}" onerror="this.onerror=null; this.src='';">
+                        </div>
+                        <div class="detail-text">
+                            <div class="detail-title-row">
+                                <span class="detail-name">${baseInfo.name}</span>
+                                <span class="detail-rarity rarity-${baseInfo.rarity}" title="稀有度 ${baseInfo.rarity}"></span>
+                            </div>
+                            <div class="detail-tags">
+                                ${(baseInfo.charBattleTag || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                            </div>
+                            <div class="detail-meta">
+                                <div><span class="meta-label">职业</span> ${profDisplayName}</div>
+                                <div><span class="meta-label">武器类型</span> ${weaponDisplayName}</div>
+                                <div><span class="meta-label">主属性</span> ${typeDisplayName}</div>
+                                <div><span class="meta-label">副属性</span> ${baseInfo.subAttrType || '-'}</div>
+                                <div><span class="meta-label">CV</span> ${(baseInfo.cvName || []).join(' / ')}</div>
+                            </div>
+                            <div class="detail-profile">${parseText(baseInfo.profile || '')}</div>
+                            <div class="detail-feature">${parseText(baseInfo.feature || '')}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Build attributes table
+            const attributes = data.charactertable?.attributes || [];
+            let attributesHtml = '';
+            if (attributes.length > 0) {
+                // Collect all unique attrTypes to use as columns
+                const attrTypeSet = new Set();
+                attributes.forEach(attrLevel => {
+                    if (attrLevel.Attribute?.attrs) {
+                        attrLevel.Attribute.attrs.forEach(attr => {
+                            attrTypeSet.add(attr.attrType);
+                        });
+                    }
+                });
+                let attrTypes = Array.from(attrTypeSet).sort((a, b) => a - b);
+                
+                // Exclude attrType=0 (Level) from column headers as it's separate
+                attrTypes = attrTypes.filter(attrType => attrType !== 0);
+
+                // Build table rows
+                const tableRows = attributes.map((attrLevel, index) => {
+                    const cells = attrTypes.map(attrType => {
+                        const attr = attrLevel.Attribute?.attrs?.find(a => a.attrType === attrType);
+                        if (!attr) return '<td>-</td>';
+                        let value = attr.attrValue;
+                        if (typeof value === 'number') {
+                            if (value % 1 !== 0) value = value.toFixed(2);
+                        }
+                        return `<td>${value}</td>`;
+                    }).join('');
+                    const level = attrLevel.Attribute?.attrs?.find(a => a.attrType === 0)?.attrValue || (index + 1);
+                    return `<tr><td>${level}</td>${cells}</tr>`;
+                }).join('');
+
+                const headerCells = attrTypes.map(attrType => 
+                    `<th title="[${attrType}]">${getAttrName(attrType)}</th>`
+                ).join('');
+
+                attributesHtml = `
+                    <div class="section">
+                        <h3>属性成长</h3>
+                        <div class="growth-table-container">
+                            <table class="growth-table">
+                                <thead>
+                                    <tr><th>等级</th>${headerCells}</tr>
+                                </thead>
+                                <tbody>${tableRows}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            } else {
+                 attributesHtml = `
+                    <div class="section">
+                        <h3>属性成长</h3>
+                        <p>无</p>
+                    </div>
+                `;
+            }
+
+            let talentnessHtml = `
+                <div class="section">
+                    <h3>天赋</h3>
+                    <p>无</p>
+                </div>
+            `;
+            const talentNodes = Object.values(data.chargrowthtable?.talentNodeMap || {}).filter(n => n.nodeType === 4 && n.passiveSkillNodeInfo?.talentEffectId);
+            if (talentNodes.length > 0) {
+                const list = talentNodes.map(n => {
+                    const effect = data.potentialtalenteffecttable?.[n.passiveSkillNodeInfo.talentEffectId];
+                    if(!effect) return '';
+                    const desc = effect.desc?.text || effect.desc || '';
+                    return `<div class="talent-item">
+                        <div class="talent-desc">${parseText(desc)}</div>
+                    </div>`;
+                }).filter(s => s).join('');
+                if (list) {
+                    talentnessHtml = `<div class="section"><h3>天赋</h3><div class="talent-list">${list}</div></div>`;
+                }
+            }
+
+            let potentialsHtml = `
+                <div class="section">
+                    <h3>潜能</h3>
+                    <p>无</p>
+                </div>
+            `;
+            const potentials = data.characterpotentialtable?.potentialUnlockBundle || [];
+            if (potentials.length > 0) {
+                const list = potentials.map(p => {
+                    const effect = data.potentialtalenteffecttable?.[p.potentialEffectId];
+                    const desc = effect?.desc?.text || effect?.desc || '';
+                    const name = p.name?.text || p.name || '';
+                    return `<div class="potential-item">
+                        <div class="potential-level">潜能 ${p.level}</div>
+                        <div class="potential-info">
+                            <div class="potential-name">${name}</div>
+                            <div class="potential-desc">${parseText(desc)}</div>
+                        </div>
+                    </div>`;
+                }).join('');
+                potentialsHtml = `<div class="section"><h3>潜能</h3><div class="potential-list">${list}</div></div>`;
+            }
+
+            const attrNodesHtml = `
+                <div class="section">
+                    <h3>属性节点</h3>
+                    <p>无</p>
+                </div>
+            `;
+
+            let skillsHtml = `
+                <div class="section">
+                    <h3>技能</h3>
+                    <p>无</p>
+                </div>
+            `;
+            const skillsMap = data.chargrowthtable?.skillGroupMap || {};
+            const skillList = Object.values(skillsMap);
+            if (skillList.length > 0) {
+                skillList.sort((a,b) => (a.skillGroupType || 0) - (b.skillGroupType || 0));
+                const list = skillList.map(s => {
+                    const name = s.name?.text || s.name || '';
+                    const desc = s.desc?.text || s.desc || '';
+                    return `<div class="skill-item">
+                        <div class="skill-icon"><img src="${IMAGE_BASE_PATH}${s.icon}.png" onerror="this.onerror=null; this.src='';"></div>
+                        <div class="skill-info">
+                            <div class="skill-name">${name}</div>
+                            <div class="skill-desc">${parseText(desc)}</div>
+                        </div>
+                    </div>`;
+                }).join('');
+                skillsHtml = `<div class="section"><h3>技能</h3><div class="skills-list">${list}</div></div>`;
+            }
+
+            let spaceshipHtml = `
+                <div class="section">
+                    <h3>后勤技能</h3>
+                    <p>无</p>
+                </div>
+            `;
+            // If factory/spaceship skill mapping becomes clear, parse data.chargrowthtable.talentNodeMap (nodeType === 5)
+
+            let profileHtml = `
+                <div class="section collapsible-section">
+                    <h3 class="section-header">
+                        <span class="collapse-indicator">▶</span> 档案
+                    </h3>
+                    <div class="collapse-content" style="display:none;">
+                        <p>无</p>
+                    </div>
+                </div>
+            `;
+            const profiles = (data.charactertable?.profileRecord || []).filter(p => p.recordTitle || p.recordText);
+            if (profiles.length > 0) {
+                const list = profiles.map(p => {
+                    const title = p.recordTitle?.text || '';
+                    const text = p.recordText?.text || '';
+                    return `<div class="profile-item">
+                        <h4>${title}</h4>
+                        <div class="profile-text">${parseText(text)}</div>
+                    </div>`;
+                }).join('');
+                profileHtml = `<div class="section collapsible-section">
+                    <h3 class="section-header"><span class="collapse-indicator">▶</span> 档案</h3>
+                    <div class="collapse-content" style="display:none;">${list}</div>
+                </div>`;
+            }
+
+            let voiceHtml = `
+                <div class="section collapsible-section">
+                    <h3 class="section-header">
+                        <span class="collapse-indicator">▶</span> 语音记录
+                    </h3>
+                    <div class="collapse-content" style="display:none;">
+                        <p>无</p>
+                    </div>
+                </div>
+            `;
+            const voices = (data.charactertable?.profileVoice || []).filter(v => v.voiceTitle || v.voiceDesc);
+            if (voices.length > 0) {
+                const list = voices.map(v => {
+                    const title = v.voiceTitle?.text || v.voiceTitle || v.voId || '';
+                    const text = v.voiceDesc?.text || v.voiceDesc || '';
+                    return `<div class="voice-item">
+                        <div class="voice-title">${title}</div>
+                        <div class="voice-text">${parseText(text)}</div>
+                    </div>`;
+                }).join('');
+                voiceHtml = `<div class="section collapsible-section">
+                    <h3 class="section-header"><span class="collapse-indicator">▶</span> 语音记录</h3>
+                    <div class="collapse-content" style="display:none;"><div class="voice-grid">${list}</div></div>
+                </div>`;
+            }
+
+            return `
+                ${basicHtml}
+                ${attributesHtml}
+                ${talentnessHtml}
+                ${potentialsHtml}
+                ${attrNodesHtml}
+                ${skillsHtml}
+                ${spaceshipHtml}
+                ${profileHtml}
+                ${voiceHtml}
+            `;
+        }
+
+        async function refreshModule() {
+            const list = document.getElementById('v2characterList');
+            const detail = document.getElementById('v2characterDetail');
+            if (!list || !detail) return;
+            const showHidden = window.akeData?.getConfig().showHidden ?? false;
+            const chars = await loadCharacterManifest(showHidden);
+            allCharacters = chars;
+            generateFilterButtons();
+            renderCharacterList();
+        }
+
+        async function initModule() {
+            if (isInitialized) return;
+            isInitialized = true;
+            if (window.configLoaded) await window.configLoaded;
+            await loadMaps();
+
+            if (mobileBtn) mobileBtn.addEventListener('click', openMobileList);
+            if (mobileOverlay) mobileOverlay.addEventListener('click', (e) => {
+                if (e.target === mobileOverlay) closeMobileList();
+            });
+
+            window.addEventListener('globalConfigChanged', (e) => {
+                searchTerm = '';
+                const searchInput = document.getElementById('v2charSearchInput');
+                if (searchInput) searchInput.value = '';
+                selectedRarities.clear();
+                selectedCharTypes.clear();
+                selectedProfessions.clear();
+                selectedWeaponTypes.clear();
+                refreshModule();
+            });
+
+            document.getElementById('v2charSearchInput')?.addEventListener('input', (e) => {
+                searchTerm = e.target.value;
+                renderCharacterList();
+            });
+
+            await refreshModule();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initModule);
+        } else {
+            initModule();
+        }
+    })();
+</script>
