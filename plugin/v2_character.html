@@ -81,6 +81,68 @@
             return window.parseText(text, IMAGE_BASE_PATH);
         }
 
+        function replaceV2Placeholders(desc, objWithBlackboard) {
+            if (!desc || !desc.includes('{')) return desc;
+            const lookup = {};
+            function traverse(o) {
+                if (!o || typeof o !== 'object') return;
+                if (Array.isArray(o)) {
+                    o.forEach(traverse);
+                } else {
+                    if (o.key !== undefined && (o.value !== undefined || o.valueStr !== undefined)) {
+                        let v = o.valueStr !== undefined && o.valueStr !== "" ? o.valueStr : o.value;
+                        lookup[o.key.toLowerCase()] = v;
+                    }
+                    if (o.bbKey !== undefined && (o.floatValue !== undefined || o.stringValue !== undefined)) {
+                        let v = o.stringValue !== undefined && o.stringValue !== "" ? o.stringValue : o.floatValue;
+                        lookup[o.bbKey.toLowerCase()] = v;
+                    }
+                    Object.values(o).forEach(traverse);
+                }
+            }
+            traverse(objWithBlackboard);
+
+            return desc.replace(/\{([^}]+)\}/g, (match, fullExpr) => {
+                const parts = fullExpr.split(':');
+                const expr = parts[0].trim();
+                const format = parts[1] ? parts[1].trim() : '';
+
+                const exactKey = expr.toLowerCase();
+                let finalValue;
+
+                if (lookup[exactKey] !== undefined) {
+                    finalValue = lookup[exactKey];
+                } else {
+                    let evalExpr = expr.replace(/[a-zA-Z_][a-zA-Z0-9_]*/g, (varName) => {
+                        const lowerVar = varName.toLowerCase();
+                        return lookup[lowerVar] !== undefined ? lookup[lowerVar] : varName;
+                    });
+                    
+                    try {
+                        // eslint-disable-next-line no-new-func
+                        finalValue = new Function('return ' + evalExpr)();
+                    } catch (e) {
+                        return match;
+                    }
+                }
+
+                if (typeof finalValue === 'number') {
+                    if (format === '0%') return Math.round(finalValue * 100) + '%';
+                    if (format === '0.0%') return (finalValue * 100).toFixed(1) + '%';
+                    if (format === '0') return Math.round(finalValue).toString();
+                    if (format === '0.0') return finalValue.toFixed(1);
+                    return finalValue.toString();
+                } else if (typeof finalValue === 'string') {
+                    if (format === '0%' && !finalValue.includes('%')) {
+                        let num = parseFloat(finalValue);
+                        if (!isNaN(num)) return Math.round(num * 100) + '%';
+                    }
+                }
+
+                return finalValue !== undefined ? String(finalValue) : match;
+            });
+        }
+
         async function loadMaps() {
             try {
                 const res = await fetch('/public/CH/maps.json?t=' + Date.now());
@@ -488,7 +550,8 @@
                 const list = talentNodes.map(n => {
                     const effect = data.potentialtalenteffecttable?.[n.passiveSkillNodeInfo.talentEffectId];
                     if(!effect) return '';
-                    const desc = effect.desc?.text || effect.desc || '';
+                    let desc = effect.desc?.text || effect.desc || '';
+                    desc = replaceV2Placeholders(desc, effect.dataList);
                     return `<div class="talent-item">
                         <div class="talent-desc">${parseText(desc)}</div>
                     </div>`;
@@ -507,26 +570,89 @@
             const potentials = data.characterpotentialtable?.potentialUnlockBundle || [];
             if (potentials.length > 0) {
                 const list = potentials.map(p => {
-                    const effect = data.potentialtalenteffecttable?.[p.potentialEffectId];
-                    const desc = effect?.desc?.text || effect?.desc || '';
+                    const eff_id = p.potentialEffectId;
+                    
+                    let effect = data.potentialtalenteffecttable?.[eff_id];
+                    let desc = effect?.desc?.text || effect?.desc || '';
+                    let replaceData = effect?.dataList || [];
+
+                    if (!desc) {
+                        const patch = data.skillpatchtable?.[eff_id];
+                        if (patch && patch.SkillPatchDataBundle && patch.SkillPatchDataBundle.length > 0) {
+                            const patchDesc = patch.SkillPatchDataBundle[0].description;
+                            if (patchDesc) {
+                                desc = patchDesc.text || '';
+                            }
+                            replaceData = patch.SkillPatchDataBundle[0].blackboard || [];
+                        }
+                    }
+
+                    desc = replaceV2Placeholders(desc, replaceData);
                     const name = p.name?.text || p.name || '';
+                    
+                    let extraDesc = '';
+                    if (!desc) {
+                        const charId = eff_id.replace(/_potential_\d+$/, '');
+                        if (p.level === 2 || p.level === 4) {
+                            const tIdx = p.level === 2 ? 1 : 2;
+                            const t1 = data.potentialtalenteffecttable?.[`${charId}_talent_${tIdx}_1`];
+                            const t2 = data.potentialtalenteffecttable?.[`${charId}_talent_${tIdx}_2`];
+                            if (t1) {
+                                let t1desc = t1.desc?.text || t1.desc || '';
+                                t1desc = replaceV2Placeholders(t1desc, t1.dataList || []);
+                                extraDesc += `<div class="potential-desc"><b>分支1:</b> ${parseText(t1desc)}</div>`;
+                            }
+                            if (t2) {
+                                let t2desc = t2.desc?.text || t2.desc || '';
+                                t2desc = replaceV2Placeholders(t2desc, t2.dataList || []);
+                                extraDesc += `<div class="potential-desc"><b>分支2:</b> ${parseText(t2desc)}</div>`;
+                            }
+                        }
+                    } else {
+                        extraDesc = `<div class="potential-desc">${parseText(desc)}</div>`;
+                    }
+
                     return `<div class="potential-item">
                         <div class="potential-level">潜能 ${p.level}</div>
                         <div class="potential-info">
                             <div class="potential-name">${name}</div>
-                            <div class="potential-desc">${parseText(desc)}</div>
+                            ${extraDesc}
                         </div>
                     </div>`;
                 }).join('');
                 potentialsHtml = `<div class="section"><h3>潜能</h3><div class="potential-list">${list}</div></div>`;
             }
 
-            const attrNodesHtml = `
+            let attrNodesHtml = `
                 <div class="section">
                     <h3>属性节点</h3>
                     <p>无</p>
                 </div>
             `;
+            const attrNodes = Object.values(data.chargrowthtable?.talentNodeMap || {}).filter(n => n.nodeType === 3);
+            if (attrNodes.length > 0) {
+                const list = attrNodes.map(n => {
+                    const title = n.attributeNodeInfo?.title?.text || '';
+                    const desc = n.attributeNodeInfo?.desc?.text || '';
+                    if (!title && !desc) return '';
+                    
+                    let modifierHtml = '';
+                    const attrMod = n.attributeNodeInfo?.attributeModifier;
+                    if (attrMod && attrMod.attrValue) {
+                        const attrName = getAttrName(attrMod.attrType) || attrMod.attrType;
+                        modifierHtml = `<div class="attr-node-modifier">${attrName} +${attrMod.attrValue}</div>`;
+                    }
+
+                    return `<div class="attr-node-item">
+                        <div class="attr-node-title">${title}</div>
+                        <div class="attr-node-desc">${parseText(desc)}</div>
+                        ${modifierHtml}
+                    </div>`;
+                }).filter(s => s).join('');
+                if (list) {
+                    attrNodesHtml = `<div class="section"><h3>属性节点</h3><div class="attr-nodes-grid">${list}</div></div>`;
+                }
+            }
 
             let skillsHtml = `
                 <div class="section">
@@ -540,7 +666,23 @@
                 skillList.sort((a,b) => (a.skillGroupType || 0) - (b.skillGroupType || 0));
                 const list = skillList.map(s => {
                     const name = s.name?.text || s.name || '';
-                    const desc = s.desc?.text || s.desc || '';
+                    let desc = s.desc?.text || s.desc || '';
+                    
+                    if (s.skillGroupId) {
+                        const patches = data.skillpatchtable?.[s.skillGroupId]?.SkillPatchDataBundle || [];
+                        if (patches.length > 0) {
+                            const maxPatch = patches[patches.length - 1];
+                            desc = replaceV2Placeholders(desc, maxPatch.blackboard);
+                        }
+                    } else if (s.skillIdList && s.skillIdList.length > 0) {
+                        const skillId = s.skillIdList[0];
+                        const patches = data.skillpatchtable?.[skillId]?.SkillPatchDataBundle || [];
+                        if (patches.length > 0) {
+                            const maxPatch = patches[patches.length - 1];
+                            desc = replaceV2Placeholders(desc, maxPatch.blackboard);
+                        }
+                    }
+
                     return `<div class="skill-item">
                         <div class="skill-icon"><img src="${IMAGE_BASE_PATH}${s.icon}.png" onerror="this.onerror=null; this.src='';"></div>
                         <div class="skill-info">
@@ -558,7 +700,62 @@
                     <p>无</p>
                 </div>
             `;
-            // If factory/spaceship skill mapping becomes clear, parse data.chargrowthtable.talentNodeMap (nodeType === 5)
+            const spaceshipChars = data.spaceshipcharskilltable?.skillList || [];
+            const spaceshipSkills = data.spaceshipskilltable || {};
+            if (spaceshipChars.length > 0) {
+                const groupedSkills = {};
+                spaceshipChars.forEach(s => {
+                    const skill = spaceshipSkills[s.skillId];
+                    if (!skill) return;
+                    
+                    const tName = skill.talentName?.text || skill.talentName || '';
+                    if (!groupedSkills[tName]) {
+                        groupedSkills[tName] = {
+                            icon: skill.icon ? `${IMAGE_BASE_PATH}${skill.icon}.png` : '',
+                            talentName: tName,
+                            roomTypeName: {1: '制造舱', 5: '会客室'}[skill.roomType] || '', // Fallback map if roomType mapping not loaded
+                            levels: []
+                        };
+                    }
+                    
+                    groupedSkills[tName].levels.push({
+                        postfix: skill.skillNamePostfix || '',
+                        skillName: skill.name?.text || skill.name || '',
+                        skillDesc: skill.desc?.text || skill.desc || '',
+                        unlockHint: s.unlockHint?.text || s.unlockHint || ''
+                    });
+                });
+                
+                const list = Object.values(groupedSkills).map(slot => {
+                    const levelsHtml = slot.levels.map(lv => `
+                        <div class="spaceship-skill-level">
+                            <span class="spaceship-skill-postfix">${lv.postfix}</span>
+                            <div class="spaceship-skill-info">
+                                <div class="spaceship-skill-fullname">${lv.skillName}</div>
+                                <div class="spaceship-skill-desc">${parseText(lv.skillDesc)}</div>
+                                <div class="spaceship-skill-unlock">${lv.unlockHint}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                    
+                    return `
+                        <div class="spaceship-skill-item">
+                            <div class="spaceship-skill-header">
+                                <img class="spaceship-icon" src="${slot.icon}" alt="" onerror="this.onerror=null; this.src='';">
+                                <span class="spaceship-skill-name">${slot.talentName}</span>
+                                <span class="spaceship-skill-room">${slot.roomTypeName}</span>
+                            </div>
+                            <div class="spaceship-skill-levels">
+                                ${levelsHtml}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                if (list) {
+                    spaceshipHtml = `<div class="section"><h3>后勤技能</h3>${list}</div>`;
+                }
+            }
 
             let profileHtml = `
                 <div class="section collapsible-section">
