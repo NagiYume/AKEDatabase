@@ -45,6 +45,8 @@
         let activeCharId = null;
         let isInitialized = false;
         let attrMap = {};
+        let attrEnMap = {};
+        let paramTypeMap = {};
         let charTypeMap = {};
         let weaponMap = {};
         let professionMap = {};
@@ -97,6 +99,24 @@
                         let v = o.stringValue !== undefined && o.stringValue !== "" ? o.stringValue : o.floatValue;
                         lookup[o.bbKey.toLowerCase()] = v;
                     }
+                    if (o.paramType !== undefined && o.paramValue !== undefined) {
+                        const ptName = paramTypeMap[o.paramType];
+                        if (ptName) {
+                            lookup[ptName.toLowerCase()] = o.paramValue;
+                        }
+                    }
+                    if (o.attrType !== undefined && o.attrValue !== undefined) {
+                        const atName = attrEnMap[o.attrType];
+                        if (atName) {
+                            lookup[atName.toLowerCase()] = o.attrValue;
+                        }
+                    }
+                    if (o.modifyAttributeType !== undefined && o.attrValue !== undefined) {
+                        const atModName = attrEnMap[o.modifyAttributeType];
+                        if (atModName) {
+                            lookup[atModName.toLowerCase()] = o.attrValue;
+                        }
+                    }
                     Object.values(o).forEach(traverse);
                 }
             }
@@ -115,7 +135,11 @@
                 } else {
                     let evalExpr = expr.replace(/[a-zA-Z_][a-zA-Z0-9_]*/g, (varName) => {
                         const lowerVar = varName.toLowerCase();
-                        return lookup[lowerVar] !== undefined ? lookup[lowerVar] : varName;
+                        if (lookup[lowerVar] !== undefined) {
+                            let val = lookup[lowerVar];
+                            return (typeof val === 'number' && val < 0) ? '(' + val + ')' : val;
+                        }
+                        return varName;
                     });
                     
                     try {
@@ -149,12 +173,16 @@
                 if (!res.ok) throw new Error('无法加载映射数据');
                 const data = await res.json();
                 attrMap = data.ATTR_MAP || {};
+                attrEnMap = data.ATTR_MAP_EN || {};
+                paramTypeMap = data.param_type_map || {};
                 charTypeMap = data.char_type_map || {};
                 weaponMap = data.weapon_map || {};
                 professionMap = data.profession_map || {};
             } catch (err) {
                 console.error('加载映射数据失败:', err);
                 attrMap = {};
+                attrEnMap = {};
+                paramTypeMap = {};
                 charTypeMap = {};
                 weaponMap = {};
                 professionMap = {};
@@ -612,12 +640,10 @@
                         extraDesc = `<div class="potential-desc">${parseText(desc)}</div>`;
                     }
 
+                    const titleRaw = name ? `潜能 ${p.level} · ${name}` : `潜能 ${p.level}`;
                     return `<div class="potential-item">
-                        <div class="potential-level">潜能 ${p.level}</div>
-                        <div class="potential-info">
-                            <div class="potential-name">${name}</div>
-                            ${extraDesc}
-                        </div>
+                        <div class="potential-name">${titleRaw}</div>
+                        ${extraDesc}
                     </div>`;
                 }).join('');
                 potentialsHtml = `<div class="section"><h3>潜能</h3><div class="potential-list">${list}</div></div>`;
