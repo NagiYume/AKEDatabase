@@ -5,9 +5,11 @@
     "showInHeadBarCommon": false,
     "showInHeadBarAttached": false,
     "showInSquadIcon": false,
-    "blinkInMainCharHpBar": false,
     "onlyShowForMainCharacter": false,
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
     "iconStyleInSquad": "Default",
+    "abnormalColorType": "Physical",
     "_orderPriorityConfig": {
       "useDirectoryValue": false,
       "priorityValue": 0,
@@ -38,6 +40,7 @@
   "globalModifier": [],
   "shieldConfigs": [],
   "applyTags": [],
+  "tagsAfterTriggerExtendBuffAction": [],
   "lifeType": "Infinity",
   "duration": {
     "useBlackboardKey": true,
@@ -168,6 +171,12 @@
                     "blackboardKey": ""
                   }
                 },
+                "useLengthBB": false,
+                "lengthBB": {
+                  "useBlackboardKey": false,
+                  "value": 0.0,
+                  "blackboardKey": ""
+                },
                 "releaseByAction": true,
                 "ignoreOwnerTimeScale": false,
                 "interruptTime": 0.0,
@@ -181,9 +190,14 @@
                 "limitKey": "",
                 "assetOnlyAffectModelRoot": false,
                 "isUltimateShow": false,
+                "visibleWithEntity": true,
+                "visibleWithEntityType": "Source",
                 "moveType": "FollowTarget",
+                "isOnlyFollowBattleCamera": false,
                 "positionRef": "Target",
                 "grounded": false,
+                "followGrounded": false,
+                "followGroundedMaxDistance": 3.0,
                 "followHideTarget": false,
                 "visibleWhenHideTarget": false,
                 "slotIndex": 0,
@@ -271,7 +285,8 @@
                 "value": 0.0
               },
               "saveEffectIdToBlackboard": "",
-              "forceMainBody": false
+              "forceMainBody": false,
+              "isCreateWithSourceModelActive": false
             }
           ],
           "onlyExecuteWhenSourceIsMainChar": false,
@@ -339,7 +354,12 @@
               "asChildBuff": false,
               "inheritSourceSkillCastId": false,
               "inheritSourceSkillCastInfo": true,
-              "isExtra": false
+              "isExtra": false,
+              "overrideBuffIconDuration": false,
+              "buffIconDurationSource": {
+                "durationSourceType": "AbilityEntity",
+                "timedMarkerId": ""
+              }
             }
           ],
           "onlyExecuteWhenSourceIsMainChar": false,
@@ -418,6 +438,8 @@
                 "targetContextKey": ""
               },
               "id": "buff_eny_0080_reaper_break",
+              "blackboardKey": "",
+              "useBlackboardKey": false,
               "returnTrueIfNotExists": true
             },
             {
@@ -509,6 +531,12 @@
                     "blackboardKey": ""
                   }
                 },
+                "useLengthBB": false,
+                "lengthBB": {
+                  "useBlackboardKey": false,
+                  "value": 0.0,
+                  "blackboardKey": ""
+                },
                 "releaseByAction": false,
                 "ignoreOwnerTimeScale": true,
                 "interruptTime": 0.0,
@@ -522,9 +550,14 @@
                 "limitKey": "",
                 "assetOnlyAffectModelRoot": false,
                 "isUltimateShow": false,
+                "visibleWithEntity": true,
+                "visibleWithEntityType": "Source",
                 "moveType": "FollowTarget",
+                "isOnlyFollowBattleCamera": false,
                 "positionRef": "Target",
                 "grounded": false,
+                "followGrounded": false,
+                "followGroundedMaxDistance": 3.0,
                 "followHideTarget": false,
                 "visibleWhenHideTarget": false,
                 "slotIndex": 0,
@@ -612,7 +645,8 @@
                 "value": 0.0
               },
               "saveEffectIdToBlackboard": "",
-              "forceMainBody": false
+              "forceMainBody": false,
+              "isCreateWithSourceModelActive": false
             },
             {
               "$type": "Beyond.Gameplay.Core.PlaySoundAction+PlaySoundActionData, Gameplay.Beyond",
@@ -704,7 +738,8 @@
                 "value": 0.1,
                 "blackboardKey": ""
               },
-              "autoFinishByAction": false
+              "autoFinishByAction": false,
+              "useTimeDilationDt": false
             }
           ],
           "onlyExecuteWhenSourceIsMainChar": false,

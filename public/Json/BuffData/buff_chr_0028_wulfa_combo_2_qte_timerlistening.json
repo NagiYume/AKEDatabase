@@ -5,9 +5,11 @@
     "showInHeadBarCommon": false,
     "showInHeadBarAttached": false,
     "showInSquadIcon": true,
-    "blinkInMainCharHpBar": false,
     "onlyShowForMainCharacter": false,
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
     "iconStyleInSquad": "LifeTime",
+    "abnormalColorType": "Physical",
     "_orderPriorityConfig": {
       "useDirectoryValue": false,
       "priorityValue": 0,
@@ -38,6 +40,7 @@
   "globalModifier": [],
   "shieldConfigs": [],
   "applyTags": [],
+  "tagsAfterTriggerExtendBuffAction": [],
   "lifeType": "Limited",
   "duration": {
     "useBlackboardKey": true,
@@ -396,7 +399,12 @@
                   "asChildBuff": false,
                   "inheritSourceSkillCastId": false,
                   "inheritSourceSkillCastInfo": true,
-                  "isExtra": false
+                  "isExtra": false,
+                  "overrideBuffIconDuration": false,
+                  "buffIconDurationSource": {
+                    "durationSourceType": "AbilityEntity",
+                    "timedMarkerId": ""
+                  }
                 }
               ],
               "onlyExecuteWhenSourceIsMainChar": false,
@@ -526,6 +534,12 @@
                   "blackboardKey": ""
                 }
               },
+              "useLengthBB": false,
+              "lengthBB": {
+                "useBlackboardKey": false,
+                "value": 0.0,
+                "blackboardKey": ""
+              },
               "releaseByAction": false,
               "ignoreOwnerTimeScale": false,
               "interruptTime": 0.0,
@@ -539,9 +553,14 @@
               "limitKey": "",
               "assetOnlyAffectModelRoot": false,
               "isUltimateShow": false,
+              "visibleWithEntity": true,
+              "visibleWithEntityType": "Source",
               "moveType": "FollowTarget",
+              "isOnlyFollowBattleCamera": false,
               "positionRef": "Target",
               "grounded": false,
+              "followGrounded": false,
+              "followGroundedMaxDistance": 3.0,
               "followHideTarget": false,
               "visibleWhenHideTarget": false,
               "slotIndex": 0,
@@ -629,7 +648,8 @@
               "value": 0.0
             },
             "saveEffectIdToBlackboard": "",
-            "forceMainBody": false
+            "forceMainBody": false,
+            "isCreateWithSourceModelActive": false
           },
           {
             "$type": "Beyond.Gameplay.Core.EffectAction+EffectActionData, Gameplay.Beyond",
@@ -720,6 +740,12 @@
                   "blackboardKey": ""
                 }
               },
+              "useLengthBB": false,
+              "lengthBB": {
+                "useBlackboardKey": false,
+                "value": 0.0,
+                "blackboardKey": ""
+              },
               "releaseByAction": true,
               "ignoreOwnerTimeScale": false,
               "interruptTime": 0.0,
@@ -733,9 +759,14 @@
               "limitKey": "",
               "assetOnlyAffectModelRoot": false,
               "isUltimateShow": false,
+              "visibleWithEntity": true,
+              "visibleWithEntityType": "Source",
               "moveType": "FollowTarget",
+              "isOnlyFollowBattleCamera": false,
               "positionRef": "Target",
               "grounded": false,
+              "followGrounded": false,
+              "followGroundedMaxDistance": 3.0,
               "followHideTarget": false,
               "visibleWhenHideTarget": false,
               "slotIndex": 0,
@@ -823,7 +854,8 @@
               "value": 0.0
             },
             "saveEffectIdToBlackboard": "",
-            "forceMainBody": false
+            "forceMainBody": false,
+            "isCreateWithSourceModelActive": false
           },
           {
             "$type": "Beyond.Gameplay.Core.EffectAction+EffectActionData, Gameplay.Beyond",
@@ -914,6 +946,12 @@
                   "blackboardKey": ""
                 }
               },
+              "useLengthBB": false,
+              "lengthBB": {
+                "useBlackboardKey": false,
+                "value": 0.0,
+                "blackboardKey": ""
+              },
               "releaseByAction": false,
               "ignoreOwnerTimeScale": false,
               "interruptTime": 0.0,
@@ -927,9 +965,14 @@
               "limitKey": "",
               "assetOnlyAffectModelRoot": false,
               "isUltimateShow": false,
+              "visibleWithEntity": true,
+              "visibleWithEntityType": "Source",
               "moveType": "Stationary",
+              "isOnlyFollowBattleCamera": false,
               "positionRef": "Target",
               "grounded": false,
+              "followGrounded": false,
+              "followGroundedMaxDistance": 3.0,
               "followHideTarget": false,
               "visibleWhenHideTarget": false,
               "slotIndex": 0,
@@ -1017,7 +1060,8 @@
               "value": 0.0
             },
             "saveEffectIdToBlackboard": "",
-            "forceMainBody": false
+            "forceMainBody": false,
+            "isCreateWithSourceModelActive": false
           },
           {
             "$type": "Beyond.Gameplay.Core.SpawnAbilityEntity+Data, Gameplay.Beyond",
@@ -1062,6 +1106,7 @@
             },
             "yRotateFromBoneToCurPos": false,
             "bornRotation": "Default",
+            "bornRotationContextTarget": "",
             "clampToXZPlane": false,
             "applyBornRotationOffset": false,
             "bornRotationOffset": {
@@ -1072,6 +1117,7 @@
             },
             "setAbilityEntitySource": true,
             "abilityEntitySource": "ActionSource",
+            "abilityEntitySourceContextKey": "",
             "overrideDuration": false,
             "duration": {
               "useBlackboardKey": false,
@@ -1108,7 +1154,10 @@
             "saveToContext": false,
             "contextKey": "",
             "pauseEffectOnEnd": false,
-            "inheritSourceSkillCastId": true
+            "inheritSourceSkillCastId": true,
+            "dieWhenSourceDie": false,
+            "forceSyncInit": false,
+            "dieOnEnd": false
           }
         ],
         "onlyExecuteWhenSourceIsMainChar": false,
@@ -1205,7 +1254,12 @@
             "asChildBuff": false,
             "inheritSourceSkillCastId": false,
             "inheritSourceSkillCastInfo": true,
-            "isExtra": false
+            "isExtra": false,
+            "overrideBuffIconDuration": false,
+            "buffIconDurationSource": {
+              "durationSourceType": "AbilityEntity",
+              "timedMarkerId": ""
+            }
           },
           {
             "$type": "Beyond.Gameplay.Core.SpawnAbilityEntity+Data, Gameplay.Beyond",
@@ -1250,6 +1304,7 @@
             },
             "yRotateFromBoneToCurPos": false,
             "bornRotation": "Default",
+            "bornRotationContextTarget": "",
             "clampToXZPlane": false,
             "applyBornRotationOffset": false,
             "bornRotationOffset": {
@@ -1260,6 +1315,7 @@
             },
             "setAbilityEntitySource": true,
             "abilityEntitySource": "ActionSource",
+            "abilityEntitySourceContextKey": "",
             "overrideDuration": false,
             "duration": {
               "useBlackboardKey": false,
@@ -1296,7 +1352,10 @@
             "saveToContext": false,
             "contextKey": "",
             "pauseEffectOnEnd": false,
-            "inheritSourceSkillCastId": true
+            "inheritSourceSkillCastId": true,
+            "dieWhenSourceDie": false,
+            "forceSyncInit": false,
+            "dieOnEnd": false
           }
         ],
         "onlyExecuteWhenSourceIsMainChar": false,
@@ -1426,7 +1485,12 @@
             "asChildBuff": false,
             "inheritSourceSkillCastId": false,
             "inheritSourceSkillCastInfo": true,
-            "isExtra": false
+            "isExtra": false,
+            "overrideBuffIconDuration": false,
+            "buffIconDurationSource": {
+              "durationSourceType": "AbilityEntity",
+              "timedMarkerId": ""
+            }
           },
           {
             "$type": "Beyond.Gameplay.Core.FinishBuffAdvanced+Data, Gameplay.Beyond",

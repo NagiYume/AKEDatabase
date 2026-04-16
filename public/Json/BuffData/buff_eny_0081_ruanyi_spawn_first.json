@@ -5,9 +5,11 @@
     "showInHeadBarCommon": false,
     "showInHeadBarAttached": false,
     "showInSquadIcon": false,
-    "blinkInMainCharHpBar": false,
     "onlyShowForMainCharacter": false,
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
     "iconStyleInSquad": "Default",
+    "abnormalColorType": "Physical",
     "_orderPriorityConfig": {
       "useDirectoryValue": false,
       "priorityValue": 0,
@@ -38,6 +40,7 @@
   "globalModifier": [],
   "shieldConfigs": [],
   "applyTags": [],
+  "tagsAfterTriggerExtendBuffAction": [],
   "lifeType": "Infinity",
   "duration": {
     "useBlackboardKey": false,
@@ -239,7 +242,8 @@
                     },
                     "distance": 10.0,
                     "lessThan": true,
-                    "includeTargetRadius": false
+                    "includeTargetRadius": false,
+                    "containsHittableObj": false
                   }
                 ],
                 "onlyExecuteWhenSourceIsMainChar": false,
@@ -504,6 +508,7 @@
               },
               "yRotateFromBoneToCurPos": false,
               "bornRotation": "Default",
+              "bornRotationContextTarget": "",
               "clampToXZPlane": false,
               "applyBornRotationOffset": false,
               "bornRotationOffset": {
@@ -514,6 +519,7 @@
               },
               "setAbilityEntitySource": true,
               "abilityEntitySource": "ActionSource",
+              "abilityEntitySourceContextKey": "",
               "overrideDuration": false,
               "duration": {
                 "useBlackboardKey": false,
@@ -550,7 +556,10 @@
               "saveToContext": true,
               "contextKey": "rytokenw_center",
               "pauseEffectOnEnd": false,
-              "inheritSourceSkillCastId": true
+              "inheritSourceSkillCastId": true,
+              "dieWhenSourceDie": false,
+              "forceSyncInit": false,
+              "dieOnEnd": false
             },
             {
               "$type": "Beyond.Gameplay.Core.SendBattleSignalToLevel+Data, Gameplay.Beyond",
@@ -764,6 +773,7 @@
               },
               "yRotateFromBoneToCurPos": false,
               "bornRotation": "Default",
+              "bornRotationContextTarget": "",
               "clampToXZPlane": false,
               "applyBornRotationOffset": false,
               "bornRotationOffset": {
@@ -774,6 +784,7 @@
               },
               "setAbilityEntitySource": true,
               "abilityEntitySource": "ActionSource",
+              "abilityEntitySourceContextKey": "",
               "overrideDuration": false,
               "duration": {
                 "useBlackboardKey": false,
@@ -810,7 +821,10 @@
               "saveToContext": true,
               "contextKey": "rytokenw",
               "pauseEffectOnEnd": false,
-              "inheritSourceSkillCastId": true
+              "inheritSourceSkillCastId": true,
+              "dieWhenSourceDie": false,
+              "forceSyncInit": false,
+              "dieOnEnd": false
             }
           ],
           "onlyExecuteWhenSourceIsMainChar": false,

@@ -5,9 +5,11 @@
     "showInHeadBarCommon": false,
     "showInHeadBarAttached": false,
     "showInSquadIcon": true,
-    "blinkInMainCharHpBar": false,
     "onlyShowForMainCharacter": true,
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
     "iconStyleInSquad": "LifeTime",
+    "abnormalColorType": "Physical",
     "_orderPriorityConfig": {
       "useDirectoryValue": false,
       "priorityValue": 0,
@@ -76,7 +78,7 @@
             "priorityOffset": 0,
             "serverActionIndex": 1,
             "checkType": "HasAny",
-            "mask": "NormalAttackLastCombo"
+            "mask": 2097152
           },
           {
             "$type": "Beyond.Gameplay.Core.CompareFloat+Data, Gameplay.Beyond",
@@ -119,6 +121,7 @@
   "globalModifier": [],
   "shieldConfigs": [],
   "applyTags": [],
+  "tagsAfterTriggerExtendBuffAction": [],
   "lifeType": "Limited",
   "duration": {
     "useBlackboardKey": true,
@@ -249,6 +252,12 @@
                     "blackboardKey": ""
                   }
                 },
+                "useLengthBB": false,
+                "lengthBB": {
+                  "useBlackboardKey": false,
+                  "value": 0.0,
+                  "blackboardKey": ""
+                },
                 "releaseByAction": true,
                 "ignoreOwnerTimeScale": false,
                 "interruptTime": 0.0,
@@ -262,9 +271,14 @@
                 "limitKey": "",
                 "assetOnlyAffectModelRoot": false,
                 "isUltimateShow": false,
+                "visibleWithEntity": true,
+                "visibleWithEntityType": "Source",
                 "moveType": "FollowSlot",
+                "isOnlyFollowBattleCamera": false,
                 "positionRef": "Target",
                 "grounded": false,
+                "followGrounded": false,
+                "followGroundedMaxDistance": 3.0,
                 "followHideTarget": false,
                 "visibleWhenHideTarget": false,
                 "slotIndex": 0,
@@ -352,7 +366,8 @@
                 "value": 0.0
               },
               "saveEffectIdToBlackboard": "",
-              "forceMainBody": false
+              "forceMainBody": false,
+              "isCreateWithSourceModelActive": false
             }
           ],
           "onlyExecuteWhenSourceIsMainChar": false,
@@ -413,7 +428,7 @@
               "priorityOffset": 0,
               "serverActionIndex": 5,
               "checkType": "HasAny",
-              "mask": "NormalAttackLastCombo"
+              "mask": 2097152
             },
             {
               "$type": "Beyond.Gameplay.Core.Conditions.CheckMainCharacterCondition+Data, Gameplay.Beyond",
@@ -537,7 +552,7 @@
                   "enablePoiseBreakTimeDilation": true,
                   "hidePoiseUIEffect": false,
                   "hideMainCharHpScreenEffect": false,
-                  "damageDecorateMask": "None",
+                  "damageDecorateMask": 0,
                   "ignoreDamageImmuneLevel": "None",
                   "simpleCalculation": true,
                   "atkScale": {
@@ -561,6 +576,7 @@
                       "blackboardKey": ""
                     }
                   },
+                  "ignorePoiseImmune": false,
                   "reduceDamageForGuard": false,
                   "reduceDamageForGuardRatio": 1.0,
                   "playHitEffect": false,
@@ -593,6 +609,12 @@
                         "blackboardKey": ""
                       }
                     },
+                    "useLengthBB": false,
+                    "lengthBB": {
+                      "useBlackboardKey": false,
+                      "value": 0.0,
+                      "blackboardKey": ""
+                    },
                     "releaseByAction": false,
                     "ignoreOwnerTimeScale": false,
                     "interruptTime": 0.0,
@@ -606,9 +628,14 @@
                     "limitKey": "",
                     "assetOnlyAffectModelRoot": false,
                     "isUltimateShow": false,
+                    "visibleWithEntity": true,
+                    "visibleWithEntityType": "Source",
                     "moveType": "Stationary",
+                    "isOnlyFollowBattleCamera": false,
                     "positionRef": "Target",
                     "grounded": false,
+                    "followGrounded": false,
+                    "followGroundedMaxDistance": 3.0,
                     "followHideTarget": false,
                     "visibleWhenHideTarget": false,
                     "slotIndex": 0,
@@ -722,7 +749,7 @@
                   }
                 },
                 "inheritFirstDamageMask": true,
-                "damageDecorateMask": "None",
+                "damageDecorateMask": 0,
                 "dontHitImportInteractive": false
               }
             }
@@ -803,6 +830,8 @@
                 "targetContextKey": ""
               },
               "id": "buff_chr_0026_lastrite_normal_skill_marker",
+              "blackboardKey": "",
+              "useBlackboardKey": false,
               "returnTrueIfNotExists": true
             },
             {
@@ -812,7 +841,7 @@
               "priorityOffset": 0,
               "serverActionIndex": 11,
               "checkType": "HasAny",
-              "mask": "NormalAttackLastCombo"
+              "mask": 2097152
             },
             {
               "$type": "Beyond.Gameplay.Core.Conditions.CheckMainCharacterCondition+Data, Gameplay.Beyond",
@@ -965,7 +994,12 @@
                     "asChildBuff": false,
                     "inheritSourceSkillCastId": false,
                     "inheritSourceSkillCastInfo": true,
-                    "isExtra": false
+                    "isExtra": false,
+                    "overrideBuffIconDuration": false,
+                    "buffIconDurationSource": {
+                      "durationSourceType": "AbilityEntity",
+                      "timedMarkerId": ""
+                    }
                   },
                   {
                     "$type": "Beyond.Gameplay.Core.CreateBuffAction+Data, Gameplay.Beyond",
@@ -1019,7 +1053,12 @@
                     "asChildBuff": false,
                     "inheritSourceSkillCastId": false,
                     "inheritSourceSkillCastInfo": true,
-                    "isExtra": false
+                    "isExtra": false,
+                    "overrideBuffIconDuration": false,
+                    "buffIconDurationSource": {
+                      "durationSourceType": "AbilityEntity",
+                      "timedMarkerId": ""
+                    }
                   },
                   {
                     "$type": "Beyond.Gameplay.Core.PlaySoundAction+PlaySoundActionData, Gameplay.Beyond",
@@ -1140,7 +1179,12 @@
                     "asChildBuff": false,
                     "inheritSourceSkillCastId": false,
                     "inheritSourceSkillCastInfo": true,
-                    "isExtra": false
+                    "isExtra": false,
+                    "overrideBuffIconDuration": false,
+                    "buffIconDurationSource": {
+                      "durationSourceType": "AbilityEntity",
+                      "timedMarkerId": ""
+                    }
                   },
                   {
                     "$type": "Beyond.Gameplay.Core.CreateBuffAction+Data, Gameplay.Beyond",
@@ -1194,7 +1238,12 @@
                     "asChildBuff": false,
                     "inheritSourceSkillCastId": false,
                     "inheritSourceSkillCastInfo": true,
-                    "isExtra": false
+                    "isExtra": false,
+                    "overrideBuffIconDuration": false,
+                    "buffIconDurationSource": {
+                      "durationSourceType": "AbilityEntity",
+                      "timedMarkerId": ""
+                    }
                   }
                 ],
                 "onlyExecuteWhenSourceIsMainChar": false,
@@ -1243,7 +1292,8 @@
                 "value": 0.1,
                 "blackboardKey": ""
               },
-              "autoFinishByAction": false
+              "autoFinishByAction": false,
+              "useTimeDilationDt": false
             }
           ],
           "onlyExecuteWhenSourceIsMainChar": false,

@@ -5,9 +5,11 @@
     "showInHeadBarCommon": false,
     "showInHeadBarAttached": false,
     "showInSquadIcon": false,
-    "blinkInMainCharHpBar": false,
     "onlyShowForMainCharacter": false,
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
     "iconStyleInSquad": "Default",
+    "abnormalColorType": "Physical",
     "_orderPriorityConfig": {
       "useDirectoryValue": false,
       "priorityValue": 0,
@@ -38,6 +40,7 @@
   "globalModifier": [],
   "shieldConfigs": [],
   "applyTags": [],
+  "tagsAfterTriggerExtendBuffAction": [],
   "lifeType": "Infinity",
   "duration": {
     "useBlackboardKey": false,
@@ -75,7 +78,7 @@
   },
   "buffEventAction": [
     {
-      "buffEvent": "OnBuffStart",
+      "buffEvent": "DuringBuffEnable",
       "actions": [
         {
           "actionData": [
@@ -116,62 +119,13 @@
               "setMeshRenderer": true,
               "affectInit": true,
               "revertOnRelease": true
-            }
-          ],
-          "onlyExecuteWhenSourceIsMainChar": false,
-          "onlyExecuteWhenSourceIsGuard": false
-        }
-      ]
-    },
-    {
-      "buffEvent": "DuringBuffEnable",
-      "actions": [
-        {
-          "actionData": [
-            {
-              "$type": "Beyond.Gameplay.Core.ShowHideActorAction+ShowHideActorData, Gameplay.Beyond",
-              "isEnable": true,
-              "priorityLevel": "Default",
-              "priorityOffset": 0,
-              "serverActionIndex": 1,
-              "targetSettings": {
-                "targetSource": "Source",
-                "targetGroupKey": "",
-                "selectorOwner": "ActionOwner",
-                "ownerContextKey": "",
-                "centerType": "ActionSource",
-                "centerContextKey": "",
-                "centerToGround": false,
-                "selectorData": {
-                  "validatorData": [],
-                  "postProcessorData": []
-                },
-                "enableAdvancedDirection": false,
-                "advancedDirection": {
-                  "directionType": "SourceForward",
-                  "sourceMountPoint": "None",
-                  "targetMountPoint": "None",
-                  "customSourceAndTarget": false,
-                  "clampToXZ": true,
-                  "invertDirection": false
-                },
-                "selectorDirection": "SourceForward",
-                "target": "ActionSource",
-                "targetContextKey": ""
-              },
-              "showHideType": "ModelPart",
-              "modelPartEnum": "MeshGroup2",
-              "isShow": true,
-              "setMeshRenderer": true,
-              "affectInit": true,
-              "revertOnRelease": true
             },
             {
               "$type": "Beyond.Gameplay.Core.EffectAction+EffectActionData, Gameplay.Beyond",
               "isEnable": true,
               "priorityLevel": "Default",
               "priorityOffset": 0,
-              "serverActionIndex": 2,
+              "serverActionIndex": 1,
               "targetSettings": {
                 "targetSource": "Owner",
                 "targetGroupKey": "",
@@ -255,6 +209,12 @@
                     "blackboardKey": ""
                   }
                 },
+                "useLengthBB": false,
+                "lengthBB": {
+                  "useBlackboardKey": false,
+                  "value": 0.0,
+                  "blackboardKey": ""
+                },
                 "releaseByAction": true,
                 "ignoreOwnerTimeScale": false,
                 "interruptTime": 0.0,
@@ -268,9 +228,14 @@
                 "limitKey": "",
                 "assetOnlyAffectModelRoot": false,
                 "isUltimateShow": true,
+                "visibleWithEntity": true,
+                "visibleWithEntityType": "Source",
                 "moveType": "FollowTarget",
+                "isOnlyFollowBattleCamera": false,
                 "positionRef": "Target",
                 "grounded": false,
+                "followGrounded": false,
+                "followGroundedMaxDistance": 3.0,
                 "followHideTarget": false,
                 "visibleWhenHideTarget": false,
                 "slotIndex": 0,
@@ -358,7 +323,8 @@
                 "value": 0.0
               },
               "saveEffectIdToBlackboard": "",
-              "forceMainBody": false
+              "forceMainBody": false,
+              "isCreateWithSourceModelActive": false
             }
           ],
           "onlyExecuteWhenSourceIsMainChar": false,

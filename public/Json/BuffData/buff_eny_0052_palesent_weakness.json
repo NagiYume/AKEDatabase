@@ -5,9 +5,11 @@
     "showInHeadBarCommon": false,
     "showInHeadBarAttached": false,
     "showInSquadIcon": false,
-    "blinkInMainCharHpBar": false,
     "onlyShowForMainCharacter": false,
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
     "iconStyleInSquad": "Default",
+    "abnormalColorType": "Physical",
     "_orderPriorityConfig": {
       "useDirectoryValue": false,
       "priorityValue": 0,
@@ -38,6 +40,7 @@
   "globalModifier": [],
   "shieldConfigs": [],
   "applyTags": [],
+  "tagsAfterTriggerExtendBuffAction": [],
   "lifeType": "Limited",
   "duration": {
     "useBlackboardKey": false,
@@ -85,29 +88,25 @@
               "priorityLevel": "Default",
               "priorityOffset": 0,
               "serverActionIndex": 0,
-              "triggerWeaknessCount": 1,
               "triggerWeaknessCountBB": {
                 "useBlackboardKey": false,
-                "value": -1,
+                "value": 1,
                 "blackboardKey": ""
               },
               "useWeakerTriggerEffect": false,
-              "whiteAlertEffectDuration": 0.0,
               "whiteAlertEffectDurationBB": {
                 "useBlackboardKey": false,
-                "value": -1.0,
+                "value": 0.0,
                 "blackboardKey": ""
               },
-              "alertEffectDuration": 1.8,
               "alertEffectDurationBB": {
                 "useBlackboardKey": false,
-                "value": -1.0,
+                "value": 1.8,
                 "blackboardKey": ""
               },
-              "alertEffectScale": 2.0,
               "alertEffectScaleBB": {
                 "useBlackboardKey": false,
-                "value": -1.0,
+                "value": 2.0,
                 "blackboardKey": ""
               },
               "triggerActions": {
@@ -164,7 +163,12 @@
                     "asChildBuff": false,
                     "inheritSourceSkillCastId": false,
                     "inheritSourceSkillCastInfo": true,
-                    "isExtra": false
+                    "isExtra": false,
+                    "overrideBuffIconDuration": false,
+                    "buffIconDurationSource": {
+                      "durationSourceType": "AbilityEntity",
+                      "timedMarkerId": ""
+                    }
                   }
                 ],
                 "onlyExecuteWhenSourceIsMainChar": false,

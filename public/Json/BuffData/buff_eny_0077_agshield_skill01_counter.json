@@ -5,9 +5,11 @@
     "showInHeadBarCommon": false,
     "showInHeadBarAttached": false,
     "showInSquadIcon": false,
-    "blinkInMainCharHpBar": false,
     "onlyShowForMainCharacter": false,
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
     "iconStyleInSquad": "Default",
+    "abnormalColorType": "Physical",
     "_orderPriorityConfig": {
       "useDirectoryValue": false,
       "priorityValue": 0,
@@ -38,6 +40,7 @@
   "globalModifier": [],
   "shieldConfigs": [],
   "applyTags": [],
+  "tagsAfterTriggerExtendBuffAction": [],
   "lifeType": "Limited",
   "duration": {
     "useBlackboardKey": true,
@@ -444,7 +447,7 @@
               "priorityOffset": 0,
               "serverActionIndex": 2,
               "checkType": "HasAny",
-              "mask": "NormalAttack"
+              "mask": 128
             },
             {
               "$type": "Beyond.Gameplay.Core.Conditions.CheckTimedMarkerCondition+Data, Gameplay.Beyond",
@@ -478,6 +481,8 @@
                 "targetContextKey": ""
               },
               "id": "eny_0077_agshield_counter_to_char",
+              "blackboardKey": "",
+              "useBlackboardKey": false,
               "returnTrueIfNotExists": true
             },
             {
@@ -521,7 +526,8 @@
                 "value": 0.3,
                 "blackboardKey": ""
               },
-              "autoFinishByAction": false
+              "autoFinishByAction": false,
+              "useTimeDilationDt": false
             },
             {
               "$type": "Beyond.Gameplay.Core.CharHurtAnimAction+Data, Gameplay.Beyond",
@@ -689,6 +695,12 @@
                     "blackboardKey": ""
                   }
                 },
+                "useLengthBB": false,
+                "lengthBB": {
+                  "useBlackboardKey": false,
+                  "value": 0.0,
+                  "blackboardKey": ""
+                },
                 "releaseByAction": false,
                 "ignoreOwnerTimeScale": false,
                 "interruptTime": 0.0,
@@ -702,9 +714,14 @@
                 "limitKey": "",
                 "assetOnlyAffectModelRoot": false,
                 "isUltimateShow": false,
+                "visibleWithEntity": true,
+                "visibleWithEntityType": "Source",
                 "moveType": "Stationary",
+                "isOnlyFollowBattleCamera": false,
                 "positionRef": "Target",
                 "grounded": false,
+                "followGrounded": false,
+                "followGroundedMaxDistance": 3.0,
                 "followHideTarget": false,
                 "visibleWhenHideTarget": false,
                 "slotIndex": 0,
@@ -792,7 +809,8 @@
                 "value": 0.0
               },
               "saveEffectIdToBlackboard": "",
-              "forceMainBody": false
+              "forceMainBody": false,
+              "isCreateWithSourceModelActive": false
             },
             {
               "$type": "Beyond.Gameplay.Core.PlaySoundAction+PlaySoundActionData, Gameplay.Beyond",

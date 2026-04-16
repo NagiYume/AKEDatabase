@@ -5,9 +5,11 @@
     "showInHeadBarCommon": false,
     "showInHeadBarAttached": false,
     "showInSquadIcon": false,
-    "blinkInMainCharHpBar": false,
     "onlyShowForMainCharacter": false,
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
     "iconStyleInSquad": "Default",
+    "abnormalColorType": "Physical",
     "_orderPriorityConfig": {
       "useDirectoryValue": false,
       "priorityValue": 0,
@@ -38,6 +40,7 @@
   "globalModifier": [],
   "shieldConfigs": [],
   "applyTags": [],
+  "tagsAfterTriggerExtendBuffAction": [],
   "lifeType": "Infinity",
   "duration": {
     "useBlackboardKey": false,
@@ -131,6 +134,8 @@
                 "targetContextKey": ""
               },
               "id": "buff_chr_0021_whiten_potential_5_cd",
+              "blackboardKey": "",
+              "useBlackboardKey": false,
               "returnTrueIfNotExists": true
             },
             {
@@ -174,7 +179,8 @@
                 "value": 0.0,
                 "blackboardKey": "cd"
               },
-              "autoFinishByAction": false
+              "autoFinishByAction": false,
+              "useTimeDilationDt": false
             },
             {
               "$type": "Beyond.Gameplay.Core.ObtainCostAction+Data, Gameplay.Beyond",
@@ -189,6 +195,7 @@
                 "tagName": "",
                 "tagId": 0
               },
+              "ignoreUspGainScalar": false,
               "atbSourceType": "Default",
               "atbGainMethod": "Gain",
               "playObtainAtbEffect": true,

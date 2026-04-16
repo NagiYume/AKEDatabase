@@ -5,9 +5,11 @@
     "showInHeadBarCommon": false,
     "showInHeadBarAttached": false,
     "showInSquadIcon": false,
-    "blinkInMainCharHpBar": false,
     "onlyShowForMainCharacter": false,
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
     "iconStyleInSquad": "Default",
+    "abnormalColorType": "Physical",
     "_orderPriorityConfig": {
       "useDirectoryValue": false,
       "priorityValue": 0,
@@ -48,6 +50,7 @@
   "globalModifier": [],
   "shieldConfigs": [],
   "applyTags": [],
+  "tagsAfterTriggerExtendBuffAction": [],
   "lifeType": "Infinity",
   "duration": {
     "useBlackboardKey": false,
@@ -316,6 +319,71 @@
           ],
           "onlyExecuteWhenSourceIsMainChar": false,
           "onlyExecuteWhenSourceIsGuard": false
+        },
+        {
+          "actionData": [
+            {
+              "$type": "Beyond.Gameplay.Core.CreateBuffAction+Data, Gameplay.Beyond",
+              "isEnable": true,
+              "priorityLevel": "Default",
+              "priorityOffset": 0,
+              "serverActionIndex": 4,
+              "buffs": [
+                {
+                  "buffId": "buff_eny_0090_wgabyss_State_Normal_hdg010",
+                  "assignBlackboard": false,
+                  "assignItems": [],
+                  "readIdFromBlackboard": false,
+                  "buffIdKey": ""
+                }
+              ],
+              "count": {
+                "useBlackboardKey": false,
+                "value": 1.0,
+                "blackboardKey": ""
+              },
+              "targetSettings": {
+                "targetSource": "Owner",
+                "targetGroupKey": "",
+                "selectorOwner": "ActionOwner",
+                "ownerContextKey": "",
+                "centerType": "ActionSource",
+                "centerContextKey": "",
+                "centerToGround": false,
+                "selectorData": {
+                  "validatorData": [],
+                  "postProcessorData": []
+                },
+                "enableAdvancedDirection": false,
+                "advancedDirection": {
+                  "directionType": "SourceForward",
+                  "sourceMountPoint": "None",
+                  "targetMountPoint": "None",
+                  "customSourceAndTarget": false,
+                  "clampToXZ": true,
+                  "invertDirection": false
+                },
+                "selectorDirection": "SourceForward",
+                "target": "ActionSource",
+                "targetContextKey": ""
+              },
+              "buffSource": "ActionSource",
+              "contextKey": "",
+              "autoFinishByAction": false,
+              "inheritSkillIdList": [],
+              "asChildBuff": true,
+              "inheritSourceSkillCastId": false,
+              "inheritSourceSkillCastInfo": true,
+              "isExtra": false,
+              "overrideBuffIconDuration": false,
+              "buffIconDurationSource": {
+                "durationSourceType": "AbilityEntity",
+                "timedMarkerId": ""
+              }
+            }
+          ],
+          "onlyExecuteWhenSourceIsMainChar": false,
+          "onlyExecuteWhenSourceIsGuard": false
         }
       ]
     },
@@ -329,7 +397,7 @@
               "isEnable": true,
               "priorityLevel": "Default",
               "priorityOffset": 0,
-              "serverActionIndex": 4,
+              "serverActionIndex": 5,
               "key": "HP_Now",
               "operation": "Assign",
               "directValue": false,
@@ -383,7 +451,7 @@
               "isEnable": true,
               "priorityLevel": "Default",
               "priorityOffset": 0,
-              "serverActionIndex": 5,
+              "serverActionIndex": 6,
               "buffs": [
                 {
                   "buffId": "buff_eny_0090_wgabyss_State_Weak",
@@ -430,14 +498,19 @@
               "asChildBuff": false,
               "inheritSourceSkillCastId": false,
               "inheritSourceSkillCastInfo": true,
-              "isExtra": false
+              "isExtra": false,
+              "overrideBuffIconDuration": false,
+              "buffIconDurationSource": {
+                "durationSourceType": "AbilityEntity",
+                "timedMarkerId": ""
+              }
             },
             {
               "$type": "Beyond.Gameplay.Core.FinishBuffAdvanced+Data, Gameplay.Beyond",
               "isEnable": true,
               "priorityLevel": "Default",
               "priorityOffset": 0,
-              "serverActionIndex": 6,
+              "serverActionIndex": 7,
               "buffOwner": {
                 "targetSource": "Owner",
                 "targetGroupKey": "",

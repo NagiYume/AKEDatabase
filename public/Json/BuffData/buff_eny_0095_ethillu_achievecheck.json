@@ -1,0 +1,154 @@
+{
+  "id": "buff_eny_0095_ethillu_achievecheck",
+  "iconConfig": {
+    "_spritePath": "",
+    "showInHeadBarCommon": false,
+    "showInHeadBarAttached": false,
+    "showInSquadIcon": false,
+    "onlyShowForMainCharacter": false,
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
+    "iconStyleInSquad": "Default",
+    "abnormalColorType": "Physical",
+    "_orderPriorityConfig": {
+      "useDirectoryValue": false,
+      "priorityValue": 0,
+      "priorityEnum": "CommonCharBuff"
+    },
+    "showWarningBackground": false,
+    "playStrongInAnimation": false,
+    "hasCharHpBarVfxType": false,
+    "charHpBarVfxType": "Fire"
+  },
+  "ignoreTagImmune": false,
+  "useTimeDilationDt": false,
+  "finishOnRepatriate": false,
+  "hasAddingCooldown": false,
+  "addingCooldown": {
+    "useBlackboardKey": false,
+    "value": 0.0,
+    "blackboardKey": ""
+  },
+  "ignoreCooldownWhenAdding": false,
+  "attributeModifier": {
+    "isConvertedAttribute": false,
+    "attributeModifiers": []
+  },
+  "damageModifier": [],
+  "healModifier": [],
+  "poiseModifier": [],
+  "globalModifier": [],
+  "shieldConfigs": [],
+  "applyTags": [],
+  "tagsAfterTriggerExtendBuffAction": [],
+  "lifeType": "Infinity",
+  "duration": {
+    "useBlackboardKey": false,
+    "value": 2.0,
+    "blackboardKey": "duration"
+  },
+  "triggerInterval": {
+    "useBlackboardKey": false,
+    "value": 0.0,
+    "blackboardKey": ""
+  },
+  "waitFirstTriggerInterval": true,
+  "maxTriggerCnt": {
+    "useBlackboardKey": false,
+    "value": 1,
+    "blackboardKey": ""
+  },
+  "stackingSettings": {
+    "identifierType": "Id",
+    "stackingType": "Stack",
+    "stackingKey": "buff_potion",
+    "usePriorityKey": false,
+    "priorityKey": "",
+    "negatePriority": false,
+    "priority": 0.0,
+    "useMaxStackCntKey": false,
+    "maxStackCntKey": "",
+    "maxStackCnt": 1,
+    "isNeedStackEffect": false,
+    "stackEffects": []
+  },
+  "dispelConfig": {
+    "canBeDispelled": false,
+    "dispelledLevel": "Default"
+  },
+  "buffEventAction": [],
+  "abilityEventAction": [
+    {
+      "abilityEvent": "OnOwnerHpZero",
+      "actions": [
+        {
+          "actionData": [
+            {
+              "$type": "Beyond.Gameplay.Core.CheckBuffStackNumAdvanced+Data, Gameplay.Beyond",
+              "isEnable": true,
+              "priorityLevel": "Default",
+              "priorityOffset": 0,
+              "serverActionIndex": 0,
+              "checkTarget": {
+                "targetSource": "Owner",
+                "targetGroupKey": "",
+                "selectorOwner": "ActionOwner",
+                "ownerContextKey": "",
+                "centerType": "ActionSource",
+                "centerContextKey": "",
+                "centerToGround": false,
+                "selectorData": {
+                  "validatorData": [],
+                  "postProcessorData": []
+                },
+                "enableAdvancedDirection": false,
+                "advancedDirection": {
+                  "directionType": "SourceForward",
+                  "sourceMountPoint": "None",
+                  "targetMountPoint": "None",
+                  "customSourceAndTarget": false,
+                  "clampToXZ": true,
+                  "invertDirection": false
+                },
+                "selectorDirection": "SourceForward",
+                "target": "ActionSource",
+                "targetContextKey": ""
+              },
+              "buffSettings": {
+                "checkType": "Id",
+                "buffIdList": [
+                  "buff_eny_0095_ethillu_achievetag"
+                ],
+                "tagQuery": {
+                  "queryType": "HasAny",
+                  "tags": []
+                }
+              },
+              "buffStackNumType": "BuffCount",
+              "compareType": "GE",
+              "value": {
+                "useBlackboardKey": false,
+                "value": 1.0,
+                "blackboardKey": ""
+              },
+              "limitSkillCastId": false
+            },
+            {
+              "$type": "Beyond.Gameplay.Core.AchieveSpecialGameEventAction+Data, Gameplay.Beyond",
+              "isEnable": true,
+              "priorityLevel": "Default",
+              "priorityOffset": 0,
+              "serverActionIndex": 1,
+              "specialGameEventType": "SpecAbilityEntityOrBuffAlive_EthilluAchieveCheck"
+            }
+          ],
+          "onlyExecuteWhenSourceIsMainChar": false,
+          "onlyExecuteWhenSourceIsGuard": false
+        }
+      ]
+    }
+  ],
+  "igniteEventAction": [],
+  "timelineActions": [],
+  "blackboard": []
+}

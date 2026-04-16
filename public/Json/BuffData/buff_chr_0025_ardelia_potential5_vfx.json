@@ -5,9 +5,11 @@
     "showInHeadBarCommon": false,
     "showInHeadBarAttached": false,
     "showInSquadIcon": false,
-    "blinkInMainCharHpBar": false,
     "onlyShowForMainCharacter": false,
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
     "iconStyleInSquad": "Default",
+    "abnormalColorType": "Physical",
     "_orderPriorityConfig": {
       "useDirectoryValue": false,
       "priorityValue": 0,
@@ -38,6 +40,7 @@
   "globalModifier": [],
   "shieldConfigs": [],
   "applyTags": [],
+  "tagsAfterTriggerExtendBuffAction": [],
   "lifeType": "Infinity",
   "duration": {
     "useBlackboardKey": false,
@@ -75,55 +78,6 @@
   },
   "buffEventAction": [
     {
-      "buffEvent": "OnBuffStart",
-      "actions": [
-        {
-          "actionData": [
-            {
-              "$type": "Beyond.Gameplay.Core.ShowHideActorAction+ShowHideActorData, Gameplay.Beyond",
-              "isEnable": true,
-              "priorityLevel": "Default",
-              "priorityOffset": 0,
-              "serverActionIndex": 0,
-              "targetSettings": {
-                "targetSource": "Source",
-                "targetGroupKey": "",
-                "selectorOwner": "ActionOwner",
-                "ownerContextKey": "",
-                "centerType": "ActionSource",
-                "centerContextKey": "",
-                "centerToGround": false,
-                "selectorData": {
-                  "validatorData": [],
-                  "postProcessorData": []
-                },
-                "enableAdvancedDirection": false,
-                "advancedDirection": {
-                  "directionType": "SourceForward",
-                  "sourceMountPoint": "None",
-                  "targetMountPoint": "None",
-                  "customSourceAndTarget": false,
-                  "clampToXZ": true,
-                  "invertDirection": false
-                },
-                "selectorDirection": "SourceForward",
-                "target": "ActionSource",
-                "targetContextKey": ""
-              },
-              "showHideType": "ModelPart",
-              "modelPartEnum": "MeshGroup1",
-              "isShow": true,
-              "setMeshRenderer": true,
-              "affectInit": true,
-              "revertOnRelease": false
-            }
-          ],
-          "onlyExecuteWhenSourceIsMainChar": false,
-          "onlyExecuteWhenSourceIsGuard": false
-        }
-      ]
-    },
-    {
       "buffEvent": "DuringBuffEnable",
       "actions": [
         {
@@ -133,7 +87,7 @@
               "isEnable": true,
               "priorityLevel": "Default",
               "priorityOffset": 0,
-              "serverActionIndex": 1,
+              "serverActionIndex": 0,
               "targetSettings": {
                 "targetSource": "Owner",
                 "targetGroupKey": "",
@@ -217,7 +171,13 @@
                     "blackboardKey": ""
                   }
                 },
-                "releaseByAction": false,
+                "useLengthBB": false,
+                "lengthBB": {
+                  "useBlackboardKey": false,
+                  "value": 0.0,
+                  "blackboardKey": ""
+                },
+                "releaseByAction": true,
                 "ignoreOwnerTimeScale": false,
                 "interruptTime": 0.0,
                 "terrainPrefab": false,
@@ -230,9 +190,14 @@
                 "limitKey": "",
                 "assetOnlyAffectModelRoot": false,
                 "isUltimateShow": true,
+                "visibleWithEntity": true,
+                "visibleWithEntityType": "Source",
                 "moveType": "FollowTarget",
+                "isOnlyFollowBattleCamera": false,
                 "positionRef": "Target",
                 "grounded": false,
+                "followGrounded": false,
+                "followGroundedMaxDistance": 3.0,
                 "followHideTarget": false,
                 "visibleWhenHideTarget": false,
                 "slotIndex": 0,
@@ -320,14 +285,15 @@
                 "value": 0.0
               },
               "saveEffectIdToBlackboard": "",
-              "forceMainBody": false
+              "forceMainBody": false,
+              "isCreateWithSourceModelActive": false
             },
             {
               "$type": "Beyond.Gameplay.Core.EffectAction+EffectActionData, Gameplay.Beyond",
               "isEnable": true,
               "priorityLevel": "Default",
               "priorityOffset": 0,
-              "serverActionIndex": 2,
+              "serverActionIndex": 1,
               "targetSettings": {
                 "targetSource": "Owner",
                 "targetGroupKey": "",
@@ -411,7 +377,13 @@
                     "blackboardKey": ""
                   }
                 },
-                "releaseByAction": false,
+                "useLengthBB": false,
+                "lengthBB": {
+                  "useBlackboardKey": false,
+                  "value": 0.0,
+                  "blackboardKey": ""
+                },
+                "releaseByAction": true,
                 "ignoreOwnerTimeScale": false,
                 "interruptTime": 0.0,
                 "terrainPrefab": false,
@@ -424,9 +396,14 @@
                 "limitKey": "",
                 "assetOnlyAffectModelRoot": false,
                 "isUltimateShow": true,
+                "visibleWithEntity": true,
+                "visibleWithEntityType": "Source",
                 "moveType": "FollowTarget",
+                "isOnlyFollowBattleCamera": false,
                 "positionRef": "Target",
                 "grounded": false,
+                "followGrounded": false,
+                "followGroundedMaxDistance": 3.0,
                 "followHideTarget": false,
                 "visibleWhenHideTarget": false,
                 "slotIndex": 0,
@@ -514,7 +491,46 @@
                 "value": 0.0
               },
               "saveEffectIdToBlackboard": "",
-              "forceMainBody": false
+              "forceMainBody": false,
+              "isCreateWithSourceModelActive": false
+            },
+            {
+              "$type": "Beyond.Gameplay.Core.ShowHideActorAction+ShowHideActorData, Gameplay.Beyond",
+              "isEnable": true,
+              "priorityLevel": "Default",
+              "priorityOffset": 0,
+              "serverActionIndex": 2,
+              "targetSettings": {
+                "targetSource": "Source",
+                "targetGroupKey": "",
+                "selectorOwner": "ActionOwner",
+                "ownerContextKey": "",
+                "centerType": "ActionSource",
+                "centerContextKey": "",
+                "centerToGround": false,
+                "selectorData": {
+                  "validatorData": [],
+                  "postProcessorData": []
+                },
+                "enableAdvancedDirection": false,
+                "advancedDirection": {
+                  "directionType": "SourceForward",
+                  "sourceMountPoint": "None",
+                  "targetMountPoint": "None",
+                  "customSourceAndTarget": false,
+                  "clampToXZ": true,
+                  "invertDirection": false
+                },
+                "selectorDirection": "SourceForward",
+                "target": "ActionSource",
+                "targetContextKey": ""
+              },
+              "showHideType": "ModelPart",
+              "modelPartEnum": "MeshGroup1",
+              "isShow": true,
+              "setMeshRenderer": true,
+              "affectInit": true,
+              "revertOnRelease": true
             }
           ],
           "onlyExecuteWhenSourceIsMainChar": false,

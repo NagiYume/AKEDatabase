@@ -5,9 +5,11 @@
     "showInHeadBarCommon": true,
     "showInHeadBarAttached": false,
     "showInSquadIcon": false,
-    "blinkInMainCharHpBar": false,
     "onlyShowForMainCharacter": false,
-    "iconStyleInSquad": "Default",
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
+    "iconStyleInSquad": "SpellAbnormal",
+    "abnormalColorType": "Cryst",
     "_orderPriorityConfig": {
       "useDirectoryValue": false,
       "priorityValue": 0,
@@ -43,6 +45,7 @@
       "tagId": 1535684437
     }
   ],
+  "tagsAfterTriggerExtendBuffAction": [],
   "lifeType": "Limited",
   "duration": {
     "useBlackboardKey": true,
@@ -173,6 +176,12 @@
                     "blackboardKey": ""
                   }
                 },
+                "useLengthBB": false,
+                "lengthBB": {
+                  "useBlackboardKey": false,
+                  "value": 0.0,
+                  "blackboardKey": ""
+                },
                 "releaseByAction": true,
                 "ignoreOwnerTimeScale": false,
                 "interruptTime": 0.0,
@@ -186,9 +195,14 @@
                 "limitKey": "",
                 "assetOnlyAffectModelRoot": false,
                 "isUltimateShow": false,
+                "visibleWithEntity": true,
+                "visibleWithEntityType": "Source",
                 "moveType": "FollowTarget",
+                "isOnlyFollowBattleCamera": false,
                 "positionRef": "Target",
                 "grounded": false,
+                "followGrounded": false,
+                "followGroundedMaxDistance": 3.0,
                 "followHideTarget": false,
                 "visibleWhenHideTarget": false,
                 "slotIndex": 0,
@@ -276,7 +290,8 @@
                 "value": 0.0
               },
               "saveEffectIdToBlackboard": "",
-              "forceMainBody": false
+              "forceMainBody": false,
+              "isCreateWithSourceModelActive": false
             },
             {
               "$type": "Beyond.Gameplay.Core.IfElseAction+IfElseActionData, Gameplay.Beyond",
@@ -419,6 +434,12 @@
                           "blackboardKey": ""
                         }
                       },
+                      "useLengthBB": false,
+                      "lengthBB": {
+                        "useBlackboardKey": false,
+                        "value": 0.0,
+                        "blackboardKey": ""
+                      },
                       "releaseByAction": true,
                       "ignoreOwnerTimeScale": false,
                       "interruptTime": 0.0,
@@ -432,9 +453,14 @@
                       "limitKey": "",
                       "assetOnlyAffectModelRoot": false,
                       "isUltimateShow": false,
+                      "visibleWithEntity": true,
+                      "visibleWithEntityType": "Source",
                       "moveType": "FollowTarget",
+                      "isOnlyFollowBattleCamera": false,
                       "positionRef": "Target",
                       "grounded": false,
+                      "followGrounded": false,
+                      "followGroundedMaxDistance": 3.0,
                       "followHideTarget": false,
                       "visibleWhenHideTarget": false,
                       "slotIndex": 0,
@@ -522,7 +548,8 @@
                       "value": 0.0
                     },
                     "saveEffectIdToBlackboard": "",
-                    "forceMainBody": false
+                    "forceMainBody": false,
+                    "isCreateWithSourceModelActive": false
                   }
                 ],
                 "onlyExecuteWhenSourceIsMainChar": false,
@@ -619,6 +646,12 @@
                           "blackboardKey": ""
                         }
                       },
+                      "useLengthBB": false,
+                      "lengthBB": {
+                        "useBlackboardKey": false,
+                        "value": 0.0,
+                        "blackboardKey": ""
+                      },
                       "releaseByAction": true,
                       "ignoreOwnerTimeScale": false,
                       "interruptTime": 0.0,
@@ -632,9 +665,14 @@
                       "limitKey": "",
                       "assetOnlyAffectModelRoot": false,
                       "isUltimateShow": false,
+                      "visibleWithEntity": true,
+                      "visibleWithEntityType": "Source",
                       "moveType": "FollowTarget",
+                      "isOnlyFollowBattleCamera": false,
                       "positionRef": "Target",
                       "grounded": false,
+                      "followGrounded": false,
+                      "followGroundedMaxDistance": 3.0,
                       "followHideTarget": false,
                       "visibleWhenHideTarget": false,
                       "slotIndex": 0,
@@ -722,7 +760,8 @@
                       "value": 0.0
                     },
                     "saveEffectIdToBlackboard": "",
-                    "forceMainBody": false
+                    "forceMainBody": false,
+                    "isCreateWithSourceModelActive": false
                   }
                 ],
                 "onlyExecuteWhenSourceIsMainChar": false,
@@ -884,7 +923,12 @@
               "asChildBuff": false,
               "inheritSourceSkillCastId": false,
               "inheritSourceSkillCastInfo": true,
-              "isExtra": false
+              "isExtra": false,
+              "overrideBuffIconDuration": false,
+              "buffIconDurationSource": {
+                "durationSourceType": "AbilityEntity",
+                "timedMarkerId": ""
+              }
             }
           ],
           "onlyExecuteWhenSourceIsMainChar": false,
@@ -949,7 +993,12 @@
               "asChildBuff": false,
               "inheritSourceSkillCastId": false,
               "inheritSourceSkillCastInfo": true,
-              "isExtra": false
+              "isExtra": false,
+              "overrideBuffIconDuration": false,
+              "buffIconDurationSource": {
+                "durationSourceType": "AbilityEntity",
+                "timedMarkerId": ""
+              }
             }
           ],
           "onlyExecuteWhenSourceIsMainChar": false,
@@ -1086,7 +1135,7 @@
                   "enablePoiseBreakTimeDilation": true,
                   "hidePoiseUIEffect": false,
                   "hideMainCharHpScreenEffect": false,
-                  "damageDecorateMask": "CrystAbnormalInitial",
+                  "damageDecorateMask": 32,
                   "ignoreDamageImmuneLevel": "None",
                   "simpleCalculation": false,
                   "atkScale": {
@@ -1104,6 +1153,7 @@
                   },
                   "takeAtkSnapshot": false,
                   "damageProcessors": [],
+                  "ignorePoiseImmune": false,
                   "reduceDamageForGuard": false,
                   "reduceDamageForGuardRatio": 1.0,
                   "playHitEffect": false,
@@ -1136,6 +1186,12 @@
                         "blackboardKey": ""
                       }
                     },
+                    "useLengthBB": false,
+                    "lengthBB": {
+                      "useBlackboardKey": false,
+                      "value": 0.0,
+                      "blackboardKey": ""
+                    },
                     "releaseByAction": false,
                     "ignoreOwnerTimeScale": false,
                     "interruptTime": 0.0,
@@ -1149,9 +1205,14 @@
                     "limitKey": "",
                     "assetOnlyAffectModelRoot": false,
                     "isUltimateShow": false,
+                    "visibleWithEntity": true,
+                    "visibleWithEntityType": "Source",
                     "moveType": "Stationary",
+                    "isOnlyFollowBattleCamera": false,
                     "positionRef": "Target",
                     "grounded": false,
+                    "followGrounded": false,
+                    "followGroundedMaxDistance": 3.0,
                     "followHideTarget": false,
                     "visibleWhenHideTarget": false,
                     "slotIndex": 0,
@@ -1265,7 +1326,7 @@
                   }
                 },
                 "inheritFirstDamageMask": true,
-                "damageDecorateMask": "None",
+                "damageDecorateMask": 0,
                 "dontHitImportInteractive": false
               }
             },
@@ -1321,7 +1382,12 @@
               "asChildBuff": false,
               "inheritSourceSkillCastId": false,
               "inheritSourceSkillCastInfo": true,
-              "isExtra": false
+              "isExtra": false,
+              "overrideBuffIconDuration": false,
+              "buffIconDurationSource": {
+                "durationSourceType": "AbilityEntity",
+                "timedMarkerId": ""
+              }
             }
           ],
           "onlyExecuteWhenSourceIsMainChar": false,

@@ -1,0 +1,326 @@
+{
+  "id": "buff_equipsuit_expend_spell01",
+  "iconConfig": {
+    "_spritePath": "",
+    "showInHeadBarCommon": false,
+    "showInHeadBarAttached": false,
+    "showInSquadIcon": true,
+    "onlyShowForMainCharacter": false,
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
+    "iconStyleInSquad": "Default",
+    "abnormalColorType": "Physical",
+    "_orderPriorityConfig": {
+      "useDirectoryValue": false,
+      "priorityValue": 0,
+      "priorityEnum": "CommonCharBuff"
+    },
+    "showWarningBackground": false,
+    "playStrongInAnimation": false,
+    "hasCharHpBarVfxType": false,
+    "charHpBarVfxType": "Fire"
+  },
+  "ignoreTagImmune": false,
+  "useTimeDilationDt": false,
+  "finishOnRepatriate": false,
+  "hasAddingCooldown": false,
+  "addingCooldown": {
+    "useBlackboardKey": false,
+    "value": 0.0,
+    "blackboardKey": "cd"
+  },
+  "ignoreCooldownWhenAdding": false,
+  "attributeModifier": {
+    "isConvertedAttribute": false,
+    "attributeModifiers": []
+  },
+  "damageModifier": [],
+  "healModifier": [],
+  "poiseModifier": [],
+  "globalModifier": [],
+  "shieldConfigs": [],
+  "applyTags": [],
+  "tagsAfterTriggerExtendBuffAction": [],
+  "lifeType": "Infinity",
+  "duration": {
+    "useBlackboardKey": false,
+    "value": 0.0,
+    "blackboardKey": "duration"
+  },
+  "triggerInterval": {
+    "useBlackboardKey": false,
+    "value": 0.0,
+    "blackboardKey": ""
+  },
+  "waitFirstTriggerInterval": true,
+  "maxTriggerCnt": {
+    "useBlackboardKey": false,
+    "value": 1,
+    "blackboardKey": ""
+  },
+  "stackingSettings": {
+    "identifierType": "Id",
+    "stackingType": "Unlimited",
+    "stackingKey": "",
+    "usePriorityKey": false,
+    "priorityKey": "",
+    "negatePriority": false,
+    "priority": 0.0,
+    "useMaxStackCntKey": true,
+    "maxStackCntKey": "max_stack",
+    "maxStackCnt": 1,
+    "isNeedStackEffect": false,
+    "stackEffects": []
+  },
+  "dispelConfig": {
+    "canBeDispelled": false,
+    "dispelledLevel": "Default"
+  },
+  "buffEventAction": [],
+  "abilityEventAction": [
+    {
+      "abilityEvent": "OnConsumeBuff",
+      "actions": [
+        {
+          "actionData": [
+            {
+              "$type": "Beyond.Gameplay.Core.Conditions.CheckBuffIdInContextAdvanced+Data, Gameplay.Beyond",
+              "isEnable": true,
+              "priorityLevel": "Default",
+              "priorityOffset": 0,
+              "serverActionIndex": 0,
+              "checkType": "Tag",
+              "buffIdList": [
+                {
+                  "useBlackboardKey": false,
+                  "value": "",
+                  "blackboardKey": ""
+                }
+              ],
+              "query": {
+                "queryType": "HasAny",
+                "tags": [
+                  {
+                    "tagName": "Skill/Character/Common/SpellStatus/Conduct",
+                    "tagId": 1466867135
+                  },
+                  {
+                    "tagName": "Skill/Character/Common/SpellStatus/Corrupt",
+                    "tagId": -421286163
+                  }
+                ]
+              },
+              "blackboardKey": "buffid"
+            },
+            {
+              "$type": "Beyond.Gameplay.Core.GetTargetBuffBBAdvanced+Data, Gameplay.Beyond",
+              "isEnable": true,
+              "priorityLevel": "Default",
+              "priorityOffset": 0,
+              "serverActionIndex": 1,
+              "targetSettings": {
+                "targetSource": "Target",
+                "targetGroupKey": "",
+                "selectorOwner": "ActionOwner",
+                "ownerContextKey": "",
+                "centerType": "ActionSource",
+                "centerContextKey": "",
+                "centerToGround": false,
+                "selectorData": {
+                  "validatorData": [],
+                  "postProcessorData": []
+                },
+                "enableAdvancedDirection": false,
+                "advancedDirection": {
+                  "directionType": "SourceForward",
+                  "sourceMountPoint": "None",
+                  "targetMountPoint": "None",
+                  "customSourceAndTarget": false,
+                  "clampToXZ": true,
+                  "invertDirection": false
+                },
+                "selectorDirection": "SourceForward",
+                "target": "ActionOwner",
+                "targetContextKey": ""
+              },
+              "buffSettings": {
+                "checkType": "Context",
+                "buffIdList": [
+                  ""
+                ],
+                "tagQuery": {
+                  "queryType": "HasAny",
+                  "tags": []
+                }
+              },
+              "desiredKey": "count",
+              "blackboardKey": "addstack"
+            },
+            {
+              "$type": "Beyond.Gameplay.Core.DebugPrintAction+Data, Gameplay.Beyond",
+              "isEnable": true,
+              "priorityLevel": "Default",
+              "priorityOffset": 0,
+              "serverActionIndex": 2,
+              "logType": "BlackboardItem",
+              "target": {
+                "targetSource": "Target",
+                "targetGroupKey": "",
+                "selectorOwner": "ActionOwner",
+                "ownerContextKey": "",
+                "centerType": "ActionSource",
+                "centerContextKey": "",
+                "centerToGround": false,
+                "selectorData": {
+                  "validatorData": [],
+                  "postProcessorData": []
+                },
+                "enableAdvancedDirection": false,
+                "advancedDirection": {
+                  "directionType": "SourceForward",
+                  "sourceMountPoint": "None",
+                  "targetMountPoint": "None",
+                  "customSourceAndTarget": false,
+                  "clampToXZ": true,
+                  "invertDirection": false
+                },
+                "selectorDirection": "SourceForward",
+                "target": "ActionSource",
+                "targetContextKey": ""
+              },
+              "bbKey": "addstack",
+              "identifier": "cx-12345"
+            },
+            {
+              "$type": "Beyond.Gameplay.Core.CreateBuffAction+Data, Gameplay.Beyond",
+              "isEnable": true,
+              "priorityLevel": "Default",
+              "priorityOffset": 0,
+              "serverActionIndex": 3,
+              "buffs": [
+                {
+                  "buffId": "buff_equipsuit_expend_spelldamage",
+                  "assignBlackboard": true,
+                  "assignItems": [
+                    {
+                      "targetKey": "spell_dmg_up",
+                      "inputValueKey": "spell_dmg_up",
+                      "useDirectValue": false,
+                      "directValueType": "Numeric",
+                      "numericValue": 0.0,
+                      "stringValue": ""
+                    },
+                    {
+                      "targetKey": "duration",
+                      "inputValueKey": "duration",
+                      "useDirectValue": false,
+                      "directValueType": "Numeric",
+                      "numericValue": 0.0,
+                      "stringValue": ""
+                    },
+                    {
+                      "targetKey": "max_stack",
+                      "inputValueKey": "max_stack",
+                      "useDirectValue": false,
+                      "directValueType": "Numeric",
+                      "numericValue": 0.0,
+                      "stringValue": ""
+                    }
+                  ],
+                  "readIdFromBlackboard": false,
+                  "buffIdKey": ""
+                }
+              ],
+              "count": {
+                "useBlackboardKey": true,
+                "value": 1.0,
+                "blackboardKey": "addstack"
+              },
+              "targetSettings": {
+                "targetSource": "Owner",
+                "targetGroupKey": "",
+                "selectorOwner": "ActionOwner",
+                "ownerContextKey": "",
+                "centerType": "ActionSource",
+                "centerContextKey": "",
+                "centerToGround": false,
+                "selectorData": {
+                  "finderData": {
+                    "$type": "Beyond.Gameplay.Core.Selector+CharacterTeamFinder+Data, Gameplay.Beyond"
+                  },
+                  "validatorData": [
+                    {
+                      "$type": "Beyond.Gameplay.Core.Selector+ExcludeOwnerValidator+Data, Gameplay.Beyond"
+                    }
+                  ],
+                  "postProcessorData": []
+                },
+                "enableAdvancedDirection": false,
+                "advancedDirection": {
+                  "directionType": "SourceForward",
+                  "sourceMountPoint": "None",
+                  "targetMountPoint": "None",
+                  "customSourceAndTarget": false,
+                  "clampToXZ": true,
+                  "invertDirection": false
+                },
+                "selectorDirection": "SourceForward",
+                "target": "ActionSource",
+                "targetContextKey": ""
+              },
+              "buffSource": "ActionOwner",
+              "contextKey": "",
+              "autoFinishByAction": false,
+              "inheritSkillIdList": [],
+              "asChildBuff": true,
+              "inheritSourceSkillCastId": false,
+              "inheritSourceSkillCastInfo": true,
+              "isExtra": false,
+              "overrideBuffIconDuration": false,
+              "buffIconDurationSource": {
+                "durationSourceType": "AbilityEntity",
+                "timedMarkerId": ""
+              }
+            }
+          ],
+          "onlyExecuteWhenSourceIsMainChar": false,
+          "onlyExecuteWhenSourceIsGuard": false
+        }
+      ]
+    }
+  ],
+  "igniteEventAction": [],
+  "timelineActions": [],
+  "blackboard": [
+    {
+      "key": "spell_dmg_up",
+      "valueDouble": 0.2,
+      "valueStr": "",
+      "isDynamic": false
+    },
+    {
+      "key": "max_stack",
+      "valueDouble": 4.0,
+      "valueStr": "",
+      "isDynamic": false
+    },
+    {
+      "key": "duration",
+      "valueDouble": 10.0,
+      "valueStr": "",
+      "isDynamic": false
+    },
+    {
+      "key": "addstack",
+      "valueDouble": 1.0,
+      "valueStr": "",
+      "isDynamic": false
+    },
+    {
+      "key": "buffid",
+      "valueDouble": 0.0,
+      "valueStr": "",
+      "isDynamic": false
+    }
+  ]
+}

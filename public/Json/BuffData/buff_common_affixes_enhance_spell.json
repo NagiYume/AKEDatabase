@@ -5,9 +5,11 @@
     "showInHeadBarCommon": false,
     "showInHeadBarAttached": false,
     "showInSquadIcon": false,
-    "blinkInMainCharHpBar": false,
     "onlyShowForMainCharacter": false,
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
     "iconStyleInSquad": "Default",
+    "abnormalColorType": "Physical",
     "_orderPriorityConfig": {
       "useDirectoryValue": false,
       "priorityValue": 0,
@@ -86,8 +88,25 @@
     {
       "tagName": "Skill/Character/Common/Affixes/Enhance/EnhanceSpell",
       "tagId": 486772476
+    },
+    {
+      "tagName": "Skill/Character/Common/Affixes/Enhance/EnhanceSpell/EnhanceFire",
+      "tagId": -1920931676
+    },
+    {
+      "tagName": "Skill/Character/Common/Affixes/Enhance/EnhanceSpell/EnhanceCryst",
+      "tagId": 191477865
+    },
+    {
+      "tagName": "Skill/Character/Common/Affixes/Enhance/EnhanceSpell/EnhancePulse",
+      "tagId": -1046270741
+    },
+    {
+      "tagName": "Skill/Character/Common/Affixes/Enhance/EnhanceSpell/EnhanceNatural",
+      "tagId": 895316857
     }
   ],
+  "tagsAfterTriggerExtendBuffAction": [],
   "lifeType": "Limited",
   "duration": {
     "useBlackboardKey": true,
@@ -198,7 +217,12 @@
               "asChildBuff": true,
               "inheritSourceSkillCastId": true,
               "inheritSourceSkillCastInfo": true,
-              "isExtra": false
+              "isExtra": false,
+              "overrideBuffIconDuration": false,
+              "buffIconDurationSource": {
+                "durationSourceType": "AbilityEntity",
+                "timedMarkerId": ""
+              }
             }
           ],
           "onlyExecuteWhenSourceIsMainChar": false,

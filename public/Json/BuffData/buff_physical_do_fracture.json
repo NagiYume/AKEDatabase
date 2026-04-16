@@ -5,9 +5,11 @@
     "showInHeadBarCommon": true,
     "showInHeadBarAttached": false,
     "showInSquadIcon": false,
-    "blinkInMainCharHpBar": false,
     "onlyShowForMainCharacter": false,
-    "iconStyleInSquad": "Default",
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
+    "iconStyleInSquad": "SpellAbnormal",
+    "abnormalColorType": "Physical",
     "_orderPriorityConfig": {
       "useDirectoryValue": false,
       "priorityValue": 0,
@@ -73,6 +75,7 @@
       "tagId": -430063731
     }
   ],
+  "tagsAfterTriggerExtendBuffAction": [],
   "lifeType": "Limited",
   "duration": {
     "useBlackboardKey": true,
@@ -430,6 +433,12 @@
                     "blackboardKey": ""
                   }
                 },
+                "useLengthBB": false,
+                "lengthBB": {
+                  "useBlackboardKey": false,
+                  "value": 0.0,
+                  "blackboardKey": ""
+                },
                 "releaseByAction": false,
                 "ignoreOwnerTimeScale": false,
                 "interruptTime": 0.0,
@@ -443,9 +452,14 @@
                 "limitKey": "",
                 "assetOnlyAffectModelRoot": false,
                 "isUltimateShow": false,
+                "visibleWithEntity": true,
+                "visibleWithEntityType": "Source",
                 "moveType": "FollowTarget",
+                "isOnlyFollowBattleCamera": false,
                 "positionRef": "Target",
                 "grounded": false,
+                "followGrounded": false,
+                "followGroundedMaxDistance": 3.0,
                 "followHideTarget": false,
                 "visibleWhenHideTarget": false,
                 "slotIndex": 0,
@@ -533,7 +547,8 @@
                 "value": 0.0
               },
               "saveEffectIdToBlackboard": "",
-              "forceMainBody": false
+              "forceMainBody": false,
+              "isCreateWithSourceModelActive": false
             }
           ],
           "onlyExecuteWhenSourceIsMainChar": false,
@@ -593,7 +608,12 @@
               "asChildBuff": false,
               "inheritSourceSkillCastId": true,
               "inheritSourceSkillCastInfo": true,
-              "isExtra": false
+              "isExtra": false,
+              "overrideBuffIconDuration": false,
+              "buffIconDurationSource": {
+                "durationSourceType": "AbilityEntity",
+                "timedMarkerId": ""
+              }
             }
           ],
           "onlyExecuteWhenSourceIsMainChar": false,
@@ -833,7 +853,7 @@
                   "enablePoiseBreakTimeDilation": true,
                   "hidePoiseUIEffect": false,
                   "hideMainCharHpScreenEffect": false,
-                  "damageDecorateMask": "Fracture",
+                  "damageDecorateMask": 1073741824,
                   "ignoreDamageImmuneLevel": "None",
                   "simpleCalculation": true,
                   "atkScale": {
@@ -843,6 +863,7 @@
                   },
                   "takeAtkSnapshot": false,
                   "damageProcessors": [],
+                  "ignorePoiseImmune": false,
                   "reduceDamageForGuard": false,
                   "reduceDamageForGuardRatio": 1.0,
                   "playHitEffect": false,
@@ -875,6 +896,12 @@
                         "blackboardKey": ""
                       }
                     },
+                    "useLengthBB": false,
+                    "lengthBB": {
+                      "useBlackboardKey": false,
+                      "value": 0.0,
+                      "blackboardKey": ""
+                    },
                     "releaseByAction": false,
                     "ignoreOwnerTimeScale": false,
                     "interruptTime": 0.0,
@@ -888,9 +915,14 @@
                     "limitKey": "",
                     "assetOnlyAffectModelRoot": false,
                     "isUltimateShow": false,
+                    "visibleWithEntity": true,
+                    "visibleWithEntityType": "Source",
                     "moveType": "Stationary",
+                    "isOnlyFollowBattleCamera": false,
                     "positionRef": "Target",
                     "grounded": false,
+                    "followGrounded": false,
+                    "followGroundedMaxDistance": 3.0,
                     "followHideTarget": false,
                     "visibleWhenHideTarget": false,
                     "slotIndex": 0,
@@ -1004,7 +1036,7 @@
                   }
                 },
                 "inheritFirstDamageMask": true,
-                "damageDecorateMask": "None",
+                "damageDecorateMask": 0,
                 "dontHitImportInteractive": false
               }
             }

@@ -5,9 +5,11 @@
     "showInHeadBarCommon": false,
     "showInHeadBarAttached": false,
     "showInSquadIcon": false,
-    "blinkInMainCharHpBar": false,
     "onlyShowForMainCharacter": false,
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
     "iconStyleInSquad": "Default",
+    "abnormalColorType": "Physical",
     "_orderPriorityConfig": {
       "useDirectoryValue": false,
       "priorityValue": 0,
@@ -19,7 +21,7 @@
     "charHpBarVfxType": "Fire"
   },
   "ignoreTagImmune": false,
-  "useTimeDilationDt": false,
+  "useTimeDilationDt": true,
   "finishOnRepatriate": false,
   "hasAddingCooldown": false,
   "addingCooldown": {
@@ -38,6 +40,7 @@
   "globalModifier": [],
   "shieldConfigs": [],
   "applyTags": [],
+  "tagsAfterTriggerExtendBuffAction": [],
   "lifeType": "Limited",
   "duration": {
     "useBlackboardKey": false,
@@ -878,7 +881,23 @@
                       "snapToNavMesh": true
                     },
                     "validatorData": [],
-                    "postProcessorData": []
+                    "postProcessorData": [
+                      {
+                        "$type": "Beyond.Gameplay.Core.Selector+NavMeshPathPositionProcessor+Data, Gameplay.Beyond",
+                        "getNavPosInRangeRadius": {
+                          "useBlackboardKey": false,
+                          "value": 0.0,
+                          "blackboardKey": ""
+                        },
+                        "allowCheckMainCharPosToDestPathAvailable": false,
+                        "throughWall": false,
+                        "clampDirToXZ": true,
+                        "checkMaxDistance": true,
+                        "maxDistance": 27.0,
+                        "ignoreNavmeshLink": true,
+                        "snapToFloor": false
+                      }
+                    ]
                   },
                   "selectorDirection": "CameraForward",
                   "target": "ActionSource",
@@ -957,7 +976,23 @@
                       "snapToNavMesh": true
                     },
                     "validatorData": [],
-                    "postProcessorData": []
+                    "postProcessorData": [
+                      {
+                        "$type": "Beyond.Gameplay.Core.Selector+NavMeshPathPositionProcessor+Data, Gameplay.Beyond",
+                        "getNavPosInRangeRadius": {
+                          "useBlackboardKey": false,
+                          "value": 0.0,
+                          "blackboardKey": ""
+                        },
+                        "allowCheckMainCharPosToDestPathAvailable": false,
+                        "throughWall": false,
+                        "clampDirToXZ": true,
+                        "checkMaxDistance": true,
+                        "maxDistance": 27.0,
+                        "ignoreNavmeshLink": true,
+                        "snapToFloor": false
+                      }
+                    ]
                   },
                   "selectorDirection": "CameraForward",
                   "target": "ActionSource",
@@ -1152,7 +1187,7 @@
             "clampDirToXZ": true,
             "checkMaxDistance": true,
             "maxDistance": 27.0,
-            "ignoreNavmeshLink": false,
+            "ignoreNavmeshLink": true,
             "snapToFloor": false
           }
         ],
@@ -1335,6 +1370,12 @@
                   "blackboardKey": ""
                 }
               },
+              "useLengthBB": false,
+              "lengthBB": {
+                "useBlackboardKey": false,
+                "value": 0.0,
+                "blackboardKey": ""
+              },
               "releaseByAction": true,
               "ignoreOwnerTimeScale": false,
               "interruptTime": 0.0,
@@ -1348,9 +1389,14 @@
               "limitKey": "",
               "assetOnlyAffectModelRoot": false,
               "isUltimateShow": false,
+              "visibleWithEntity": true,
+              "visibleWithEntityType": "Source",
               "moveType": "Stationary",
+              "isOnlyFollowBattleCamera": false,
               "positionRef": "Source",
               "grounded": false,
+              "followGrounded": false,
+              "followGroundedMaxDistance": 3.0,
               "followHideTarget": false,
               "visibleWhenHideTarget": false,
               "slotIndex": 0,
@@ -1438,7 +1484,8 @@
               "value": 0.0
             },
             "saveEffectIdToBlackboard": "",
-            "forceMainBody": false
+            "forceMainBody": false,
+            "isCreateWithSourceModelActive": false
           }
         ],
         "onlyExecuteWhenSourceIsMainChar": false,
@@ -1545,6 +1592,12 @@
                   "blackboardKey": ""
                 }
               },
+              "useLengthBB": false,
+              "lengthBB": {
+                "useBlackboardKey": false,
+                "value": 0.0,
+                "blackboardKey": ""
+              },
               "releaseByAction": true,
               "ignoreOwnerTimeScale": false,
               "interruptTime": 0.0,
@@ -1558,9 +1611,14 @@
               "limitKey": "",
               "assetOnlyAffectModelRoot": false,
               "isUltimateShow": false,
+              "visibleWithEntity": true,
+              "visibleWithEntityType": "Source",
               "moveType": "FollowTarget",
+              "isOnlyFollowBattleCamera": false,
               "positionRef": "Target",
               "grounded": false,
+              "followGrounded": false,
+              "followGroundedMaxDistance": 3.0,
               "followHideTarget": false,
               "visibleWhenHideTarget": false,
               "slotIndex": 0,
@@ -1648,7 +1706,8 @@
               "value": 0.0
             },
             "saveEffectIdToBlackboard": "",
-            "forceMainBody": false
+            "forceMainBody": false,
+            "isCreateWithSourceModelActive": false
           }
         ],
         "onlyExecuteWhenSourceIsMainChar": false,
@@ -1755,6 +1814,12 @@
                   "blackboardKey": ""
                 }
               },
+              "useLengthBB": false,
+              "lengthBB": {
+                "useBlackboardKey": false,
+                "value": 0.0,
+                "blackboardKey": ""
+              },
               "releaseByAction": true,
               "ignoreOwnerTimeScale": false,
               "interruptTime": 0.0,
@@ -1768,9 +1833,14 @@
               "limitKey": "",
               "assetOnlyAffectModelRoot": false,
               "isUltimateShow": false,
+              "visibleWithEntity": true,
+              "visibleWithEntityType": "Source",
               "moveType": "Stationary",
+              "isOnlyFollowBattleCamera": false,
               "positionRef": "Target",
               "grounded": false,
+              "followGrounded": false,
+              "followGroundedMaxDistance": 3.0,
               "followHideTarget": false,
               "visibleWhenHideTarget": false,
               "slotIndex": 0,
@@ -1858,7 +1928,8 @@
               "value": 0.0
             },
             "saveEffectIdToBlackboard": "",
-            "forceMainBody": false
+            "forceMainBody": false,
+            "isCreateWithSourceModelActive": false
           }
         ],
         "onlyExecuteWhenSourceIsMainChar": false,
@@ -1965,6 +2036,12 @@
                   "blackboardKey": ""
                 }
               },
+              "useLengthBB": false,
+              "lengthBB": {
+                "useBlackboardKey": false,
+                "value": 0.0,
+                "blackboardKey": ""
+              },
               "releaseByAction": true,
               "ignoreOwnerTimeScale": false,
               "interruptTime": 0.0,
@@ -1978,9 +2055,14 @@
               "limitKey": "",
               "assetOnlyAffectModelRoot": false,
               "isUltimateShow": false,
+              "visibleWithEntity": true,
+              "visibleWithEntityType": "Source",
               "moveType": "FollowTarget",
+              "isOnlyFollowBattleCamera": false,
               "positionRef": "Target",
               "grounded": false,
+              "followGrounded": false,
+              "followGroundedMaxDistance": 3.0,
               "followHideTarget": false,
               "visibleWhenHideTarget": false,
               "slotIndex": 0,
@@ -2068,7 +2150,8 @@
               "value": 0.0
             },
             "saveEffectIdToBlackboard": "",
-            "forceMainBody": false
+            "forceMainBody": false,
+            "isCreateWithSourceModelActive": false
           }
         ],
         "onlyExecuteWhenSourceIsMainChar": false,
@@ -2175,6 +2258,12 @@
                   "blackboardKey": ""
                 }
               },
+              "useLengthBB": false,
+              "lengthBB": {
+                "useBlackboardKey": false,
+                "value": 0.0,
+                "blackboardKey": ""
+              },
               "releaseByAction": true,
               "ignoreOwnerTimeScale": false,
               "interruptTime": 0.0,
@@ -2188,9 +2277,14 @@
               "limitKey": "",
               "assetOnlyAffectModelRoot": false,
               "isUltimateShow": false,
+              "visibleWithEntity": true,
+              "visibleWithEntityType": "Source",
               "moveType": "FollowTarget",
+              "isOnlyFollowBattleCamera": false,
               "positionRef": "Target",
               "grounded": false,
+              "followGrounded": false,
+              "followGroundedMaxDistance": 3.0,
               "followHideTarget": false,
               "visibleWhenHideTarget": false,
               "slotIndex": 0,
@@ -2278,7 +2372,8 @@
               "value": 0.0
             },
             "saveEffectIdToBlackboard": "",
-            "forceMainBody": false
+            "forceMainBody": false,
+            "isCreateWithSourceModelActive": false
           }
         ],
         "onlyExecuteWhenSourceIsMainChar": false,
@@ -2385,6 +2480,12 @@
                   "blackboardKey": ""
                 }
               },
+              "useLengthBB": false,
+              "lengthBB": {
+                "useBlackboardKey": false,
+                "value": 0.0,
+                "blackboardKey": ""
+              },
               "releaseByAction": true,
               "ignoreOwnerTimeScale": false,
               "interruptTime": 0.0,
@@ -2398,9 +2499,14 @@
               "limitKey": "",
               "assetOnlyAffectModelRoot": false,
               "isUltimateShow": false,
+              "visibleWithEntity": true,
+              "visibleWithEntityType": "Source",
               "moveType": "Stationary",
+              "isOnlyFollowBattleCamera": false,
               "positionRef": "Target",
               "grounded": false,
+              "followGrounded": false,
+              "followGroundedMaxDistance": 3.0,
               "followHideTarget": false,
               "visibleWhenHideTarget": false,
               "slotIndex": 0,
@@ -2488,7 +2594,8 @@
               "value": 0.0
             },
             "saveEffectIdToBlackboard": "",
-            "forceMainBody": false
+            "forceMainBody": false,
+            "isCreateWithSourceModelActive": false
           }
         ],
         "onlyExecuteWhenSourceIsMainChar": false,

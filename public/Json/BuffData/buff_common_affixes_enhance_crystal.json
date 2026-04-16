@@ -5,9 +5,11 @@
     "showInHeadBarCommon": false,
     "showInHeadBarAttached": false,
     "showInSquadIcon": false,
-    "blinkInMainCharHpBar": false,
     "onlyShowForMainCharacter": false,
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
     "iconStyleInSquad": "Default",
+    "abnormalColorType": "Physical",
     "_orderPriorityConfig": {
       "useDirectoryValue": false,
       "priorityValue": 0,
@@ -50,14 +52,11 @@
   "shieldConfigs": [],
   "applyTags": [
     {
-      "tagName": "Skill/Character/Common/Affixes/Enhance",
-      "tagId": -1748167886
-    },
-    {
-      "tagName": "Skill/Character/Common/Affixes/Enhance/EnhanceSpell",
-      "tagId": 486772476
+      "tagName": "Skill/Character/Common/Affixes/Enhance/EnhanceSpell/EnhanceCryst",
+      "tagId": 191477865
     }
   ],
+  "tagsAfterTriggerExtendBuffAction": [],
   "lifeType": "Limited",
   "duration": {
     "useBlackboardKey": true,
@@ -168,7 +167,12 @@
               "asChildBuff": true,
               "inheritSourceSkillCastId": true,
               "inheritSourceSkillCastInfo": true,
-              "isExtra": false
+              "isExtra": false,
+              "overrideBuffIconDuration": false,
+              "buffIconDurationSource": {
+                "durationSourceType": "AbilityEntity",
+                "timedMarkerId": ""
+              }
             }
           ],
           "onlyExecuteWhenSourceIsMainChar": false,

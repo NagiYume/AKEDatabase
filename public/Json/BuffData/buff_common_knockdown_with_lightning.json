@@ -5,9 +5,11 @@
     "showInHeadBarCommon": false,
     "showInHeadBarAttached": false,
     "showInSquadIcon": false,
-    "blinkInMainCharHpBar": false,
     "onlyShowForMainCharacter": false,
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
     "iconStyleInSquad": "Default",
+    "abnormalColorType": "Physical",
     "_orderPriorityConfig": {
       "useDirectoryValue": false,
       "priorityValue": 0,
@@ -38,6 +40,7 @@
   "globalModifier": [],
   "shieldConfigs": [],
   "applyTags": [],
+  "tagsAfterTriggerExtendBuffAction": [],
   "lifeType": "Limited",
   "duration": {
     "useBlackboardKey": false,
@@ -168,6 +171,12 @@
                     "blackboardKey": ""
                   }
                 },
+                "useLengthBB": false,
+                "lengthBB": {
+                  "useBlackboardKey": false,
+                  "value": 0.0,
+                  "blackboardKey": ""
+                },
                 "releaseByAction": false,
                 "ignoreOwnerTimeScale": false,
                 "interruptTime": 0.0,
@@ -181,9 +190,14 @@
                 "limitKey": "",
                 "assetOnlyAffectModelRoot": false,
                 "isUltimateShow": false,
+                "visibleWithEntity": true,
+                "visibleWithEntityType": "Source",
                 "moveType": "Stationary",
+                "isOnlyFollowBattleCamera": false,
                 "positionRef": "Target",
                 "grounded": false,
+                "followGrounded": false,
+                "followGroundedMaxDistance": 3.0,
                 "followHideTarget": false,
                 "visibleWhenHideTarget": false,
                 "slotIndex": 0,
@@ -271,7 +285,8 @@
                 "value": 0.0
               },
               "saveEffectIdToBlackboard": "",
-              "forceMainBody": false
+              "forceMainBody": false,
+              "isCreateWithSourceModelActive": false
             },
             {
               "$type": "Beyond.Gameplay.Core.FindTargetAction+FindTargetActionData, Gameplay.Beyond",
@@ -515,7 +530,7 @@
                   "enablePoiseBreakTimeDilation": true,
                   "hidePoiseUIEffect": false,
                   "hideMainCharHpScreenEffect": false,
-                  "damageDecorateMask": "None",
+                  "damageDecorateMask": 0,
                   "ignoreDamageImmuneLevel": "None",
                   "simpleCalculation": true,
                   "atkScale": {
@@ -540,6 +555,7 @@
                       "blackboardKey": ""
                     }
                   },
+                  "ignorePoiseImmune": false,
                   "reduceDamageForGuard": false,
                   "reduceDamageForGuardRatio": 1.0,
                   "playHitEffect": false,
@@ -572,6 +588,12 @@
                         "blackboardKey": ""
                       }
                     },
+                    "useLengthBB": false,
+                    "lengthBB": {
+                      "useBlackboardKey": false,
+                      "value": 0.0,
+                      "blackboardKey": ""
+                    },
                     "releaseByAction": false,
                     "ignoreOwnerTimeScale": false,
                     "interruptTime": 0.0,
@@ -585,9 +607,14 @@
                     "limitKey": "",
                     "assetOnlyAffectModelRoot": false,
                     "isUltimateShow": false,
+                    "visibleWithEntity": true,
+                    "visibleWithEntityType": "Source",
                     "moveType": "Stationary",
+                    "isOnlyFollowBattleCamera": false,
                     "positionRef": "Target",
                     "grounded": false,
+                    "followGrounded": false,
+                    "followGroundedMaxDistance": 3.0,
                     "followHideTarget": false,
                     "visibleWhenHideTarget": false,
                     "slotIndex": 0,
@@ -701,7 +728,7 @@
                   }
                 },
                 "inheritFirstDamageMask": true,
-                "damageDecorateMask": "None",
+                "damageDecorateMask": 0,
                 "dontHitImportInteractive": false
               }
             },
@@ -820,7 +847,7 @@
                   "enablePoiseBreakTimeDilation": true,
                   "hidePoiseUIEffect": false,
                   "hideMainCharHpScreenEffect": false,
-                  "damageDecorateMask": "None",
+                  "damageDecorateMask": 0,
                   "ignoreDamageImmuneLevel": "None",
                   "simpleCalculation": true,
                   "atkScale": {
@@ -845,6 +872,7 @@
                       "blackboardKey": ""
                     }
                   },
+                  "ignorePoiseImmune": false,
                   "reduceDamageForGuard": false,
                   "reduceDamageForGuardRatio": 1.0,
                   "playHitEffect": false,
@@ -877,6 +905,12 @@
                         "blackboardKey": ""
                       }
                     },
+                    "useLengthBB": false,
+                    "lengthBB": {
+                      "useBlackboardKey": false,
+                      "value": 0.0,
+                      "blackboardKey": ""
+                    },
                     "releaseByAction": false,
                     "ignoreOwnerTimeScale": false,
                     "interruptTime": 0.0,
@@ -890,9 +924,14 @@
                     "limitKey": "",
                     "assetOnlyAffectModelRoot": false,
                     "isUltimateShow": false,
+                    "visibleWithEntity": true,
+                    "visibleWithEntityType": "Source",
                     "moveType": "Stationary",
+                    "isOnlyFollowBattleCamera": false,
                     "positionRef": "Target",
                     "grounded": false,
+                    "followGrounded": false,
+                    "followGroundedMaxDistance": 3.0,
                     "followHideTarget": false,
                     "visibleWhenHideTarget": false,
                     "slotIndex": 0,
@@ -1006,7 +1045,7 @@
                   }
                 },
                 "inheritFirstDamageMask": true,
-                "damageDecorateMask": "None",
+                "damageDecorateMask": 0,
                 "dontHitImportInteractive": false
               }
             }

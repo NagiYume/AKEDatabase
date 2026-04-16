@@ -5,9 +5,11 @@
     "showInHeadBarCommon": false,
     "showInHeadBarAttached": false,
     "showInSquadIcon": false,
-    "blinkInMainCharHpBar": false,
     "onlyShowForMainCharacter": false,
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
     "iconStyleInSquad": "Default",
+    "abnormalColorType": "Physical",
     "_orderPriorityConfig": {
       "useDirectoryValue": false,
       "priorityValue": 0,
@@ -38,6 +40,7 @@
   "globalModifier": [],
   "shieldConfigs": [],
   "applyTags": [],
+  "tagsAfterTriggerExtendBuffAction": [],
   "lifeType": "Infinity",
   "duration": {
     "useBlackboardKey": false,
@@ -87,7 +90,7 @@
               "priorityOffset": 0,
               "serverActionIndex": 0,
               "checkType": "HasAny",
-              "mask": "PowerAttack, NormalAttackLastCombo"
+              "mask": 2097156
             },
             {
               "$type": "Beyond.Gameplay.Core.Conditions.CheckMainCharacterCondition+Data, Gameplay.Beyond",
@@ -328,7 +331,12 @@
               "asChildBuff": false,
               "inheritSourceSkillCastId": false,
               "inheritSourceSkillCastInfo": true,
-              "isExtra": false
+              "isExtra": false,
+              "overrideBuffIconDuration": false,
+              "buffIconDurationSource": {
+                "durationSourceType": "AbilityEntity",
+                "timedMarkerId": ""
+              }
             },
             {
               "$type": "Beyond.Gameplay.Core.FindTargetAction+FindTargetActionData, Gameplay.Beyond",
@@ -459,8 +467,20 @@
                   {
                     "$type": "Beyond.Gameplay.Core.Selector+PriorityFilter+Data, Gameplay.Beyond",
                     "filterType": "DistanceFromCenterAsc",
+                    "onlyReserveMaxPriorityTargets": false,
                     "limitMaxNum": false,
-                    "maxNum": 1
+                    "maxNum": 1,
+                    "buffFilterSettings": {
+                      "buffSettings": {
+                        "checkType": "Id",
+                        "buffIdList": [],
+                        "tagQuery": {
+                          "queryType": "HasAny",
+                          "tags": []
+                        }
+                      },
+                      "buffStackNumType": "BuffCount"
+                    }
                   }
                 ]
               },
@@ -889,7 +909,12 @@
                               "asChildBuff": false,
                               "inheritSourceSkillCastId": false,
                               "inheritSourceSkillCastInfo": true,
-                              "isExtra": false
+                              "isExtra": false,
+                              "overrideBuffIconDuration": false,
+                              "buffIconDurationSource": {
+                                "durationSourceType": "AbilityEntity",
+                                "timedMarkerId": ""
+                              }
                             },
                             {
                               "$type": "Beyond.Gameplay.Core.LaunchProjectile+Data, Gameplay.Beyond",
@@ -1251,7 +1276,12 @@
                               "asChildBuff": false,
                               "inheritSourceSkillCastId": false,
                               "inheritSourceSkillCastInfo": true,
-                              "isExtra": false
+                              "isExtra": false,
+                              "overrideBuffIconDuration": false,
+                              "buffIconDurationSource": {
+                                "durationSourceType": "AbilityEntity",
+                                "timedMarkerId": ""
+                              }
                             },
                             {
                               "$type": "Beyond.Gameplay.Core.LaunchProjectile+Data, Gameplay.Beyond",
@@ -1600,7 +1630,12 @@
                               "asChildBuff": false,
                               "inheritSourceSkillCastId": false,
                               "inheritSourceSkillCastInfo": true,
-                              "isExtra": false
+                              "isExtra": false,
+                              "overrideBuffIconDuration": false,
+                              "buffIconDurationSource": {
+                                "durationSourceType": "AbilityEntity",
+                                "timedMarkerId": ""
+                              }
                             }
                           ],
                           "onlyExecuteWhenSourceIsMainChar": false,
@@ -1820,7 +1855,12 @@
                               "asChildBuff": false,
                               "inheritSourceSkillCastId": false,
                               "inheritSourceSkillCastInfo": true,
-                              "isExtra": false
+                              "isExtra": false,
+                              "overrideBuffIconDuration": false,
+                              "buffIconDurationSource": {
+                                "durationSourceType": "AbilityEntity",
+                                "timedMarkerId": ""
+                              }
                             },
                             {
                               "$type": "Beyond.Gameplay.Core.LaunchProjectile+Data, Gameplay.Beyond",
@@ -2169,7 +2209,12 @@
                               "asChildBuff": false,
                               "inheritSourceSkillCastId": false,
                               "inheritSourceSkillCastInfo": true,
-                              "isExtra": false
+                              "isExtra": false,
+                              "overrideBuffIconDuration": false,
+                              "buffIconDurationSource": {
+                                "durationSourceType": "AbilityEntity",
+                                "timedMarkerId": ""
+                              }
                             },
                             {
                               "$type": "Beyond.Gameplay.Core.CheckBuffStackNumAdvanced+Data, Gameplay.Beyond",
@@ -2376,7 +2421,12 @@
                               "asChildBuff": false,
                               "inheritSourceSkillCastId": false,
                               "inheritSourceSkillCastInfo": true,
-                              "isExtra": false
+                              "isExtra": false,
+                              "overrideBuffIconDuration": false,
+                              "buffIconDurationSource": {
+                                "durationSourceType": "AbilityEntity",
+                                "timedMarkerId": ""
+                              }
                             }
                           ],
                           "onlyExecuteWhenSourceIsMainChar": false,
@@ -2596,7 +2646,12 @@
                               "asChildBuff": false,
                               "inheritSourceSkillCastId": false,
                               "inheritSourceSkillCastInfo": true,
-                              "isExtra": false
+                              "isExtra": false,
+                              "overrideBuffIconDuration": false,
+                              "buffIconDurationSource": {
+                                "durationSourceType": "AbilityEntity",
+                                "timedMarkerId": ""
+                              }
                             },
                             {
                               "$type": "Beyond.Gameplay.Core.LaunchProjectile+Data, Gameplay.Beyond",
@@ -2945,7 +3000,12 @@
                               "asChildBuff": false,
                               "inheritSourceSkillCastId": false,
                               "inheritSourceSkillCastInfo": true,
-                              "isExtra": false
+                              "isExtra": false,
+                              "overrideBuffIconDuration": false,
+                              "buffIconDurationSource": {
+                                "durationSourceType": "AbilityEntity",
+                                "timedMarkerId": ""
+                              }
                             },
                             {
                               "$type": "Beyond.Gameplay.Core.CheckBuffStackNumAdvanced+Data, Gameplay.Beyond",
@@ -3152,7 +3212,12 @@
                               "asChildBuff": false,
                               "inheritSourceSkillCastId": false,
                               "inheritSourceSkillCastInfo": true,
-                              "isExtra": false
+                              "isExtra": false,
+                              "overrideBuffIconDuration": false,
+                              "buffIconDurationSource": {
+                                "durationSourceType": "AbilityEntity",
+                                "timedMarkerId": ""
+                              }
                             },
                             {
                               "$type": "Beyond.Gameplay.Core.CheckBuffStackNumAdvanced+Data, Gameplay.Beyond",
@@ -3359,7 +3424,12 @@
                               "asChildBuff": false,
                               "inheritSourceSkillCastId": false,
                               "inheritSourceSkillCastInfo": true,
-                              "isExtra": false
+                              "isExtra": false,
+                              "overrideBuffIconDuration": false,
+                              "buffIconDurationSource": {
+                                "durationSourceType": "AbilityEntity",
+                                "timedMarkerId": ""
+                              }
                             }
                           ],
                           "onlyExecuteWhenSourceIsMainChar": false,

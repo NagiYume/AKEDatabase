@@ -5,9 +5,11 @@
     "showInHeadBarCommon": false,
     "showInHeadBarAttached": false,
     "showInSquadIcon": false,
-    "blinkInMainCharHpBar": false,
     "onlyShowForMainCharacter": false,
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
     "iconStyleInSquad": "Default",
+    "abnormalColorType": "Physical",
     "_orderPriorityConfig": {
       "useDirectoryValue": false,
       "priorityValue": 0,
@@ -38,6 +40,7 @@
   "globalModifier": [],
   "shieldConfigs": [],
   "applyTags": [],
+  "tagsAfterTriggerExtendBuffAction": [],
   "lifeType": "Limited",
   "duration": {
     "useBlackboardKey": true,
@@ -112,6 +115,8 @@
                 "targetContextKey": ""
               },
               "id": "chr_0029_pograni_soldier_attacked",
+              "blackboardKey": "",
+              "useBlackboardKey": false,
               "returnTrueIfNotExists": true
             },
             {
@@ -341,7 +346,12 @@
               "asChildBuff": false,
               "inheritSourceSkillCastId": false,
               "inheritSourceSkillCastInfo": true,
-              "isExtra": false
+              "isExtra": false,
+              "overrideBuffIconDuration": false,
+              "buffIconDurationSource": {
+                "durationSourceType": "AbilityEntity",
+                "timedMarkerId": ""
+              }
             },
             {
               "$type": "Beyond.Gameplay.Core.CreateTimedMarker+Data, Gameplay.Beyond",
@@ -384,7 +394,8 @@
                 "value": 0.1,
                 "blackboardKey": "interval"
               },
-              "autoFinishByAction": false
+              "autoFinishByAction": false,
+              "useTimeDilationDt": false
             },
             {
               "$type": "Beyond.Gameplay.Core.CheckBuffStackNumAdvanced+Data, Gameplay.Beyond",
@@ -862,7 +873,12 @@
                     "asChildBuff": false,
                     "inheritSourceSkillCastId": false,
                     "inheritSourceSkillCastInfo": true,
-                    "isExtra": false
+                    "isExtra": false,
+                    "overrideBuffIconDuration": false,
+                    "buffIconDurationSource": {
+                      "durationSourceType": "AbilityEntity",
+                      "timedMarkerId": ""
+                    }
                   }
                 ],
                 "onlyExecuteWhenSourceIsMainChar": false,
@@ -955,7 +971,12 @@
                     "asChildBuff": false,
                     "inheritSourceSkillCastId": false,
                     "inheritSourceSkillCastInfo": true,
-                    "isExtra": false
+                    "isExtra": false,
+                    "overrideBuffIconDuration": false,
+                    "buffIconDurationSource": {
+                      "durationSourceType": "AbilityEntity",
+                      "timedMarkerId": ""
+                    }
                   }
                 ],
                 "onlyExecuteWhenSourceIsMainChar": false,
@@ -1001,6 +1022,8 @@
                 "targetContextKey": ""
               },
               "id": "chr_0029_pograni_soldier_attacked",
+              "blackboardKey": "",
+              "useBlackboardKey": false,
               "returnTrueIfNotExists": true
             },
             {
@@ -1096,6 +1119,7 @@
               },
               "yRotateFromBoneToCurPos": false,
               "bornRotation": "SelfToActionSource",
+              "bornRotationContextTarget": "",
               "clampToXZPlane": false,
               "applyBornRotationOffset": true,
               "bornRotationOffset": {
@@ -1106,6 +1130,7 @@
               },
               "setAbilityEntitySource": true,
               "abilityEntitySource": "ActionSource",
+              "abilityEntitySourceContextKey": "",
               "overrideDuration": false,
               "duration": {
                 "useBlackboardKey": false,
@@ -1142,7 +1167,10 @@
               "saveToContext": false,
               "contextKey": "",
               "pauseEffectOnEnd": false,
-              "inheritSourceSkillCastId": true
+              "inheritSourceSkillCastId": true,
+              "dieWhenSourceDie": false,
+              "forceSyncInit": false,
+              "dieOnEnd": false
             },
             {
               "$type": "Beyond.Gameplay.Core.FinishBuffAdvanced+Data, Gameplay.Beyond",
@@ -1285,7 +1313,8 @@
                 "value": 0.1,
                 "blackboardKey": "interval"
               },
-              "autoFinishByAction": false
+              "autoFinishByAction": false,
+              "useTimeDilationDt": false
             },
             {
               "$type": "Beyond.Gameplay.Core.CheckBuffStackNumAdvanced+Data, Gameplay.Beyond",
@@ -1763,7 +1792,12 @@
                     "asChildBuff": false,
                     "inheritSourceSkillCastId": false,
                     "inheritSourceSkillCastInfo": true,
-                    "isExtra": false
+                    "isExtra": false,
+                    "overrideBuffIconDuration": false,
+                    "buffIconDurationSource": {
+                      "durationSourceType": "AbilityEntity",
+                      "timedMarkerId": ""
+                    }
                   }
                 ],
                 "onlyExecuteWhenSourceIsMainChar": false,
@@ -1856,7 +1890,12 @@
                     "asChildBuff": false,
                     "inheritSourceSkillCastId": false,
                     "inheritSourceSkillCastInfo": true,
-                    "isExtra": false
+                    "isExtra": false,
+                    "overrideBuffIconDuration": false,
+                    "buffIconDurationSource": {
+                      "durationSourceType": "AbilityEntity",
+                      "timedMarkerId": ""
+                    }
                   }
                 ],
                 "onlyExecuteWhenSourceIsMainChar": false,
@@ -1907,6 +1946,8 @@
                 "targetContextKey": ""
               },
               "id": "chr_0029_pograni_soldier_attacked",
+              "blackboardKey": "",
+              "useBlackboardKey": false,
               "returnTrueIfNotExists": true
             },
             {
@@ -2026,7 +2067,7 @@
               "priorityOffset": 0,
               "serverActionIndex": 35,
               "checkType": "HasAll",
-              "mask": "ComboSkill"
+              "mask": 8192
             },
             {
               "$type": "Beyond.Gameplay.Core.FinishBuffAdvanced+Data, Gameplay.Beyond",
@@ -2205,7 +2246,12 @@
               "asChildBuff": false,
               "inheritSourceSkillCastId": false,
               "inheritSourceSkillCastInfo": true,
-              "isExtra": false
+              "isExtra": false,
+              "overrideBuffIconDuration": false,
+              "buffIconDurationSource": {
+                "durationSourceType": "AbilityEntity",
+                "timedMarkerId": ""
+              }
             },
             {
               "$type": "Beyond.Gameplay.Core.CreateTimedMarker+Data, Gameplay.Beyond",
@@ -2248,7 +2294,8 @@
                 "value": 0.1,
                 "blackboardKey": "interval"
               },
-              "autoFinishByAction": false
+              "autoFinishByAction": false,
+              "useTimeDilationDt": false
             },
             {
               "$type": "Beyond.Gameplay.Core.CheckBuffStackNumAdvanced+Data, Gameplay.Beyond",
@@ -2611,7 +2658,12 @@
               "asChildBuff": false,
               "inheritSourceSkillCastId": false,
               "inheritSourceSkillCastInfo": true,
-              "isExtra": false
+              "isExtra": false,
+              "overrideBuffIconDuration": false,
+              "buffIconDurationSource": {
+                "durationSourceType": "AbilityEntity",
+                "timedMarkerId": ""
+              }
             }
           ],
           "onlyExecuteWhenSourceIsMainChar": false,
@@ -2651,6 +2703,8 @@
                 "targetContextKey": ""
               },
               "id": "chr_0029_pograni_soldier_attacked",
+              "blackboardKey": "",
+              "useBlackboardKey": false,
               "returnTrueIfNotExists": true
             },
             {
@@ -2770,7 +2824,7 @@
               "priorityOffset": 0,
               "serverActionIndex": 49,
               "checkType": "HasAll",
-              "mask": "ComboSkill"
+              "mask": 8192
             },
             {
               "$type": "Beyond.Gameplay.Core.SpawnAbilityEntity+Data, Gameplay.Beyond",
@@ -2815,6 +2869,7 @@
               },
               "yRotateFromBoneToCurPos": false,
               "bornRotation": "SelfToActionSource",
+              "bornRotationContextTarget": "",
               "clampToXZPlane": false,
               "applyBornRotationOffset": true,
               "bornRotationOffset": {
@@ -2825,6 +2880,7 @@
               },
               "setAbilityEntitySource": true,
               "abilityEntitySource": "ActionSource",
+              "abilityEntitySourceContextKey": "",
               "overrideDuration": false,
               "duration": {
                 "useBlackboardKey": false,
@@ -2861,7 +2917,10 @@
               "saveToContext": false,
               "contextKey": "",
               "pauseEffectOnEnd": false,
-              "inheritSourceSkillCastId": true
+              "inheritSourceSkillCastId": true,
+              "dieWhenSourceDie": false,
+              "forceSyncInit": false,
+              "dieOnEnd": false
             },
             {
               "$type": "Beyond.Gameplay.Core.FinishBuffAdvanced+Data, Gameplay.Beyond",
@@ -3004,7 +3063,8 @@
                 "value": 0.1,
                 "blackboardKey": "interval"
               },
-              "autoFinishByAction": false
+              "autoFinishByAction": false,
+              "useTimeDilationDt": false
             },
             {
               "$type": "Beyond.Gameplay.Core.CheckBuffStackNumAdvanced+Data, Gameplay.Beyond",
@@ -3367,7 +3427,12 @@
               "asChildBuff": false,
               "inheritSourceSkillCastId": false,
               "inheritSourceSkillCastInfo": true,
-              "isExtra": false
+              "isExtra": false,
+              "overrideBuffIconDuration": false,
+              "buffIconDurationSource": {
+                "durationSourceType": "AbilityEntity",
+                "timedMarkerId": ""
+              }
             }
           ],
           "onlyExecuteWhenSourceIsMainChar": false,

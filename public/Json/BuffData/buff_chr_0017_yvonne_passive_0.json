@@ -5,9 +5,11 @@
     "showInHeadBarCommon": false,
     "showInHeadBarAttached": false,
     "showInSquadIcon": false,
-    "blinkInMainCharHpBar": false,
     "onlyShowForMainCharacter": false,
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
     "iconStyleInSquad": "Default",
+    "abnormalColorType": "Physical",
     "_orderPriorityConfig": {
       "useDirectoryValue": false,
       "priorityValue": 0,
@@ -38,6 +40,7 @@
   "globalModifier": [],
   "shieldConfigs": [],
   "applyTags": [],
+  "tagsAfterTriggerExtendBuffAction": [],
   "lifeType": "Infinity",
   "duration": {
     "useBlackboardKey": false,
@@ -112,6 +115,8 @@
                 "targetContextKey": ""
               },
               "id": "chr_0017_yvonne_passive_combo_skill",
+              "blackboardKey": "",
+              "useBlackboardKey": false,
               "returnTrueIfNotExists": true
             },
             {
@@ -157,6 +162,7 @@
                 "tagName": "Skill/Character/chr_0017_yvonne/UltimateEndUsp",
                 "tagId": 669811152
               },
+              "ignoreUspGainScalar": false,
               "atbSourceType": "Default",
               "atbGainMethod": "Gain",
               "playObtainAtbEffect": true,
@@ -264,7 +270,8 @@
                 "value": 0.1,
                 "blackboardKey": "cd"
               },
-              "autoFinishByAction": false
+              "autoFinishByAction": false,
+              "useTimeDilationDt": false
             }
           ],
           "onlyExecuteWhenSourceIsMainChar": false,

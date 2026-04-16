@@ -5,9 +5,11 @@
     "showInHeadBarCommon": false,
     "showInHeadBarAttached": false,
     "showInSquadIcon": false,
-    "blinkInMainCharHpBar": false,
     "onlyShowForMainCharacter": false,
+    "blinkInMainCharHpBar": false,
+    "showProgressInHpBar": false,
     "iconStyleInSquad": "Default",
+    "abnormalColorType": "Physical",
     "_orderPriorityConfig": {
       "useDirectoryValue": false,
       "priorityValue": 0,
@@ -38,6 +40,7 @@
   "globalModifier": [],
   "shieldConfigs": [],
   "applyTags": [],
+  "tagsAfterTriggerExtendBuffAction": [],
   "lifeType": "Infinity",
   "duration": {
     "useBlackboardKey": true,
@@ -87,7 +90,7 @@
               "priorityOffset": 0,
               "serverActionIndex": 0,
               "checkType": "ExceptAny",
-              "mask": "Dot, RemainArea"
+              "mask": 805306368
             },
             {
               "$type": "Beyond.Gameplay.Core.Conditions.CheckDamageIgnoreImmuneLevel+Data, Gameplay.Beyond",
@@ -96,7 +99,7 @@
               "priorityOffset": 0,
               "serverActionIndex": 1,
               "checkType": "LE",
-              "ignoreImmuneLevel": "None"
+              "ignoreImmuneLevel": 0
             },
             {
               "$type": "Beyond.Gameplay.Core.IfElseAction+IfElseActionData, Gameplay.Beyond",
@@ -170,6 +173,8 @@
                       "targetContextKey": ""
                     },
                     "id": "DodgeSucceedMarker",
+                    "blackboardKey": "",
+                    "useBlackboardKey": false,
                     "returnTrueIfNotExists": true
                   }
                 ],
@@ -230,7 +235,12 @@
                     "asChildBuff": false,
                     "inheritSourceSkillCastId": false,
                     "inheritSourceSkillCastInfo": true,
-                    "isExtra": false
+                    "isExtra": false,
+                    "overrideBuffIconDuration": false,
+                    "buffIconDurationSource": {
+                      "durationSourceType": "AbilityEntity",
+                      "timedMarkerId": ""
+                    }
                   },
                   {
                     "$type": "Beyond.Gameplay.Core.CreateBuffAction+Data, Gameplay.Beyond",
@@ -284,7 +294,12 @@
                     "asChildBuff": false,
                     "inheritSourceSkillCastId": false,
                     "inheritSourceSkillCastInfo": true,
-                    "isExtra": false
+                    "isExtra": false,
+                    "overrideBuffIconDuration": false,
+                    "buffIconDurationSource": {
+                      "durationSourceType": "AbilityEntity",
+                      "timedMarkerId": ""
+                    }
                   },
                   {
                     "$type": "Beyond.Gameplay.Core.ObtainCostAction+Data, Gameplay.Beyond",
@@ -299,6 +314,7 @@
                       "tagName": "",
                       "tagId": 0
                     },
+                    "ignoreUspGainScalar": false,
                     "atbSourceType": "Default",
                     "atbGainMethod": "Gain",
                     "playObtainAtbEffect": false,
@@ -638,7 +654,8 @@
                       "value": 0.2,
                       "blackboardKey": ""
                     },
-                    "autoFinishByAction": false
+                    "autoFinishByAction": false,
+                    "useTimeDilationDt": false
                   }
                 ],
                 "onlyExecuteWhenSourceIsMainChar": false,
@@ -724,14 +741,20 @@
               "asChildBuff": false,
               "inheritSourceSkillCastId": false,
               "inheritSourceSkillCastInfo": true,
-              "isExtra": false
+              "isExtra": false,
+              "overrideBuffIconDuration": false,
+              "buffIconDurationSource": {
+                "durationSourceType": "AbilityEntity",
+                "timedMarkerId": ""
+              }
             },
             {
               "$type": "Beyond.Gameplay.Core.SetFirstDashParam+Data, Gameplay.Beyond",
               "isEnable": true,
               "priorityLevel": "Default",
               "priorityOffset": 0,
-              "serverActionIndex": 16
+              "serverActionIndex": 16,
+              "isFirstDash": false
             },
             {
               "$type": "Beyond.Gameplay.Core.AbilityActions.FinishBuffAction+Data, Gameplay.Beyond",
@@ -928,6 +951,8 @@
                       "targetContextKey": ""
                     },
                     "id": "DodgeSucceedMarker",
+                    "blackboardKey": "",
+                    "useBlackboardKey": false,
                     "returnTrueIfNotExists": true
                   }
                 ],
@@ -988,7 +1013,12 @@
                     "asChildBuff": false,
                     "inheritSourceSkillCastId": false,
                     "inheritSourceSkillCastInfo": true,
-                    "isExtra": false
+                    "isExtra": false,
+                    "overrideBuffIconDuration": false,
+                    "buffIconDurationSource": {
+                      "durationSourceType": "AbilityEntity",
+                      "timedMarkerId": ""
+                    }
                   },
                   {
                     "$type": "Beyond.Gameplay.Core.CreateBuffAction+Data, Gameplay.Beyond",
@@ -1042,7 +1072,12 @@
                     "asChildBuff": false,
                     "inheritSourceSkillCastId": false,
                     "inheritSourceSkillCastInfo": true,
-                    "isExtra": false
+                    "isExtra": false,
+                    "overrideBuffIconDuration": false,
+                    "buffIconDurationSource": {
+                      "durationSourceType": "AbilityEntity",
+                      "timedMarkerId": ""
+                    }
                   },
                   {
                     "$type": "Beyond.Gameplay.Core.ObtainCostAction+Data, Gameplay.Beyond",
@@ -1057,6 +1092,7 @@
                       "tagName": "",
                       "tagId": 0
                     },
+                    "ignoreUspGainScalar": false,
                     "atbSourceType": "Default",
                     "atbGainMethod": "Gain",
                     "playObtainAtbEffect": false,
@@ -1396,7 +1432,8 @@
                       "value": 0.5,
                       "blackboardKey": ""
                     },
-                    "autoFinishByAction": false
+                    "autoFinishByAction": false,
+                    "useTimeDilationDt": false
                   }
                 ],
                 "onlyExecuteWhenSourceIsMainChar": false,
@@ -1482,14 +1519,20 @@
               "asChildBuff": false,
               "inheritSourceSkillCastId": false,
               "inheritSourceSkillCastInfo": true,
-              "isExtra": false
+              "isExtra": false,
+              "overrideBuffIconDuration": false,
+              "buffIconDurationSource": {
+                "durationSourceType": "AbilityEntity",
+                "timedMarkerId": ""
+              }
             },
             {
               "$type": "Beyond.Gameplay.Core.SetFirstDashParam+Data, Gameplay.Beyond",
               "isEnable": true,
               "priorityLevel": "Default",
               "priorityOffset": 0,
-              "serverActionIndex": 34
+              "serverActionIndex": 34,
+              "isFirstDash": false
             },
             {
               "$type": "Beyond.Gameplay.Core.AbilityActions.FinishBuffAction+Data, Gameplay.Beyond",
