@@ -215,6 +215,68 @@
             return html;
         }
 
+        // 构建黑板值映射表，便于按 key 读取实际值
+        function buildBlackboardValueMap(blackboard) {
+            const valueMap = {};
+            if (!Array.isArray(blackboard) || blackboard.length === 0) return valueMap;
+            blackboard.forEach(bb => {
+                if (!bb || !bb.key) return;
+                if (bb.valueDouble !== undefined) {
+                    valueMap[bb.key] = bb.valueDouble;
+                } else if (bb.value !== undefined) {
+                    valueMap[bb.key] = bb.value;
+                } else {
+                    valueMap[bb.key] = bb.valueStr;
+                }
+            });
+            return valueMap;
+        }
+
+        function renderAttributeModifiers(attributeModifier, blackboard) {
+            if (!attributeModifier || typeof attributeModifier !== 'object') return '<p>无</p>';
+
+            const modifiers = attributeModifier.attributeModifiers;
+            if (!Array.isArray(modifiers) || modifiers.length === 0) return '<p>无</p>';
+
+            const blackboardValueMap = buildBlackboardValueMap(blackboard);
+            const isConverted = attributeModifier.isConvertedAttribute ? '是' : '否';
+
+            const stringifyValue = (val) => {
+                if (val === null || val === undefined) return '';
+                if (typeof val === 'number') return String(formatNumber(val));
+                if (typeof val === 'object') return JSON.stringify(val);
+                return String(val);
+            };
+
+            let html = `<div>是否转换属性: ${escapeHtml(isConverted)}</div>`;
+            html += '<table class="info-table"><thead><tr><th>修改类型</th><th>属性类型</th><th>公式</th><th>参数值</th></tr></thead><tbody>';
+
+            modifiers.forEach(mod => {
+                const modifyType = mod?.modifyAttributeType || '未知';
+                const attrType = mod?.attributeType || '未知';
+                const formula = mod?.formulaItem || '未知';
+                const param = mod?.param;
+                let paramValue = '无';
+
+                if (param) {
+                    if (param.useBlackboardKey) {
+                        const key = param.blackboardKey || '';
+                        const defaultValue = stringifyValue(param.value);
+                        const hasActual = Object.prototype.hasOwnProperty.call(blackboardValueMap, key);
+                        const actualValue = hasActual ? stringifyValue(blackboardValueMap[key]) : '未命中';
+                        paramValue = `键: ${key} (默认: ${defaultValue}, 实际: ${actualValue})`;
+                    } else {
+                        paramValue = stringifyValue(param.value);
+                    }
+                }
+
+                html += `<tr><td>${escapeHtml(String(modifyType))}</td><td>${escapeHtml(String(attrType))}</td><td>${escapeHtml(String(formula))}</td><td>${escapeHtml(paramValue)}</td></tr>`;
+            });
+
+            html += '</tbody></table>';
+            return html;
+        }
+
         // 辅助：提取简单属性（排除大型对象/数组）
         function getSimpleProperties(obj, maxDepth = 1, currentDepth = 0) {
             if (currentDepth > maxDepth) return [];
@@ -369,6 +431,8 @@
             const canCastInAir = data.canCastInAir ? '是' : '否';
             const timelineCount = data.actionGroupData?.timelineActions?.length || 0;
             const blackboardHtml = renderBlackboard(data.blackboard);
+            const attributeModifierData = data.attributeModifier || data.cardAttributeModifier;
+            const attributeModifierHtml = renderAttributeModifiers(attributeModifierData, data.blackboard);
             const actionGroupHtml = renderActionGroup(data.actionGroupData?.timelineActions);
 
             return `
@@ -400,6 +464,11 @@
                     <div class="detail-section">
                         <h3>使用参数</h3>
                         ${blackboardHtml}
+                    </div>
+
+                    <div class="detail-section">
+                        <h3>属性修改器</h3>
+                        ${attributeModifierHtml}
                     </div>
 
                     <div class="detail-section">

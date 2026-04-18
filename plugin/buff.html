@@ -170,17 +170,33 @@
                     btn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         const actionType = btn.dataset.actionType;
-                        const actionIndex = parseInt(btn.dataset.actionIndex);
+                        const actionIndex = btn.dataset.actionIndex || '';
                         let action = null;
-                        if (actionType === 'buffEvent' && currentBuffData?.buffEventAction && currentBuffData.buffEventAction[actionIndex]) {
-                            action = currentBuffData.buffEventAction[actionIndex];
-                        } else if (actionType === 'abilityEvent' && currentBuffData?.abilityEventAction && currentBuffData.abilityEventAction[actionIndex]) {
-                            action = currentBuffData.abilityEventAction[actionIndex];
-                        } else if (actionType === 'igniteEvent' && currentBuffData?.igniteEventAction && currentBuffData.igniteEventAction[actionIndex]) {
-                            action = currentBuffData.igniteEventAction[actionIndex];
-                        } else if (actionType === 'timeline' && currentBuffData?.timelineActions && currentBuffData.timelineActions[actionIndex]) {
-                            action = currentBuffData.timelineActions[actionIndex];
+
+                        const getNestedEventAction = (eventList, indexText) => {
+                            if (!Array.isArray(eventList)) return null;
+                            const parts = indexText.split('_').map(v => parseInt(v, 10));
+                            if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
+                            const [eventIdx, wrapperIdx, actionIdx] = parts;
+                            const eventItem = eventList[eventIdx];
+                            const wrapper = eventItem?.actions?.[wrapperIdx];
+                            return wrapper?.actionData?.[actionIdx] || null;
+                        };
+
+                        if (actionType === 'buffEventActionData') {
+                            action = getNestedEventAction(currentBuffData?.buffEventAction, actionIndex);
+                        } else if (actionType === 'abilityEventActionData') {
+                            action = getNestedEventAction(currentBuffData?.abilityEventAction, actionIndex);
+                        } else if (actionType === 'igniteEventActionData') {
+                            action = getNestedEventAction(currentBuffData?.igniteEventAction, actionIndex);
+                        } else if (actionType === 'timelineActionData') {
+                            const parts = actionIndex.split('_').map(v => parseInt(v, 10));
+                            if (parts.length === 2 && !parts.some(Number.isNaN)) {
+                                const [groupIdx, actionIdx] = parts;
+                                action = currentBuffData?.timelineActions?.[groupIdx]?._sequenceActionData?.actionData?.[actionIdx] || null;
+                            }
                         }
+
                         if (action) {
                             showActionDetail(action);
                         } else {
@@ -232,15 +248,89 @@
             return html;
         }
 
+        function buildBlackboardValueMap(blackboard) {
+            const valueMap = {};
+            if (!Array.isArray(blackboard) || blackboard.length === 0) return valueMap;
+            blackboard.forEach(bb => {
+                if (!bb || !bb.key) return;
+                if (bb.valueDouble !== undefined) {
+                    valueMap[bb.key] = bb.valueDouble;
+                } else {
+                    valueMap[bb.key] = bb.valueStr;
+                }
+            });
+            return valueMap;
+        }
+
+        function formatStackingType(stackingType) {
+            const textMap = {
+                Unique: '唯一（重复时通常替换）',
+                Unlimited: '可重复（理论无限）',
+                Stack: '叠层（层数累加）',
+                Refresh: '刷新（重复时刷新持续）',
+                Enhance: '强化（重复时增强）',
+                EnhanceAndRefresh: '强化并刷新',
+                EnhanceAndOverwriteDuration: '强化并覆盖持续时间',
+                HighPriority: '高优先级覆盖',
+                Extend: '延长持续'
+            };
+            return textMap[stackingType] || stackingType || '未知';
+        }
+
+        function renderStackEffectsSummary(stackEffects) {
+            if (!Array.isArray(stackEffects) || stackEffects.length === 0) return '<p>无</p>';
+            let html = '<table class="info-table"><thead><tr><th>层级索引</th><th>动作数量</th></tr></thead><tbody>';
+            stackEffects.forEach((effect, index) => {
+                const actionCount = Array.isArray(effect?.effectActions) ? effect.effectActions.length : 0;
+                html += `<tr><td>${index + 1}</td><td>${actionCount}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            return html;
+        }
+
         // 渲染堆叠设置
-        function renderStacking(settings) {
+        function renderStacking(settings, blackboard) {
             if (!settings) return '<p>无</p>';
+
+            const bbMap = buildBlackboardValueMap(blackboard);
+            const stackingTypeText = formatStackingType(settings.stackingType);
+            const stackingKey = settings.stackingKey || '无（默认按 Buff ID）';
+
+            let priorityRule = formatNumber(settings.priority ?? 0);
+            if (settings.usePriorityKey) {
+                const key = settings.priorityKey || '';
+                const hasValue = Object.prototype.hasOwnProperty.call(bbMap, key);
+                const actual = hasValue ? formatNumber(bbMap[key]) : '未命中';
+                const negateText = settings.negatePriority ? '（取反）' : '';
+                priorityRule = `键: ${key || '空'} (实际: ${actual})${negateText}`;
+            }
+
+            const maxStackRaw = settings.maxStackCnt;
+            let maxStackRule = maxStackRaw ?? '不限';
+            if (settings.useMaxStackCntKey) {
+                const key = settings.maxStackCntKey || '';
+                const hasValue = Object.prototype.hasOwnProperty.call(bbMap, key);
+                const actual = hasValue ? formatNumber(bbMap[key]) : '未命中';
+                maxStackRule = `键: ${key || '空'} (默认: ${maxStackRaw ?? '无'}, 实际: ${actual})`;
+            } else if ((settings.stackingType === 'Unlimited' || settings.stackingType === 'Refresh') && (maxStackRaw === 0 || maxStackRaw === undefined)) {
+                maxStackRule = '不限';
+            }
+
+            const needStackEffect = settings.isNeedStackEffect ? '是' : '否';
+            const stackEffectCount = Array.isArray(settings.stackEffects) ? settings.stackEffects.length : 0;
+            const stackEffectsSummaryHtml = renderStackEffectsSummary(settings.stackEffects);
+
             return `
                 <div class="info-section">
                     <div>标识类型: ${escapeHtml(settings.identifierType || '未知')}</div>
-                    <div>堆叠类型: ${escapeHtml(settings.stackingType || '未知')}</div>
-                    <div>最大堆叠层数: ${settings.maxStackCnt ?? '不限'}</div>
-                    <div>优先级: ${settings.priority ?? 0}</div>
+                    <div>堆叠类型: ${escapeHtml(stackingTypeText)}</div>
+                    <div>堆叠键: ${escapeHtml(stackingKey)}</div>
+                    <div>优先级规则: ${escapeHtml(String(priorityRule))}</div>
+                    <div>最大堆叠层数规则: ${escapeHtml(String(maxStackRule))}</div>
+                    <div>层效果开关: ${needStackEffect}</div>
+                    <div>层效果配置数量: ${stackEffectCount}</div>
+                    <div style="margin-top:8px;">层效果详情:</div>
+                    ${stackEffectsSummaryHtml}
                 </div>
             `;
         }
@@ -323,27 +413,81 @@
             return { fullType, summary, details: importantProps };
         }
 
-        function renderActionList(actions, title, actionTypeKey) {
-            if (!actions || actions.length === 0) return '';
+        function normalizeEventActionItems(eventItems, eventFieldName) {
+            if (!Array.isArray(eventItems) || eventItems.length === 0) return [];
+            const normalized = [];
+            eventItems.forEach((eventItem, eventIdx) => {
+                const eventName = eventItem?.[eventFieldName] || '未知事件';
+                const wrappers = Array.isArray(eventItem?.actions) ? eventItem.actions : [];
+                wrappers.forEach((wrapper, wrapperIdx) => {
+                    const actions = Array.isArray(wrapper?.actionData) ? wrapper.actionData : [];
+                    actions.forEach((action, actionIdx) => {
+                        normalized.push({
+                            eventName,
+                            action,
+                            actionIndex: `${eventIdx}_${wrapperIdx}_${actionIdx}`
+                        });
+                    });
+                });
+            });
+            return normalized;
+        }
+
+        function formatEventName(eventType, eventName) {
+            const maps = {
+                buffEvent: {
+                    DuringBuffEnable: '持续生效中',
+                    OnBuffEnable: 'Buff启用',
+                    OnBuffStart: 'Buff开始',
+                    OnBuffTrigger: 'Buff触发',
+                    OnBuffFinish: 'Buff结束'
+                },
+                abilityEvent: {
+                    OnBeforeTakeDamage: '受伤前',
+                    OnBeforeCastSkill: '施法前',
+                    OnBeforeOutputDamage: '造成伤害前',
+                    OnOutputDamage: '造成伤害时',
+                    OnOutputBuff: '施加Buff时',
+                    OnAddedBuff: '获得Buff时',
+                    OnSkillEnd: '技能结束',
+                    OnOwnerSwitchToGuard: '切换防御',
+                    OnAfterOutputWeaknessTriggered: '触发弱点后'
+                },
+                igniteEvent: {
+                    OnIgniteStart: '点燃开始',
+                    OnIgniteTrigger: '点燃触发',
+                    OnIgniteEnd: '点燃结束'
+                }
+            };
+            const desc = maps[eventType]?.[eventName];
+            return desc ? `${eventName} (${desc})` : eventName;
+        }
+
+        function renderEventActions(eventItems, title, eventType, eventFieldName, actionTypeKey) {
+            const normalized = normalizeEventActionItems(eventItems, eventFieldName);
+            if (normalized.length === 0) return '';
+
             let html = `<div class="detail-section"><h3>${title}</h3><div class="action-group-list">`;
-            actions.forEach((action, idx) => {
-                const { fullType, summary, details } = getActionSummary(action);
+            normalized.forEach((item, idx) => {
+                const { fullType, summary, details } = getActionSummary(item.action);
+                const eventText = formatEventName(eventType, item.eventName || '未知事件');
                 let detailsHtml = '';
                 if (details.length > 0) {
                     detailsHtml = '<div class="action-props">' + details.map(d =>
                         `<span class="action-prop"><span class="prop-key">${escapeHtml(d.key)}</span>=<span class="prop-value">${escapeHtml(d.value)}</span></span>`
                     ).join('') + '</div>';
                 }
+
                 html += `
                     <div class="action-item">
                         <div class="action-index">${idx + 1}</div>
                         <div class="action-details">
                             <div class="action-type">${escapeHtml(fullType)}</div>
-                            <div class="action-summary">${escapeHtml(summary)}</div>
+                            <div class="action-summary">事件: ${escapeHtml(eventText)} | ${escapeHtml(summary)}</div>
                             ${detailsHtml}
                         </div>
                         <div class="action-actions">
-                            <button class="action-view-btn" data-action-type="${actionTypeKey}" data-action-index="${idx}" title="查看详细信息">🔍</button>
+                            <button class="action-view-btn" data-action-type="${actionTypeKey}" data-action-index="${item.actionIndex}" title="查看详细信息">🔍</button>
                         </div>
                     </div>
                 `;
@@ -389,7 +533,7 @@
                                     ${detailsHtml}
                                 </div>
                                 <div class="action-actions">
-                                    <button class="action-view-btn" data-action-type="timeline" data-action-index="${groupIdx}_${actIdx}" title="查看详细信息">🔍</button>
+                                    <button class="action-view-btn" data-action-type="timelineActionData" data-action-index="${groupIdx}_${actIdx}" title="查看详细信息">🔍</button>
                                 </div>
                             </div>
                         `;
@@ -411,12 +555,12 @@
 
             const attrModifiersHtml = renderAttributeModifiers(data.attributeModifier?.attributeModifiers);
             const blackboardHtml = renderBlackboard(data.blackboard);
-            const stackingHtml = renderStacking(data.stackingSettings);
+            const stackingHtml = renderStacking(data.stackingSettings, data.blackboard);
 
             // 渲染各类动作列表
-            const buffEventHtml = renderActionList(data.buffEventAction, 'Buff触发事件', 'buffEvent');
-            const abilityEventHtml = renderActionList(data.abilityEventAction, '能力事件', 'abilityEvent');
-            const igniteEventHtml = renderActionList(data.igniteEventAction, '点燃事件', 'igniteEvent');
+            const buffEventHtml = renderEventActions(data.buffEventAction, 'Buff触发事件', 'buffEvent', 'buffEvent', 'buffEventActionData');
+            const abilityEventHtml = renderEventActions(data.abilityEventAction, '能力事件', 'abilityEvent', 'abilityEvent', 'abilityEventActionData');
+            const igniteEventHtml = renderEventActions(data.igniteEventAction, '点燃事件', 'igniteEvent', 'igniteEvent', 'igniteEventActionData');
             const timelineHtml = renderTimelineActions(data.timelineActions);
 
             return `

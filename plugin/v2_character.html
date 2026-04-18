@@ -53,6 +53,11 @@
         let searchTerm = '';
         let currentCharacter = null;
         let currentCharData = null;
+        let charLevelsToShow = null;
+        let skillLevelsToShow = null;
+        let globalSkillExpand = false;
+        let skillExpandMap = {};
+        let showAllCharLevels = false;
 
         // 筛选状态
         let selectedRarities = new Set();
@@ -69,6 +74,11 @@
         };
 
         const IMAGE_BASE_PATH = '/public/images/bufficon/';
+        const COLUMN_MAP = {
+            'coolDown': '冷却时间',
+            'costValue': '消耗能量',
+        };
+        const HIDDEN_KEYWORDS = ['atb', 'scale', 'usp', 'duration', 'poise', '_', 'count', 'layer', 'prob'];
 
         function getCurrentLanguage() {
             const lang = window.akeData?.getLanguage?.() || 'CH';
@@ -81,6 +91,46 @@
 
         function parseText(text) {
             return window.parseText(text, IMAGE_BASE_PATH);
+        }
+
+        function parseLevelInput(input, maxLevel = 90) {
+            if (!input || input.trim() === '') return [];
+            const parts = input.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n >= 1 && n <= maxLevel);
+            return parts.length ? parts : [maxLevel];
+        }
+
+        function replacePlaceholders(desc, valueMap) {
+            const lowerValueMap = {};
+            for (const [key, val] of Object.entries(valueMap || {})) {
+                lowerValueMap[String(key).toLowerCase()] = val;
+            }
+            return String(desc || '').replace(/\{([^}]+)\}/g, (match, p1) => {
+                const parts = p1.split(':');
+                const expr = parts[0].replace(/\s+/g, '');
+                const format = parts[1] ? parts[1].trim() : '';
+                const varNames = expr.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
+                const missingVar = varNames.find(name => !(name.toLowerCase() in lowerValueMap));
+                if (missingVar) return match;
+                let evalExpr = expr;
+                for (const name of varNames) {
+                    const value = lowerValueMap[name.toLowerCase()];
+                    const regex = new RegExp(`\\b${name}\\b`, 'g');
+                    evalExpr = evalExpr.replace(regex, `(${value})`);
+                }
+                let result;
+                try {
+                    result = new Function('return ' + evalExpr)();
+                } catch (e) {
+                    return match;
+                }
+                if (format.includes('%')) return (result * 100).toFixed(1) + '%';
+                if (format.includes('.')) {
+                    const precision = format.split('.')[1]?.length || 1;
+                    return result.toFixed(precision);
+                }
+                if (format.includes('0')) return Math.round(result);
+                return result.toString();
+            });
         }
 
         function replaceV2Placeholders(desc, objWithBlackboard) {
@@ -355,8 +405,7 @@
 
         async function loadCharacterManifest(showHidden) {
             try {
-                const lang = getCurrentLanguage();
-                const res = await fetch(`/public/${lang}/v2_character/manifest.json?t=` + Date.now());
+                const res = await fetch('/public/CH/v2_character/manifest.json?t=' + Date.now());
                 if (!res.ok) throw new Error('无法加载角色清单');
                 const allChars = await res.json();
                 let chars = showHidden ? allChars : allChars.filter(c => !c.hidden);
@@ -395,8 +444,7 @@
 
                 const icon = document.createElement('img');
                 icon.className = 'character-icon';
-                // Handle image paths robustly (remove absolute leading slash initially if so)
-                icon.src = (char.icon || '').replace(/^\//, '');
+                icon.src = char.icon || '';
                 icon.onerror = function() { this.onerror = null; this.src = ''; };
 
                 const textContainer = document.createElement('div');
@@ -450,14 +498,44 @@
         async function loadCharacterDetail(character, container) {
             container.innerHTML = '<div class="loader">加载干员数据...</div>';
             try {
-                // Replace CN with current language and absolute path issues
-                const lang = getCurrentLanguage();
-                let contentFile = character.contentFile.replace('/public/CN/', `/public/${lang}/`);
-                contentFile = contentFile.replace(/^\//, '/'); // Ensure absolute path formatting correctness
-                const data = await fetch(contentFile + '?t=' + Date.now()).then(r => r.json());
+                const fileName = (character.contentFile || '').split('/').pop() || `${character.charId}.json`;
+                const contentFile = `/public/CH/v2_character/${fileName}`;
+                const rawData = await fetch(contentFile + '?t=' + Date.now()).then(r => r.json());
+                const data = normalizeV2ToLegacy(character, rawData);
                 currentCharData = data;
                 currentCharacter = character;
-                container.innerHTML = renderDetail(character, data);
+                container.innerHTML = renderDetail(data);
+
+                const globalSkillBtn = container.querySelector('.global-skill-toggle-btn');
+                if (globalSkillBtn) {
+                    globalSkillBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        globalSkillExpand = !globalSkillExpand;
+                        if (globalSkillExpand) skillExpandMap = {};
+                        updateAllSkillTables();
+                    });
+                }
+
+                const skillToggleBtns = container.querySelectorAll('.skill-toggle-btn');
+                skillToggleBtns.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const skillName = btn.dataset.skillName;
+                        if (!skillName) return;
+                        if (globalSkillExpand) globalSkillExpand = false;
+                        skillExpandMap[skillName] = !skillExpandMap[skillName];
+                        updateSkillTable(skillName);
+                    });
+                });
+
+                const toggleCharBtn = container.querySelector('.toggle-char-levels-btn');
+                if (toggleCharBtn) {
+                    toggleCharBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        showAllCharLevels = !showAllCharLevels;
+                        updateGrowthTable();
+                    });
+                }
 
                 container.querySelectorAll('.section-header').forEach(header => {
                     header.addEventListener('click', () => {
@@ -475,376 +553,603 @@
             }
         }
 
-        function renderDetail(baseInfo, data) {
-            const typeDisplayName = getCharTypeName(baseInfo.charType) || baseInfo.charType || '-';
-            const weaponDisplayName = getWeaponName(baseInfo.weapontype) || baseInfo.weapontype || '-';
-            const profDisplayName = getProfessionName(baseInfo.profession) || baseInfo.profession || '-';
+        function normalizeV2ToLegacy(baseInfo, rawData) {
+            const legacy = {
+                charId: baseInfo.charId,
+                icon: baseInfo.icon || '',
+                pic: rawData.pic || '',
+                potentialpic1: rawData.potentialpic1 || '',
+                potentialpic2: rawData.potentialpic2 || '',
+                potentialpic3: rawData.potentialpic3 || '',
+                name: baseInfo.name || rawData.name || '',
+                rarity: baseInfo.rarity,
+                charType: baseInfo.charType,
+                profession: baseInfo.profession,
+                weapontype: baseInfo.weapontype,
+                mainAttrType: baseInfo.mainAttrType || '-',
+                subAttrType: baseInfo.subAttrType || '-',
+                charBattleTag: baseInfo.charBattleTag || [],
+                profile: baseInfo.profile || '',
+                feature: baseInfo.feature || '',
+                cvName: baseInfo.cvName || [],
+                growth: {},
+                talents: [],
+                potentials: [],
+                attributeNodes: [],
+                skills: [],
+                skill: {},
+                spaceshipSkills: [],
+                profileRecord: [],
+                profileVoice: []
+            };
+
+            const preferredAttrs = ['力量', '敏捷', '智识', '意志', '生命值', '攻击力', '法术异常伤害系数', '物理异常伤害系数'];
+            const attrTypeToName = {};
+            Object.keys(attrMap || {}).forEach(k => {
+                attrTypeToName[parseInt(k, 10)] = attrMap[k];
+            });
+            preferredAttrs.forEach(name => {
+                legacy.growth[name] = [];
+            });
+
+            const attributes = rawData.charactertable?.attributes || [];
+            attributes.forEach(levelData => {
+                const attrs = levelData?.Attribute?.attrs || [];
+                const nameValueMap = {};
+                attrs.forEach(a => {
+                    const n = attrTypeToName[a.attrType];
+                    if (n) nameValueMap[n] = a.attrValue;
+                });
+                preferredAttrs.forEach(name => {
+                    const val = nameValueMap[name];
+                    legacy.growth[name].push(typeof val === 'number' ? val : 0);
+                });
+            });
+
+            const talentNodes = Object.values(rawData.chargrowthtable?.talentNodeMap || {}).filter(n => n.nodeType === 4 && n.passiveSkillNodeInfo?.talentEffectId);
+            legacy.talents = talentNodes.map(n => {
+                const effect = rawData.potentialtalenteffecttable?.[n.passiveSkillNodeInfo.talentEffectId];
+                if (!effect) return null;
+                const descRaw = effect.desc?.text || effect.desc || '';
+                const valueMap = {};
+                (effect.dataList || []).forEach(item => {
+                    if (item && item.key !== undefined) valueMap[item.key] = item.value;
+                });
+                return {
+                    name: effect.name?.text || effect.name || '天赋',
+                    description: descRaw,
+                    values: valueMap
+                };
+            }).filter(Boolean);
+
+            const potentials = rawData.characterpotentialtable?.potentialUnlockBundle || [];
+            legacy.potentials = potentials.map(p => {
+                const effId = p.potentialEffectId;
+                let effect = rawData.potentialtalenteffecttable?.[effId];
+                let desc = effect?.desc?.text || effect?.desc || '';
+                const values = {};
+                (effect?.dataList || []).forEach(item => {
+                    if (item && item.key !== undefined) values[item.key] = item.value;
+                });
+                if (!desc) {
+                    const patch = rawData.skillpatchtable?.[effId]?.SkillPatchDataBundle?.[0];
+                    desc = patch?.description?.text || '';
+                    (patch?.blackboard || []).forEach(bb => {
+                        if (bb && bb.key !== undefined) values[bb.key] = bb.value;
+                    });
+                }
+                return {
+                    name: p.name?.text || p.name || `潜能 ${p.level || ''}`,
+                    description: desc,
+                    values
+                };
+            });
+
+            const attrNodes = Object.values(rawData.chargrowthtable?.talentNodeMap || {}).filter(n => n.nodeType === 3);
+            legacy.attributeNodes = attrNodes.map(n => {
+                const info = n.attributeNodeInfo || {};
+                const mod = info.attributeModifier;
+                const modName = mod ? (getAttrName(mod.attrType) || mod.attrType) : '';
+                const modText = mod ? `${modName}+${mod.attrValue}` : '';
+                return {
+                    title: info.title?.text || '',
+                    description: info.desc?.text || '',
+                    modifier: modText
+                };
+            });
+
+            const skillGroupMap = rawData.chargrowthtable?.skillGroupMap || {};
+            const skillGroups = Object.values(skillGroupMap).sort((a, b) => (a.skillGroupType || 0) - (b.skillGroupType || 0));
+            legacy.skills = skillGroups.map(s => {
+                const iconPath = s.icon ? `/public/images/character/skillicon/${s.icon}.png` : '';
+                const group = {
+                    name: s.name?.text || s.name || '',
+                    icon: iconPath,
+                    description: s.desc?.text || s.desc || '',
+                    groupType: s.skillGroupType || 0,
+                    skillIds: s.skillIdList || []
+                };
+
+                const patchKey = s.skillGroupId || (Array.isArray(s.skillIdList) ? s.skillIdList[0] : '');
+                const patchList = rawData.skillpatchtable?.[patchKey]?.SkillPatchDataBundle || [];
+                const values = { coolDown: [], costValue: [] };
+                patchList.forEach(patch => {
+                    values.coolDown.push(patch.coolDown ?? 0);
+                    values.costValue.push(patch.costValue ?? 0);
+                    (patch.blackboard || []).forEach(bb => {
+                        if (!bb || !bb.key) return;
+                        if (!values[bb.key]) values[bb.key] = [];
+                        values[bb.key].push(bb.value ?? 0);
+                    });
+                });
+                legacy.skill[patchKey || group.name] = {
+                    name: group.name,
+                    values
+                };
+
+                const maxPatch = patchList[patchList.length - 1];
+                if (maxPatch) {
+                    const valueMap = {};
+                    (maxPatch.blackboard || []).forEach(bb => {
+                        if (bb && bb.key !== undefined) valueMap[bb.key] = bb.value;
+                    });
+                    group.description = replacePlaceholders(group.description, valueMap);
+                }
+
+                return group;
+            });
+
+            const spaceshipChars = rawData.spaceshipcharskilltable?.skillList || [];
+            const spaceshipSkills = rawData.spaceshipskilltable || {};
+            const groupedSkills = {};
+            spaceshipChars.forEach(s => {
+                const skill = spaceshipSkills[s.skillId];
+                if (!skill) return;
+                const tName = skill.talentName?.text || skill.talentName || '';
+                if (!groupedSkills[tName]) {
+                    groupedSkills[tName] = {
+                        icon: skill.icon ? `${IMAGE_BASE_PATH}${skill.icon}.png` : '',
+                        talentName: tName,
+                        roomTypeName: { 1: '制造舱', 5: '会客室' }[skill.roomType] || '',
+                        levels: []
+                    };
+                }
+                groupedSkills[tName].levels.push({
+                    postfix: skill.skillNamePostfix || '',
+                    skillName: skill.name?.text || skill.name || '',
+                    skillDesc: parseText(skill.desc?.text || skill.desc || ''),
+                    unlockHint: s.unlockHint?.text || s.unlockHint || ''
+                });
+            });
+            legacy.spaceshipSkills = Object.values(groupedSkills);
+
+            legacy.profileRecord = (rawData.charactertable?.profileRecord || []).map(rec => ({
+                title: rec.recordTitle?.text || '',
+                desc: rec.recordText?.text || ''
+            }));
+            legacy.profileVoice = (rawData.charactertable?.profileVoice || []).map(v => ({
+                title: v.voiceTitle?.text || v.voiceTitle || v.voId || '',
+                desc: v.voiceDesc?.text || v.voiceDesc || ''
+            }));
+
+            return legacy;
+        }
+
+        function updateGrowthTable() {
+            const tbody = document.querySelector('.growth-table tbody');
+            if (!tbody || !currentCharData) return;
+            const growth = currentCharData.growth || {};
+            const attributes = ['力量', '敏捷', '智识', '意志', '生命值', '攻击力', '法术异常伤害系数', '物理异常伤害系数'];
+            const firstAttr = attributes.find(attr => growth[attr] && growth[attr].length);
+            const levelCount = firstAttr ? growth[firstAttr].length : 0;
+            const allGrowthRows = [];
+            for (let lv = 1; lv <= levelCount; lv++) {
+                const cells = attributes.map(attr => {
+                    const val = growth[attr]?.[lv - 1];
+                    return `<td>${val !== undefined ? Number(val).toFixed(2) : '-'}</td>`;
+                }).join('');
+                allGrowthRows.push(`<tr data-level="${lv}"><td>${lv}</td>${cells}</tr>`);
+            }
+
+            let rowsToRender = allGrowthRows;
+            if (charLevelsToShow && !showAllCharLevels) {
+                const levelSet = new Set(charLevelsToShow);
+                rowsToRender = allGrowthRows.filter(row => {
+                    const match = row.match(/data-level="(\d+)"/);
+                    return match && levelSet.has(parseInt(match[1], 10));
+                });
+            }
+            if (rowsToRender.length === 0 && charLevelsToShow && charLevelsToShow.length > 0) {
+                const maxLevel = Math.max(...charLevelsToShow);
+                const found = allGrowthRows.find(r => r.includes(`data-level="${maxLevel}"`));
+                if (found) rowsToRender = [found];
+            }
+            tbody.innerHTML = rowsToRender.join('');
+
+            const btn = document.querySelector('.toggle-char-levels-btn');
+            if (btn) btn.textContent = showAllCharLevels ? '收起多余等级' : '展开所有等级';
+        }
+
+        function updateSkillTable(skillName) {
+            const skillContainer = document.querySelector(`.skill-item[data-skill-name="${skillName}"] .skill-detail`);
+            if (!skillContainer || !currentCharData) return;
+
+            const showHidden = getCurrentShowHidden();
+            const group = currentCharData.skills?.find(g => g.name === skillName);
+            const skillDetail = Object.values(currentCharData.skill || {}).find(s => s.name === skillName);
+            if (!group || !skillDetail) return;
+
+            const values = skillDetail.values || {};
+            const columns = Object.keys(values).filter(k => Array.isArray(values[k]));
+            let displayColumns = columns;
+            if (!showHidden) {
+                displayColumns = columns.filter(col => {
+                    const lowerCol = col.toLowerCase();
+                    return !HIDDEN_KEYWORDS.some(keyword => lowerCol.includes(keyword));
+                });
+            }
+            if (displayColumns.length === 0) {
+                skillContainer.innerHTML = '';
+                return;
+            }
+
+            const levelCount = values[columns[0]].length;
+            const allSkillRows = [];
+            for (let lv = 1; lv <= levelCount; lv++) {
+                const cells = displayColumns.map(col => {
+                    const arr = values[col];
+                    let val = arr[lv - 1] !== undefined ? arr[lv - 1] : arr[arr.length - 1];
+                    if (typeof val === 'number') val = val.toFixed(2);
+                    return `<td>${val}</td>`;
+                }).join('');
+                allSkillRows.push(`<tr data-level="${lv}"><td>Lv.${lv}</td>${cells}</tr>`);
+            }
+
+            const isExpanded = globalSkillExpand ? true : (skillExpandMap[skillName] || false);
+            let rowsToRender = allSkillRows;
+            if (!isExpanded && skillLevelsToShow) {
+                const levelSet = new Set(skillLevelsToShow);
+                rowsToRender = allSkillRows.filter(row => {
+                    const match = row.match(/data-level="(\d+)"/);
+                    return match && levelSet.has(parseInt(match[1], 10));
+                });
+            }
+            if (rowsToRender.length === 0 && !isExpanded && skillLevelsToShow && skillLevelsToShow.length > 0) {
+                const maxLevel = Math.max(...skillLevelsToShow);
+                const found = allSkillRows.find(r => r.includes(`data-level="${maxLevel}"`));
+                if (found) rowsToRender = [found];
+            }
+
+            const headerCells = displayColumns.map(col => `<th>${COLUMN_MAP[col] || col}</th>`).join('');
+            const header = `<tr><th>等级</th>${headerCells}</tr>`;
+            const tableHtml = `
+                <div style="display: flex; align-items: center; justify-content: flex-end; margin-bottom: 4px;">
+                    <button class="skill-toggle-btn" data-skill-name="${skillName}" style="background: var(--button-bg, #e0e8f0); border: 1px solid var(--border-color); border-radius: 16px; padding: 2px 8px; font-size: 0.8rem; cursor: pointer;">${isExpanded ? '收起多余等级' : '展开所有等级'}</button>
+                </div>
+                <table class="skill-table">
+                    <thead>${header}</thead>
+                    <tbody>${rowsToRender.join('')}</tbody>
+                </table>
+            `;
+            skillContainer.innerHTML = tableHtml;
+
+            const newBtn = skillContainer.querySelector('.skill-toggle-btn');
+            if (newBtn) {
+                newBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (globalSkillExpand) globalSkillExpand = false;
+                    skillExpandMap[skillName] = !skillExpandMap[skillName];
+                    updateSkillTable(skillName);
+                });
+            }
+        }
+
+        function updateAllSkillTables() {
+            const skillNames = currentCharData.skills?.map(g => g.name) || [];
+            skillNames.forEach(name => updateSkillTable(name));
+        }
+
+        function renderDetail(data) {
+            const showHidden = getCurrentShowHidden();
 
             const basicHtml = `
                 <div class="detail-header">
                     <div class="detail-left">
                         <div class="detail-icon">
-                            <img src="${(baseInfo.icon || '').replace(/^\//, '/')}" onerror="this.onerror=null; this.src='';">
+                            <img src="${data.icon || ''}" onerror="this.onerror=null; this.src='';">
                         </div>
                         <div class="detail-text">
                             <div class="detail-title-row">
-                                <span class="detail-name">${baseInfo.name}</span>
-                                <span class="detail-rarity rarity-${baseInfo.rarity}" title="稀有度 ${baseInfo.rarity}"></span>
+                                <span class="detail-name">${data.name}</span>
+                                <span class="detail-rarity rarity-${data.rarity}" title="稀有度 ${data.rarity}"></span>
                             </div>
                             <div class="detail-tags">
-                                ${(baseInfo.charBattleTag || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                                ${(data.charBattleTag || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
                             </div>
                             <div class="detail-meta">
-                                <div><span class="meta-label">职业</span> ${profDisplayName}</div>
-                                <div><span class="meta-label">武器类型</span> ${weaponDisplayName}</div>
-                                <div><span class="meta-label">主属性</span> ${typeDisplayName}</div>
-                                <div><span class="meta-label">副属性</span> ${baseInfo.subAttrType || '-'}</div>
-                                <div><span class="meta-label">CV</span> ${(baseInfo.cvName || []).join(' / ')}</div>
+                                <div><span class="meta-label">职业</span> ${data.profession || '-'}</div>
+                                <div><span class="meta-label">武器类型</span> ${data.weapontype || '-'}</div>
+                                <div><span class="meta-label">主属性</span> ${data.mainAttrType || '-'}</div>
+                                <div><span class="meta-label">副属性</span> ${data.subAttrType || '-'}</div>
+                                <div><span class="meta-label">CV</span> ${(data.cvName || []).join(' / ')}</div>
                             </div>
-                            <div class="detail-profile">${parseText(baseInfo.profile || '')}</div>
-                            <div class="detail-feature">${parseText(baseInfo.feature || '')}</div>
+                            <div class="detail-profile">${parseText(data.profile || '')}</div>
+                            <div class="detail-feature">${parseText(data.feature || '')}</div>
                         </div>
+                    </div>
+                    <div class="detail-pic">
+                        <img src="${data.pic || ''}" onerror="this.style.display='none'">
                     </div>
                 </div>
             `;
 
-            // Build attributes table
-            const attributes = data.charactertable?.attributes || [];
-            let attributesHtml = '';
-            if (attributes.length > 0) {
-                // Collect all unique attrTypes to use as columns
-                const attrTypeSet = new Set();
-                attributes.forEach(attrLevel => {
-                    if (attrLevel.Attribute?.attrs) {
-                        attrLevel.Attribute.attrs.forEach(attr => {
-                            attrTypeSet.add(attr.attrType);
-                        });
-                    }
+            const growth = data.growth || {};
+            const attributes = ['力量', '敏捷', '智识', '意志', '生命值', '攻击力', '法术异常伤害系数', '物理异常伤害系数'];
+            const firstAttr = attributes.find(attr => growth[attr] && growth[attr].length);
+            const levelCount = firstAttr ? growth[firstAttr].length : 0;
+            const allGrowthRows = [];
+            for (let lv = 1; lv <= levelCount; lv++) {
+                const cells = attributes.map(attr => {
+                    const val = growth[attr]?.[lv - 1];
+                    return `<td>${val !== undefined ? Number(val).toFixed(2) : '-'}</td>`;
+                }).join('');
+                allGrowthRows.push(`<tr data-level="${lv}"><td>${lv}</td>${cells}</tr>`);
+            }
+
+            let growthRowsToRender = allGrowthRows;
+            if (charLevelsToShow && !showAllCharLevels) {
+                const levelSet = new Set(charLevelsToShow);
+                growthRowsToRender = allGrowthRows.filter(row => {
+                    const match = row.match(/data-level="(\d+)"/);
+                    return match && levelSet.has(parseInt(match[1], 10));
                 });
-                let attrTypes = Array.from(attrTypeSet).sort((a, b) => a - b);
-                
-                // Exclude attrType=0 (Level) from column headers as it's separate
-                attrTypes = attrTypes.filter(attrType => attrType !== 0);
-
-                // Build table rows
-                const tableRows = attributes.map((attrLevel, index) => {
-                    const cells = attrTypes.map(attrType => {
-                        const attr = attrLevel.Attribute?.attrs?.find(a => a.attrType === attrType);
-                        if (!attr) return '<td>-</td>';
-                        let value = attr.attrValue;
-                        if (typeof value === 'number') {
-                            if (value % 1 !== 0) value = value.toFixed(2);
-                        }
-                        return `<td>${value}</td>`;
-                    }).join('');
-                    const level = attrLevel.Attribute?.attrs?.find(a => a.attrType === 0)?.attrValue || (index + 1);
-                    return `<tr><td>${level}</td>${cells}</tr>`;
-                }).join('');
-
-                const headerCells = attrTypes.map(attrType => 
-                    `<th title="[${attrType}]">${getAttrName(attrType)}</th>`
-                ).join('');
-
-                attributesHtml = `
-                    <div class="section">
-                        <h3>属性成长</h3>
-                        <div class="growth-table-container">
-                            <table class="growth-table">
-                                <thead>
-                                    <tr><th>等级</th>${headerCells}</tr>
-                                </thead>
-                                <tbody>${tableRows}</tbody>
-                            </table>
-                        </div>
-                    </div>
-                `;
-            } else {
-                 attributesHtml = `
-                    <div class="section">
-                        <h3>属性成长</h3>
-                        <p>无</p>
-                    </div>
-                `;
+            }
+            if (growthRowsToRender.length === 0 && charLevelsToShow && charLevelsToShow.length > 0) {
+                const maxLevel = Math.max(...charLevelsToShow);
+                const found = allGrowthRows.find(r => r.includes(`data-level="${maxLevel}"`));
+                if (found) growthRowsToRender = [found];
             }
 
-            let talentnessHtml = `
+            const growthHtml = `
                 <div class="section">
-                    <h3>天赋</h3>
-                    <p>无</p>
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <h3>属性成长</h3>
+                        ${charLevelsToShow ? `<button class="toggle-char-levels-btn" style="background: var(--button-bg, #e0e8f0); border: 1px solid var(--border-color); border-radius: 16px; padding: 4px 12px; cursor: pointer;">${showAllCharLevels ? '收起多余等级' : '展开所有等级'}</button>` : ''}
+                    </div>
+                    <div class="growth-table-container">
+                        <table class="growth-table">
+                            <thead>
+                                <tr>
+                                    <th>等级</th>
+                                    ${attributes.map(attr => `<th>${attr}</th>`).join('')}
+                                </tr>
+                            </thead>
+                            <tbody>${growthRowsToRender.join('')}</tbody>
+                        </table>
+                    </div>
                 </div>
             `;
-            const talentNodes = Object.values(data.chargrowthtable?.talentNodeMap || {}).filter(n => n.nodeType === 4 && n.passiveSkillNodeInfo?.talentEffectId);
-            if (talentNodes.length > 0) {
-                const list = talentNodes.map(n => {
-                    const effect = data.potentialtalenteffecttable?.[n.passiveSkillNodeInfo.talentEffectId];
-                    if(!effect) return '';
-                    let desc = effect.desc?.text || effect.desc || '';
-                    desc = replaceV2Placeholders(desc, effect.dataList);
-                    return `<div class="talent-item">
-                        <div class="talent-desc">${parseText(desc)}</div>
-                    </div>`;
-                }).filter(s => s).join('');
-                if (list) {
-                    talentnessHtml = `<div class="section"><h3>天赋</h3><div class="talent-list">${list}</div></div>`;
-                }
-            }
 
-            let potentialsHtml = `
-                <div class="section">
-                    <h3>潜能</h3>
-                    <p>无</p>
-                </div>
-            `;
-            const potentials = data.characterpotentialtable?.potentialUnlockBundle || [];
-            if (potentials.length > 0) {
-                const list = potentials.map(p => {
-                    const eff_id = p.potentialEffectId;
-                    
-                    let effect = data.potentialtalenteffecttable?.[eff_id];
-                    let desc = effect?.desc?.text || effect?.desc || '';
-                    let replaceData = effect?.dataList || [];
+            const talentsHtml = (data.talents || []).map(talent => {
+                const valueMap = talent.values || {};
+                const desc = parseText(replacePlaceholders(talent.description, valueMap));
+                return `
+                    <div class="talent-item">
+                        <div class="talent-name">${talent.name}</div>
+                        <div class="talent-desc">${desc}</div>
+                    </div>
+                `;
+            }).join('');
 
-                    if (!desc) {
-                        const patch = data.skillpatchtable?.[eff_id];
-                        if (patch && patch.SkillPatchDataBundle && patch.SkillPatchDataBundle.length > 0) {
-                            const patchDesc = patch.SkillPatchDataBundle[0].description;
-                            if (patchDesc) {
-                                desc = patchDesc.text || '';
-                            }
-                            replaceData = patch.SkillPatchDataBundle[0].blackboard || [];
-                        }
-                    }
+            const potentialsHtml = (data.potentials || []).map(pot => {
+                const valueMap = pot.values || {};
+                const desc = parseText(replacePlaceholders(pot.description, valueMap));
+                return `
+                    <div class="potential-item">
+                        <div class="potential-name">${pot.name}</div>
+                        <div class="potential-desc">${desc}</div>
+                    </div>
+                `;
+            }).join('');
 
-                    desc = replaceV2Placeholders(desc, replaceData);
-                    const name = p.name?.text || p.name || '';
-                    
-                    let extraDesc = '';
-                    if (!desc) {
-                        const charId = eff_id.replace(/_potential_\d+$/, '');
-                        if (p.level === 2 || p.level === 4) {
-                            const tIdx = p.level === 2 ? 1 : 2;
-                            const t1 = data.potentialtalenteffecttable?.[`${charId}_talent_${tIdx}_1`];
-                            const t2 = data.potentialtalenteffecttable?.[`${charId}_talent_${tIdx}_2`];
-                            if (t1) {
-                                let t1desc = t1.desc?.text || t1.desc || '';
-                                t1desc = replaceV2Placeholders(t1desc, t1.dataList || []);
-                                extraDesc += `<div class="potential-desc"><b>分支1:</b> ${parseText(t1desc)}</div>`;
-                            }
-                            if (t2) {
-                                let t2desc = t2.desc?.text || t2.desc || '';
-                                t2desc = replaceV2Placeholders(t2desc, t2.dataList || []);
-                                extraDesc += `<div class="potential-desc"><b>分支2:</b> ${parseText(t2desc)}</div>`;
-                            }
-                        }
-                    } else {
-                        extraDesc = `<div class="potential-desc">${parseText(desc)}</div>`;
-                    }
-
-                    const titleRaw = name ? `潜能 ${p.level} · ${name}` : `潜能 ${p.level}`;
-                    return `<div class="potential-item">
-                        <div class="potential-name">${titleRaw}</div>
-                        ${extraDesc}
-                    </div>`;
-                }).join('');
-                potentialsHtml = `<div class="section"><h3>潜能</h3><div class="potential-list">${list}</div></div>`;
-            }
-
-            let attrNodesHtml = `
+            const attrNodes = data.attributeNodes || [];
+            const attrNodesHtml = `
                 <div class="section">
                     <h3>属性节点</h3>
-                    <p>无</p>
+                    <div class="attr-nodes-grid">
+                        ${attrNodes.map(node => `
+                            <div class="attr-node-item">
+                                <div class="attr-node-title">${node.title}</div>
+                                <div class="attr-node-desc">${node.description}</div>
+                                <div class="attr-node-modifier">${node.modifier}</div>
+                            </div>
+                        `).join('')}
+                    </div>
                 </div>
             `;
-            const attrNodes = Object.values(data.chargrowthtable?.talentNodeMap || {}).filter(n => n.nodeType === 3);
-            if (attrNodes.length > 0) {
-                const list = attrNodes.map(n => {
-                    const title = n.attributeNodeInfo?.title?.text || '';
-                    const desc = n.attributeNodeInfo?.desc?.text || '';
-                    if (!title && !desc) return '';
-                    
-                    let modifierHtml = '';
-                    const attrMod = n.attributeNodeInfo?.attributeModifier;
-                    if (attrMod && attrMod.attrValue) {
-                        const attrName = getAttrName(attrMod.attrType) || attrMod.attrType;
-                        modifierHtml = `<div class="attr-node-modifier">${attrName} +${attrMod.attrValue}</div>`;
-                    }
 
-                    return `<div class="attr-node-item">
-                        <div class="attr-node-title">${title}</div>
-                        <div class="attr-node-desc">${parseText(desc)}</div>
-                        ${modifierHtml}
-                    </div>`;
-                }).filter(s => s).join('');
-                if (list) {
-                    attrNodesHtml = `<div class="section"><h3>属性节点</h3><div class="attr-nodes-grid">${list}</div></div>`;
+            const skillsGroups = data.skills || [];
+            const skillTypePrefix = ['普攻', '战技', '终结技', '连携技'];
+            const skillsHtml = skillsGroups.map((group, index) => {
+                const skillDetail = Object.values(data.skill || {}).find(s => s.name === group.name);
+                if (!skillDetail) return '';
+
+                const values = skillDetail.values || {};
+                const level1Values = {};
+                for (const [key, val] of Object.entries(values)) {
+                    if (Array.isArray(val) && val.length > 0) level1Values[key] = val[0];
+                    else level1Values[key] = val;
                 }
-            }
 
-            let skillsHtml = `
-                <div class="section">
-                    <h3>技能</h3>
-                    <p>无</p>
-                </div>
-            `;
-            const skillsMap = data.chargrowthtable?.skillGroupMap || {};
-            const skillList = Object.values(skillsMap);
-            if (skillList.length > 0) {
-                skillList.sort((a,b) => (a.skillGroupType || 0) - (b.skillGroupType || 0));
-                const list = skillList.map(s => {
-                    const name = s.name?.text || s.name || '';
-                    let desc = s.desc?.text || s.desc || '';
-                    
-                    if (s.skillGroupId) {
-                        const patches = data.skillpatchtable?.[s.skillGroupId]?.SkillPatchDataBundle || [];
-                        if (patches.length > 0) {
-                            const maxPatch = patches[patches.length - 1];
-                            desc = replaceV2Placeholders(desc, maxPatch.blackboard);
-                        }
-                    } else if (s.skillIdList && s.skillIdList.length > 0) {
-                        const skillId = s.skillIdList[0];
-                        const patches = data.skillpatchtable?.[skillId]?.SkillPatchDataBundle || [];
-                        if (patches.length > 0) {
-                            const maxPatch = patches[patches.length - 1];
-                            desc = replaceV2Placeholders(desc, maxPatch.blackboard);
-                        }
-                    }
+                const groupDesc = parseText(replacePlaceholders(group.description || '', level1Values));
+                const prefix = (index < skillTypePrefix.length) ? skillTypePrefix[index] : '技能';
+                const displayName = `${prefix}·${group.name}`;
 
-                    return `<div class="skill-item">
-                        <div class="skill-icon"><img src="${IMAGE_BASE_PATH}${s.icon}.png" onerror="this.onerror=null; this.src='';"></div>
-                        <div class="skill-info">
-                            <div class="skill-name">${name}</div>
-                            <div class="skill-desc">${parseText(desc)}</div>
-                        </div>
-                    </div>`;
-                }).join('');
-                skillsHtml = `<div class="section"><h3>技能</h3><div class="skills-list">${list}</div></div>`;
-            }
-
-            let spaceshipHtml = `
-                <div class="section">
-                    <h3>后勤技能</h3>
-                    <p>无</p>
-                </div>
-            `;
-            const spaceshipChars = data.spaceshipcharskilltable?.skillList || [];
-            const spaceshipSkills = data.spaceshipskilltable || {};
-            if (spaceshipChars.length > 0) {
-                const groupedSkills = {};
-                spaceshipChars.forEach(s => {
-                    const skill = spaceshipSkills[s.skillId];
-                    if (!skill) return;
-                    
-                    const tName = skill.talentName?.text || skill.talentName || '';
-                    if (!groupedSkills[tName]) {
-                        groupedSkills[tName] = {
-                            icon: skill.icon ? `${IMAGE_BASE_PATH}${skill.icon}.png` : '',
-                            talentName: tName,
-                            roomTypeName: {1: '制造舱', 5: '会客室'}[skill.roomType] || '', // Fallback map if roomType mapping not loaded
-                            levels: []
-                        };
-                    }
-                    
-                    groupedSkills[tName].levels.push({
-                        postfix: skill.skillNamePostfix || '',
-                        skillName: skill.name?.text || skill.name || '',
-                        skillDesc: skill.desc?.text || skill.desc || '',
-                        unlockHint: s.unlockHint?.text || s.unlockHint || ''
+                const columns = Object.keys(values).filter(k => Array.isArray(values[k]));
+                let displayColumns = columns;
+                if (!showHidden) {
+                    displayColumns = columns.filter(col => {
+                        const lowerCol = col.toLowerCase();
+                        return !HIDDEN_KEYWORDS.some(keyword => lowerCol.includes(keyword));
                     });
-                });
-                
-                const list = Object.values(groupedSkills).map(slot => {
-                    const levelsHtml = slot.levels.map(lv => `
-                        <div class="spaceship-skill-level">
-                            <span class="spaceship-skill-postfix">${lv.postfix}</span>
-                            <div class="spaceship-skill-info">
-                                <div class="spaceship-skill-fullname">${lv.skillName}</div>
-                                <div class="spaceship-skill-desc">${parseText(lv.skillDesc)}</div>
-                                <div class="spaceship-skill-unlock">${lv.unlockHint}</div>
+                }
+
+                let skillTables = '';
+                if (displayColumns.length > 0) {
+                    const levelCount = values[columns[0]].length;
+                    const allSkillRows = [];
+                    for (let lv = 1; lv <= levelCount; lv++) {
+                        const cells = displayColumns.map(col => {
+                            const arr = values[col];
+                            let val = arr[lv - 1] !== undefined ? arr[lv - 1] : arr[arr.length - 1];
+                            if (typeof val === 'number') val = val.toFixed(2);
+                            return `<td>${val}</td>`;
+                        }).join('');
+                        allSkillRows.push(`<tr data-level="${lv}"><td>Lv.${lv}</td>${cells}</tr>`);
+                    }
+
+                    const isExpanded = globalSkillExpand ? true : (skillExpandMap[group.name] || false);
+                    let skillRowsToRender = allSkillRows;
+                    if (!isExpanded && skillLevelsToShow) {
+                        const levelSet = new Set(skillLevelsToShow);
+                        skillRowsToRender = allSkillRows.filter(row => {
+                            const match = row.match(/data-level="(\d+)"/);
+                            return match && levelSet.has(parseInt(match[1], 10));
+                        });
+                    }
+                    if (skillRowsToRender.length === 0 && !isExpanded && skillLevelsToShow && skillLevelsToShow.length > 0) {
+                        const maxLevel = Math.max(...skillLevelsToShow);
+                        const found = allSkillRows.find(r => r.includes(`data-level="${maxLevel}"`));
+                        if (found) skillRowsToRender = [found];
+                    }
+
+                    const headerCells = displayColumns.map(col => `<th>${COLUMN_MAP[col] || col}</th>`).join('');
+                    const header = `<tr><th>等级</th>${headerCells}</tr>`;
+                    const btnText = isExpanded ? '收起多余等级' : '展开所有等级';
+
+                    skillTables = `
+                        <div class="skill-detail">
+                            <div style="display: flex; align-items: center; justify-content: flex-end; margin-bottom: 4px;">
+                                <button class="skill-toggle-btn" data-skill-name="${group.name}" style="background: var(--button-bg, #e0e8f0); border: 1px solid var(--border-color); border-radius: 16px; padding: 2px 8px; font-size: 0.8rem; cursor: pointer;">${btnText}</button>
                             </div>
-                        </div>
-                    `).join('');
-                    
-                    return `
-                        <div class="spaceship-skill-item">
-                            <div class="spaceship-skill-header">
-                                <img class="spaceship-icon" src="${slot.icon}" alt="" onerror="this.onerror=null; this.src='';">
-                                <span class="spaceship-skill-name">${slot.talentName}</span>
-                                <span class="spaceship-skill-room">${slot.roomTypeName}</span>
-                            </div>
-                            <div class="spaceship-skill-levels">
-                                ${levelsHtml}
-                            </div>
+                            <table class="skill-table">
+                                <thead>${header}</thead>
+                                <tbody>${skillRowsToRender.join('')}</tbody>
+                            </table>
                         </div>
                     `;
-                }).join('');
-                
-                if (list) {
-                    spaceshipHtml = `<div class="section"><h3>后勤技能</h3>${list}</div>`;
                 }
-            }
 
-            let profileHtml = `
+                return `
+                    <div class="skill-item" data-skill-name="${group.name}">
+                        <div class="skill-name">
+                            <img class="skill-icon" src="${group.icon}" alt="" onerror="this.onerror=null; this.src='';">
+                            ${displayName}
+                        </div>
+                        <div class="skill-desc">${groupDesc}</div>
+                        ${skillTables}
+                    </div>
+                `;
+            }).join('');
+
+            const potentialPics = [];
+            if (data.potentialpic1) potentialPics.push(data.potentialpic1);
+            if (data.potentialpic2) potentialPics.push(data.potentialpic2);
+            if (data.potentialpic3) potentialPics.push(data.potentialpic3);
+            const potentialPicsHtml = potentialPics.length > 0 ? `
+                <div class="section collapsible-section">
+                    <h3 class="section-header">
+                        <span class="collapse-indicator">▶</span> 潜能图片
+                    </h3>
+                    <div class="collapse-content" style="display:none;">
+                        <div class="potential-pics">
+                            ${potentialPics.map(src => `<img src="${src}" onerror="this.style.display='none'">`).join('')}
+                        </div>
+                    </div>
+                </div>
+            ` : '';
+
+            const profileRecordsHtml = (data.profileRecord || []).map(rec => `
+                <div class="profile-record">
+                    <div class="profile-title">${rec.title}</div>
+                    <div class="profile-desc">${parseText(rec.desc)}</div>
+                </div>
+            `).join('');
+
+            const voiceHtml = (data.profileVoice || []).length ? `
+                <table class="voice-table">
+                    ${(data.profileVoice || []).map(v => `
+                        <tr>
+                            <td class="voice-title">${v.title}</td>
+                            <td class="voice-desc">${v.desc}</td>
+                        </tr>
+                    `).join('')}
+                </table>
+            ` : '<p>无</p>';
+
+            const spaceshipSkills = data.spaceshipSkills || [];
+            const spaceshipHtml = spaceshipSkills.length ? spaceshipSkills.map(slot => `
+                <div class="spaceship-skill-item">
+                    <div class="spaceship-skill-header">
+                        <img class="spaceship-icon" src="${slot.icon}" alt="" onerror="this.onerror=null; this.src='';">
+                        <span class="spaceship-skill-name">${slot.talentName}</span>
+                        <span class="spaceship-skill-room">${slot.roomTypeName}</span>
+                    </div>
+                    <div class="spaceship-skill-levels">
+                        ${slot.levels.map(lv => `
+                            <div class="spaceship-skill-level">
+                                <span class="spaceship-skill-postfix">${lv.postfix}</span>
+                                <div class="spaceship-skill-info">
+                                    <div class="spaceship-skill-fullname">${lv.skillName}</div>
+                                    <div class="spaceship-skill-desc">${lv.skillDesc}</div>
+                                    <div class="spaceship-skill-unlock">${lv.unlockHint}</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('') : '<p>无</p>';
+
+            return `
+                ${basicHtml}
+                ${growthHtml}
+                <div class="section">
+                    <h3>天赋</h3>
+                    ${talentsHtml || '<p>无</p>'}
+                </div>
+                <div class="section">
+                    <h3>潜能</h3>
+                    ${potentialsHtml || '<p>无</p>'}
+                </div>
+                ${attrNodesHtml}
+                <div class="section">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <h3>技能</h3>
+                        ${skillLevelsToShow ? `<button class="global-skill-toggle-btn" style="background: var(--button-bg, #e0e8f0); border: 1px solid var(--border-color); border-radius: 16px; padding: 4px 12px; cursor: pointer;">${globalSkillExpand ? '收起所有技能等级' : '展开所有技能等级'}</button>` : ''}
+                    </div>
+                    ${skillsHtml || '<p>无</p>'}
+                </div>
+                <div class="section">
+                    <h3>后勤技能</h3>
+                    ${spaceshipHtml}
+                </div>
+                ${potentialPicsHtml}
                 <div class="section collapsible-section">
                     <h3 class="section-header">
                         <span class="collapse-indicator">▶</span> 档案
                     </h3>
                     <div class="collapse-content" style="display:none;">
-                        <p>无</p>
+                        ${profileRecordsHtml || '<p>无</p>'}
                     </div>
                 </div>
-            `;
-            const profiles = (data.charactertable?.profileRecord || []).filter(p => p.recordTitle || p.recordText);
-            if (profiles.length > 0) {
-                const list = profiles.map(p => {
-                    const title = p.recordTitle?.text || '';
-                    const text = p.recordText?.text || '';
-                    return `<div class="profile-item">
-                        <h4>${title}</h4>
-                        <div class="profile-text">${parseText(text)}</div>
-                    </div>`;
-                }).join('');
-                profileHtml = `<div class="section collapsible-section">
-                    <h3 class="section-header"><span class="collapse-indicator">▶</span> 档案</h3>
-                    <div class="collapse-content" style="display:none;">${list}</div>
-                </div>`;
-            }
-
-            let voiceHtml = `
                 <div class="section collapsible-section">
                     <h3 class="section-header">
                         <span class="collapse-indicator">▶</span> 语音记录
                     </h3>
                     <div class="collapse-content" style="display:none;">
-                        <p>无</p>
+                        ${voiceHtml}
                     </div>
                 </div>
-            `;
-            const voices = (data.charactertable?.profileVoice || []).filter(v => v.voiceTitle || v.voiceDesc);
-            if (voices.length > 0) {
-                const list = voices.map(v => {
-                    const title = v.voiceTitle?.text || v.voiceTitle || v.voId || '';
-                    const text = v.voiceDesc?.text || v.voiceDesc || '';
-                    return `<div class="voice-item">
-                        <div class="voice-title">${title}</div>
-                        <div class="voice-text">${parseText(text)}</div>
-                    </div>`;
-                }).join('');
-                voiceHtml = `<div class="section collapsible-section">
-                    <h3 class="section-header"><span class="collapse-indicator">▶</span> 语音记录</h3>
-                    <div class="collapse-content" style="display:none;"><div class="voice-grid">${list}</div></div>
-                </div>`;
-            }
-
-            return `
-                ${basicHtml}
-                ${attributesHtml}
-                ${talentnessHtml}
-                ${potentialsHtml}
-                ${attrNodesHtml}
-                ${skillsHtml}
-                ${spaceshipHtml}
-                ${profileHtml}
-                ${voiceHtml}
             `;
         }
 
@@ -865,6 +1170,16 @@
             if (window.configLoaded) await window.configLoaded;
             await loadMaps();
 
+            const settings = window.akeData?.getLevelSettings?.() || {};
+            if (settings.enabled) {
+                charLevelsToShow = parseLevelInput(settings.characterLevels, 90);
+                const skillEnabled = settings.skillLevels || Array(12).fill(true);
+                skillLevelsToShow = skillEnabled.reduce((acc, checked, idx) => {
+                    if (checked) acc.push(idx + 1);
+                    return acc;
+                }, []);
+            }
+
             if (mobileBtn) mobileBtn.addEventListener('click', openMobileList);
             if (mobileOverlay) mobileOverlay.addEventListener('click', (e) => {
                 if (e.target === mobileOverlay) closeMobileList();
@@ -874,6 +1189,23 @@
                 searchTerm = '';
                 const searchInput = document.getElementById('v2charSearchInput');
                 if (searchInput) searchInput.value = '';
+
+                const settings = window.akeData?.getLevelSettings?.() || {};
+                if (settings.enabled) {
+                    charLevelsToShow = parseLevelInput(settings.characterLevels, 90);
+                    const skillEnabled = settings.skillLevels || Array(12).fill(true);
+                    skillLevelsToShow = skillEnabled.reduce((acc, checked, idx) => {
+                        if (checked) acc.push(idx + 1);
+                        return acc;
+                    }, []);
+                } else {
+                    charLevelsToShow = null;
+                    skillLevelsToShow = null;
+                }
+                showAllCharLevels = false;
+                globalSkillExpand = false;
+                skillExpandMap = {};
+
                 selectedRarities.clear();
                 selectedCharTypes.clear();
                 selectedProfessions.clear();
