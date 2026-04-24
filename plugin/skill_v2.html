@@ -32,6 +32,7 @@
     let searchTerm = '';
     let isInitialized = false;
     let currentSkillData = null;
+    let timelineHideNodesMode = false;
 
     const KEY_LABEL_MAP = {
         skillId: '技能ID',
@@ -249,16 +250,144 @@
         return shortType;
     }
 
+    function getIfElseBranchMeta(action) {
+        if (!action || typeof action !== 'object') return null;
+        const isIfElse = !!(action.conditionAction || action.succeedActions || action.failActions) || formatType(action.$type || '').toLowerCase().includes('ifelseaction');
+        if (!isIfElse) return null;
+
+        const cond = action.conditionAction?.actionData || [];
+        const succ = action.succeedActions?.actionData || [];
+        const fail = action.failActions?.actionData || [];
+
+        const firstType = (arr) => {
+            if (!Array.isArray(arr) || !arr.length) return '无';
+            return formatType(arr[0]?.$type || 'UnknownAction');
+        };
+
+        return {
+            condCount: cond.length,
+            succCount: succ.length,
+            failCount: fail.length,
+            condFirst: firstType(cond),
+            succFirst: firstType(succ),
+            failFirst: firstType(fail)
+        };
+    }
+
+    const ACTION_CATEGORY_DEFS = [
+        { key: 'anim', label: '动画', patterns: ['animation', 'animator', 'hurtanim', 'weaponvisible', 'weaponanimation', 'animeventreceiver', 'playperfectdodgeanim'] },
+        { key: 'damage', label: '伤害/受击', patterns: ['damage', 'blowoff', 'pushback', 'pull', 'knockdown', 'launchupward', 'airborne', 'crushaction', 'fractureaction', 'igniteaction', 'recoverpoise'] },
+        { key: 'buff', label: 'Buff/状态', patterns: ['buff', 'superarmor', 'tagaction', 'addtag', 'auraaction', 'weakness', 'inherit', 'dynamicccs', 'finishangry', 'temporarilyunlock', 'temporaryunlock'] },
+        { key: 'target', label: '选目标/判定', patterns: ['findtarget', 'selector', 'finder', 'validator', 'targetpostprocessor', 'targetpriorityfilter', 'mergetarget', 'savetargetdistance', 'picktarget', 'distance', 'shapefinder', 'interactiveshapefinder', 'hittableobjectvalidator'] },
+        { key: 'move', label: '位移/旋转', patterns: ['move', 'jump', 'teleport', 'rootmotion', 'rotate', 'snaptotarget', 'lookataction', 'receivemoveinput', 'moveto', 'movetolocation', 'movetotarget', 'movetoslot', 'movetodirection'] },
+        { key: 'camera', label: '镜头/时间', patterns: ['camera', 'timedilation', 'hitstop', 'ultimatetime', 'lockcamera', 'overridecamera', 'addcameracontrolstate', 'setignoreglobaltimescale'] },
+        { key: 'av', label: '音效/特效', patterns: ['playsound', 'voice', 'effect', 'raycasteffect', 'showhideactor', 'facbuildingplayanimation'] },
+        { key: 'condition', label: '条件/分支', patterns: ['ifelse', 'condition', 'check', 'compare', 'randomaction', 'switchaction', 'doonce', 'togglable', 'foreachaction', 'eventlistener', 'notnextcheck', 'probablity'] },
+        { key: 'spawn', label: '投射物/召唤', patterns: ['projectile', 'spawn', 'castskill', 'commandtocharacters', 'abilityentity', 'createadditionalbattleshape'] },
+        { key: 'resource', label: '资源/数值', patterns: ['blackboard', 'calc', 'calculation', 'obtaincost', 'setskillcd', 'atkscale', 'storeattribute', 'modifydynamicblackboard', 'multiplyattribute', 'instantmodifyattribute', 'savevalue'] },
+        { key: 'misc', label: '其他', patterns: [] }
+    ];
+
+    function normalizeTypeForCategory(typeName) {
+        return String(typeName || '')
+            .replace(/\+|\.|,/g, ' ')
+            .toLowerCase();
+    }
+
+    function getActionCategories(typeName) {
+        const normalized = normalizeTypeForCategory(typeName);
+        const matched = [];
+
+        ACTION_CATEGORY_DEFS.forEach(def => {
+            if (def.key === 'misc') return;
+            if (def.patterns.some(p => normalized.includes(p))) {
+                matched.push({ key: def.key, label: def.label });
+            }
+        });
+
+        if (!matched.length) {
+            const misc = ACTION_CATEGORY_DEFS.find(def => def.key === 'misc');
+            return [{ key: misc.key, label: misc.label }];
+        }
+
+        return matched;
+    }
+
+    function getActionCategory(typeName) {
+        return getActionCategories(typeName)[0];
+    }
+
+    function formatFrameDuration(frameCount) {
+        const safe = Math.max(0, Math.floor(Number(frameCount) || 0));
+        const seconds = Math.floor(safe / 30);
+        const frames = safe % 30;
+        return seconds + 's' + frames + 'f';
+    }
+
+    function collectActionTypesDeep(value, typeSet) {
+        if (!value) return;
+        if (Array.isArray(value)) {
+            value.forEach(item => collectActionTypesDeep(item, typeSet));
+            return;
+        }
+        if (typeof value !== 'object') return;
+
+        if (value.$type) {
+            typeSet.add(formatType(value.$type));
+        }
+
+        Object.keys(value).forEach(key => {
+            const child = value[key];
+            if (child && typeof child === 'object') {
+                collectActionTypesDeep(child, typeSet);
+            }
+        });
+    }
+
+    function extractTimelineActionTypes(timeline) {
+        const groupTypeList = [];
+        const allTypeSet = new Set();
+
+        (timeline || []).forEach(group => {
+            const set = new Set();
+            const actions = group?._sequenceActionData?.actionData || [];
+            collectActionTypesDeep(actions, set);
+            const types = Array.from(set).sort();
+            groupTypeList.push(types);
+            types.forEach(t => allTypeSet.add(t));
+        });
+
+        return {
+            groupTypeList,
+            allTypes: Array.from(allTypeSet).sort()
+        };
+    }
+
     function renderKeyValueRows(obj, omitKeys) {
         const rows = [];
         const omitted = new Set(omitKeys || []);
+
+        const renderValueCell = (value) => {
+            const translated = translateValue(value);
+            const isComplex = value && typeof value === 'object';
+            if (!isComplex) return escapeHtml(translated);
+
+            const fullText = safeJson(value);
+            return `
+                <details class="skillv2-value-details">
+                    <summary class="skillv2-value-summary" title="${escapeHtml(fullText)}">${escapeHtml(translated)}</summary>
+                    <pre class="skillv2-value-expanded">${escapeHtml(fullText)}</pre>
+                </details>
+            `;
+        };
+
         Object.keys(obj || {}).forEach(key => {
             if (omitted.has(key)) return;
             const value = obj[key];
             rows.push(`
                 <tr>
                     <td>${escapeHtml(translateKey(key))}</td>
-                    <td>${escapeHtml(translateValue(value))}</td>
+                    <td>${renderValueCell(value)}</td>
                 </tr>
             `);
         });
@@ -281,6 +410,7 @@
         return actions.map((action, index) => {
             const typeText = action?.$type || 'UnknownAction';
             const shortType = formatType(typeText);
+            const category = getActionCategory(shortType);
             const nodePath = pathLabel + '.' + (index + 1);
 
             let branchHtml = '';
@@ -305,10 +435,11 @@
             }
 
             return `
-                <div class="skillv2-action-node" style="--depth:${depth};">
+                <div class="skillv2-action-node cat-${category.key}" style="--depth:${depth};">
                     <div class="skillv2-action-head">
                         <span class="skillv2-action-index">节点 ${escapeHtml(nodePath)}</span>
                         <span class="skillv2-action-type">${escapeHtml(shortType)}</span>
+                        <span class="skillv2-action-cat">${escapeHtml(category.label)}</span>
                         <span class="skillv2-action-full">${escapeHtml(typeText)}</span>
                     </div>
                     <div class="skillv2-action-body">
@@ -321,11 +452,118 @@
         }).join('');
     }
 
+    function isIfElseAction(action) {
+        if (!action || typeof action !== 'object') return false;
+        if (action.conditionAction || action.succeedActions || action.failActions) return true;
+        return formatType(action.$type || '').toLowerCase().includes('ifelseaction');
+    }
+
+    function renderFlowLeafNode(action, indexLabel) {
+        const typeText = formatType(action?.$type || 'UnknownAction');
+        const category = getActionCategory(typeText);
+        return `<div class="skillv2-flow-step"><div class="skillv2-flow-node cat-${category.key}" title="${escapeHtml(category.label)} | ${escapeHtml(typeText)}">
+            <div class="skillv2-flow-main">
+                <span class="skillv2-flow-index">${escapeHtml(String(indexLabel || ''))}</span>
+                <span>${escapeHtml(summarizeAction(action))}</span>
+                <span class="skillv2-flow-cat">${escapeHtml(category.label)}</span>
+            </div>
+        </div></div>`;
+    }
+
+    function renderFlowSequenceRecursive(actions, prefix) {
+        if (!Array.isArray(actions) || actions.length === 0) {
+            return '<span class="skillv2-empty">无节点</span>';
+        }
+
+        let content = '';
+        actions.forEach((action, idx) => {
+            if (idx > 0) {
+                content += '<span class="skillv2-flow-link" aria-hidden="true"></span>';
+            }
+            const indexLabel = (prefix || '') + (idx + 1);
+            content += renderFlowActionRecursive(action, indexLabel, prefix + (idx + 1) + '.');
+        });
+        return `<div class="skillv2-flow-seq">${content}</div>`;
+    }
+
+    function renderFlowActionRecursive(action, indexLabel, nestedPrefix) {
+        if (!isIfElseAction(action)) {
+            return renderFlowLeafNode(action, indexLabel);
+        }
+
+        const condActions = action?.conditionAction?.actionData || [];
+        const succActions = action?.succeedActions?.actionData || [];
+        const failActions = action?.failActions?.actionData || [];
+        const condSummary = condActions.length
+            ? condActions.slice(0, 2).map(a => summarizeAction(a)).join(' / ') + (condActions.length > 2 ? ' ...' : '')
+            : '无条件';
+        const ifTypeText = formatType(action?.$type || 'IfElseAction');
+        const category = getActionCategory(ifTypeText);
+
+        const ifNode = `<div class="skillv2-flow-node cat-${category.key} has-branch" title="${escapeHtml(category.label)} | ${escapeHtml(ifTypeText)}">
+            <div class="skillv2-flow-main">
+                <span class="skillv2-flow-index">${escapeHtml(String(indexLabel || ''))}</span>
+                <span>${escapeHtml(summarizeAction(action))}</span>
+                <span class="skillv2-flow-cat">${escapeHtml(category.label)}</span>
+            </div>
+            <div class="skillv2-flow-if-cond">condition: ${escapeHtml(condSummary)}</div>
+        </div>`;
+
+        const thenSequence = renderFlowSequenceRecursive(succActions, (nestedPrefix || '') + 'T');
+        const elseSequence = renderFlowSequenceRecursive(failActions, (nestedPrefix || '') + 'F');
+
+        return `<div class="skillv2-flow-step skillv2-flow-step-ifelse">
+            <div class="skillv2-flow-ifelse">
+                <div class="skillv2-flow-ifelse-frame-title">IfElseAction</div>
+                <div class="skillv2-flow-if-head">${ifNode}</div>
+                <div class="skillv2-flow-branch-lanes">
+                    <div class="skillv2-flow-branch-lane true">
+                        <div class="skillv2-flow-branch-entry true">
+                            <span class="skillv2-flow-branch-text true">是</span>
+                            <span class="skillv2-flow-link" aria-hidden="true"></span>
+                        </div>
+                        <div class="skillv2-flow-branch-content">${thenSequence}</div>
+                    </div>
+                    <div class="skillv2-flow-branch-lane false">
+                        <div class="skillv2-flow-branch-entry false">
+                            <span class="skillv2-flow-branch-text false">否</span>
+                            <span class="skillv2-flow-link" aria-hidden="true"></span>
+                        </div>
+                        <div class="skillv2-flow-branch-content">${elseSequence}</div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }
+
     function renderTimelineGraph(actionGroupData) {
         const timeline = actionGroupData?.timelineActions || [];
         if (!timeline.length) {
             return '<div class="skillv2-empty">timelineActions 为空，无法绘制时间轴</div>';
         }
+
+        const summarizeTimelineNodes = (actions) => {
+            const list = Array.isArray(actions) ? actions : [];
+            if (!list.length) return '节点: 无';
+            const head = list.slice(0, 4).map(a => summarizeAction(a)).join(' → ');
+            const more = list.length > 4 ? ' ... (共' + list.length + '个)' : '';
+            return '节点: ' + head + more;
+        };
+
+        const typeInfo = extractTimelineActionTypes(timeline);
+        const groupTypeList = typeInfo.groupTypeList;
+        const allCategoryMap = new Map();
+        const groupCategoryList = groupTypeList.map(types => {
+            const catSet = new Set();
+            types.forEach(typeName => {
+                const categories = getActionCategories(typeName);
+                categories.forEach(c => {
+                    catSet.add(c.key);
+                    allCategoryMap.set(c.key, c.label);
+                });
+            });
+            return Array.from(catSet);
+        });
 
         let minFrame = Number.POSITIVE_INFINITY;
         let maxFrame = 0;
@@ -346,15 +584,15 @@
             const width = Math.max(0.35, (duration / span) * 100);
             const actions = group?._sequenceActionData?.actionData || [];
             const isSingleFrame = duration <= 1;
-            const nodes = actions.map((act, idx) => `
-                <div class="skillv2-flow-node">
-                    <span class="skillv2-flow-index">${idx + 1}</span>
-                    <span>${escapeHtml(summarizeAction(act))}</span>
-                </div>
-            `).join('<span class="skillv2-flow-arrow">→</span>');
+            const groupTypes = groupTypeList[index] || [];
+            const groupCats = groupCategoryList[index] || [];
+            const groupTypeData = groupTypes.join('|');
+            const groupCatData = groupCats.join('|');
+            const nodes = renderFlowSequenceRecursive(actions, 'G' + (index + 1) + '.');
+            const nodeSummary = summarizeTimelineNodes(actions);
 
             return `
-                <div class="skillv2-timeline-line" data-group-index="${index}" data-start-frame="${s}" data-end-frame="${e}">
+                <div class="skillv2-timeline-line" data-group-index="${index}" data-start-frame="${s}" data-end-frame="${e}" data-action-types="${escapeHtml(groupTypeData)}" data-action-cats="${escapeHtml(groupCatData)}" data-node-summary="${escapeHtml(nodeSummary)}">
                     <div class="skillv2-timeline-label">组 ${index + 1}</div>
                     <div class="skillv2-timeline-body">
                         <div class="skillv2-timeline-track">
@@ -371,13 +609,32 @@
             `;
         }).join('');
 
+        const allCategories = Array.from(allCategoryMap.entries()).sort((a, b) => a[1].localeCompare(b[1], 'zh-CN'));
+        const filterButtons = allCategories.map(([key, label]) =>
+            `<button class="skillv2-action-filter-btn" data-cat="${escapeHtml(key)}">${escapeHtml(label)}</button>`
+        ).join('');
+
+        const filterHtml = `
+            <div class="skillv2-action-filter" id="skillv2ActionFilter">
+                <div class="skillv2-action-filter-head">
+                    <div class="skillv2-action-filter-title">筛选动作组（按功能分类，可多选）</div>
+                    <button class="skillv2-node-visibility-toggle" id="skillv2NodeVisibilityToggle" data-hide="${timelineHideNodesMode ? 'true' : 'false'}">${timelineHideNodesMode ? '显示节点' : '隐藏节点'}</button>
+                </div>
+                <div class="skillv2-action-filter-buttons">
+                    <button class="skillv2-action-filter-btn active" data-cat="__ALL__">全部</button>
+                    ${filterButtons}
+                </div>
+            </div>
+        `;
+
         const toggleButton = timeline.length > 5
             ? '<button id="skillv2TimelineExpandBtn" class="skillv2-timeline-expand-btn" data-expanded="false">展开全部</button>'
             : '';
 
         return `
-            <div class="skillv2-timeline-graph">
+            <div class="skillv2-timeline-graph" id="skillv2TimelineGraph" data-hide-nodes="${timelineHideNodesMode ? 'true' : 'false'}">
                 <div class="skillv2-timeline-axis">全局帧区间: ${minFrame} - ${maxFrame}（默认显示约5组高度，可滚轮查看全部）</div>
+                ${filterHtml}
                 <div class="skillv2-timeline-lines" id="skillv2TimelineLines">${lines}</div>
                 ${toggleButton}
             </div>
@@ -400,22 +657,112 @@
         `;
     }
 
+    function updateTimelineDetailFromSelection() {
+        const panel = document.getElementById('skillv2TimelineDetailPanel');
+        if (!panel) return;
+
+        const selectedLine = document.querySelector('.skillv2-timeline-line.selected');
+        if (!selectedLine || selectedLine.style.display === 'none') {
+            panel.innerHTML = '<div class="skillv2-empty">请点击一个动作组查看详情。</div>';
+            return;
+        }
+
+        const groups = currentSkillData?.actionGroupData?.timelineActions || [];
+        const index = Number(selectedLine.dataset.groupIndex);
+        if (!Number.isFinite(index) || !groups[index]) {
+            panel.innerHTML = '<div class="skillv2-empty">该动作组数据不可用。</div>';
+            return;
+        }
+
+        panel.innerHTML = renderSingleTimelineGroupDetail(groups[index], index);
+    }
+
     function bindTimelineInteractions() {
         const lines = document.querySelectorAll('.skillv2-timeline-line');
         if (!lines.length) return;
 
+        const inHideMode = () => {
+            const graph = document.getElementById('skillv2TimelineGraph');
+            return graph?.dataset.hideNodes === 'true';
+        };
+
+        const applyNodeVisibilityMode = () => {
+            const hidden = inHideMode();
+            const pinned = document.querySelector('.skillv2-timeline-line.nodes-pinned');
+            lines.forEach(line => {
+                line.classList.remove('nodes-hover');
+                if (!hidden) {
+                    line.classList.remove('nodes-collapsed');
+                    line.classList.remove('nodes-pinned');
+                    return;
+                }
+                const keep = pinned && pinned === line;
+                line.classList.toggle('nodes-collapsed', !keep);
+            });
+        };
+
         lines.forEach(line => {
             line.addEventListener('click', () => {
-                const index = Number(line.dataset.groupIndex);
-                const groups = currentSkillData?.actionGroupData?.timelineActions || [];
-                const panel = document.getElementById('skillv2TimelineDetailPanel');
-                if (!panel || !Number.isFinite(index) || !groups[index]) return;
+                if (line.style.display === 'none') return;
 
-                document.querySelectorAll('.skillv2-timeline-line').forEach(n => n.classList.remove('active'));
-                line.classList.add('active');
-                panel.innerHTML = renderSingleTimelineGroupDetail(groups[index], index);
+                const alreadySelected = line.classList.contains('selected');
+                document.querySelectorAll('.skillv2-timeline-line.selected').forEach(n => n.classList.remove('selected'));
+
+                if (!alreadySelected) {
+                    line.classList.add('selected');
+                }
+
+                if (inHideMode()) {
+                    document.querySelectorAll('.skillv2-timeline-line.nodes-pinned').forEach(n => n.classList.remove('nodes-pinned'));
+                    if (!alreadySelected) {
+                        line.classList.add('nodes-pinned');
+                    }
+                }
+
+                updateTimelineDetailFromSelection();
+                applyNodeVisibilityMode();
             });
         });
+
+        applyNodeVisibilityMode();
+    }
+
+    function bindNodeVisibilityToggle() {
+        const graph = document.getElementById('skillv2TimelineGraph');
+        const btn = document.getElementById('skillv2NodeVisibilityToggle');
+        if (!graph || !btn) return;
+
+        const apply = () => {
+            graph.dataset.hideNodes = timelineHideNodesMode ? 'true' : 'false';
+            btn.dataset.hide = timelineHideNodesMode ? 'true' : 'false';
+            btn.textContent = timelineHideNodesMode ? '显示节点' : '隐藏节点';
+
+            const lines = Array.from(document.querySelectorAll('.skillv2-timeline-line'));
+            const selected = document.querySelector('.skillv2-timeline-line.selected');
+            lines.forEach(line => {
+                line.classList.remove('nodes-hover');
+                line.classList.remove('nodes-pinned');
+                if (!timelineHideNodesMode) {
+                    line.classList.remove('nodes-collapsed');
+                    return;
+                }
+                const keep = selected && selected === line && line.style.display !== 'none';
+                if (keep) {
+                    line.classList.add('nodes-pinned');
+                    line.classList.remove('nodes-collapsed');
+                } else {
+                    line.classList.add('nodes-collapsed');
+                }
+            });
+        };
+
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            timelineHideNodesMode = !timelineHideNodesMode;
+            apply();
+        });
+
+        apply();
     }
 
     function bindTimelineTooltip() {
@@ -426,7 +773,15 @@
         const show = (line, event) => {
             const start = line.dataset.startFrame || '?';
             const end = line.dataset.endFrame || '?';
-            tooltip.textContent = '起始帧: ' + start + ' ｜ 结束帧: ' + end;
+            const nodeSummary = line.dataset.nodeSummary || '节点: 无';
+            const startNum = Number(start);
+            const endNum = Number(end);
+            const durationFrame = (Number.isFinite(startNum) && Number.isFinite(endNum)) ? Math.max(0, endNum - startNum) : 0;
+            const durationText = formatFrameDuration(durationFrame);
+            tooltip.innerHTML = `
+                <div class="skillv2-tooltip-line-main">起始帧: ${escapeHtml(start)} ｜ 结束帧: ${escapeHtml(end)} ｜ 持续帧: ${escapeHtml(durationFrame)} ｜ 持续时间: ${escapeHtml(durationText)}</div>
+                <div class="skillv2-tooltip-line-node">${escapeHtml(nodeSummary)}</div>
+            `;
             tooltip.classList.add('show');
             tooltip.setAttribute('aria-hidden', 'false');
             move(event);
@@ -450,6 +805,39 @@
         });
     }
 
+    function bindFlowDragScroll() {
+        const rows = document.querySelectorAll('.skillv2-flow-row');
+        if (!rows.length) return;
+
+        rows.forEach(row => {
+            let dragging = false;
+            let startX = 0;
+            let startScrollLeft = 0;
+
+            row.addEventListener('mousedown', (event) => {
+                dragging = true;
+                row.classList.add('dragging');
+                startX = event.clientX;
+                startScrollLeft = row.scrollLeft;
+            });
+
+            row.addEventListener('mousemove', (event) => {
+                if (!dragging) return;
+                event.preventDefault();
+                const deltaX = event.clientX - startX;
+                row.scrollLeft = startScrollLeft - deltaX;
+            });
+
+            const stopDrag = () => {
+                dragging = false;
+                row.classList.remove('dragging');
+            };
+
+            row.addEventListener('mouseleave', stopDrag);
+            row.addEventListener('mouseup', stopDrag);
+        });
+    }
+
     function bindTimelineExpandButton() {
         const btn = document.getElementById('skillv2TimelineExpandBtn');
         const linesWrap = document.getElementById('skillv2TimelineLines');
@@ -467,6 +855,79 @@
                 btn.dataset.expanded = 'true';
                 btn.textContent = '恢复滚动视图';
             }
+        });
+    }
+
+    function bindActionTypeFilter() {
+        const filterRoot = document.getElementById('skillv2ActionFilter');
+        const lines = Array.from(document.querySelectorAll('.skillv2-timeline-line'));
+        if (!filterRoot || !lines.length) return;
+
+        const buttons = Array.from(filterRoot.querySelectorAll('.skillv2-action-filter-btn'));
+
+        const applyFilter = (selectedCats) => {
+            lines.forEach(line => {
+                if (!selectedCats.size) {
+                    line.style.display = 'grid';
+                    return;
+                }
+                const cats = String(line.dataset.actionCats || '').split('|').filter(Boolean);
+                const hit = cats.some(c => selectedCats.has(c));
+                line.style.display = hit ? 'grid' : 'none';
+            });
+            document.querySelectorAll('.skillv2-timeline-line.selected').forEach(line => {
+                if (line.style.display === 'none') line.classList.remove('selected');
+            });
+
+            if (timelineHideNodesMode) {
+                const selected = document.querySelector('.skillv2-timeline-line.selected');
+                lines.forEach(line => {
+                    line.classList.remove('nodes-hover');
+                    line.classList.remove('nodes-pinned');
+                    if (line.style.display === 'none') {
+                        line.classList.remove('nodes-collapsed');
+                        return;
+                    }
+                    if (selected && selected === line) {
+                        line.classList.add('nodes-pinned');
+                        line.classList.remove('nodes-collapsed');
+                    } else {
+                        line.classList.add('nodes-collapsed');
+                    }
+                });
+            }
+
+            updateTimelineDetailFromSelection();
+        };
+
+        buttons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const key = btn.dataset.cat || '__ALL__';
+                const allBtn = buttons.find(b => (b.dataset.cat || '__ALL__') === '__ALL__');
+
+                if (key === '__ALL__') {
+                    buttons.forEach(b => b.classList.remove('active'));
+                    if (allBtn) allBtn.classList.add('active');
+                    applyFilter(new Set());
+                    return;
+                }
+
+                btn.classList.toggle('active');
+                if (allBtn) allBtn.classList.remove('active');
+
+                const selected = new Set(
+                    buttons
+                        .filter(b => b.classList.contains('active') && (b.dataset.cat || '__ALL__') !== '__ALL__')
+                        .map(b => b.dataset.cat)
+                        .filter(Boolean)
+                );
+
+                if (!selected.size && allBtn) {
+                    allBtn.classList.add('active');
+                }
+
+                applyFilter(selected);
+            });
         });
     }
 
@@ -618,18 +1079,6 @@
                     <div class="skillv2-block-title">passiveEventActions（被动事件触发）</div>
                     ${renderPassiveEventsSection(actionGroupData)}
                 </div>
-
-                <div class="skillv2-card">
-                    <div class="skillv2-card-title">全量 JSON 条目树</div>
-                    <div class="skillv2-json-root">
-                        ${renderJsonTree(data, '$', 0)}
-                    </div>
-                </div>
-
-                <div class="skillv2-card">
-                    <div class="skillv2-card-title">原始 JSON</div>
-                    <pre class="skillv2-raw-json">${escapeHtml(safeJson(data))}</pre>
-                </div>
             </div>
         `;
     }
@@ -643,9 +1092,12 @@
             const data = await fetchSkillData(item.contentFile);
             currentSkillData = data;
             main.innerHTML = renderDetail(data, item);
+            bindActionTypeFilter();
+            bindNodeVisibilityToggle();
             bindTimelineInteractions();
             bindTimelineExpandButton();
             bindTimelineTooltip();
+            bindFlowDragScroll();
         } catch (err) {
             currentSkillData = null;
             main.innerHTML = '<div class="error-message">加载失败: ' + escapeHtml(err.message) + '</div>';

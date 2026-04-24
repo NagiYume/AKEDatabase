@@ -127,6 +127,81 @@
     margin-bottom: 8px;
 }
 
+.skillv2-action-filter {
+    border: 1px solid var(--border-color, #d9e0e8);
+    background: var(--module-bg, #f8fafd);
+    border-radius: 8px;
+    padding: 6px;
+    margin-bottom: 8px;
+}
+
+.skillv2-action-filter-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-color, #1e2b3c);
+}
+
+.skillv2-action-filter-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.skillv2-node-visibility-toggle {
+    border: 1px solid #bcd0e2;
+    background: #ffffff;
+    color: #2a4d67;
+    border-radius: 999px;
+    font-size: 11px;
+    line-height: 1;
+    padding: 5px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.skillv2-node-visibility-toggle:hover {
+    background: #edf5fc;
+}
+
+.skillv2-node-visibility-toggle[data-hide="true"] {
+    background: #1f6f9e;
+    border-color: #1f6f9e;
+    color: #ffffff;
+}
+
+.skillv2-action-filter-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-height: 96px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.skillv2-action-filter-btn {
+    border: 1px solid var(--border-color, #cfd8e3);
+    background: #ffffff;
+    color: var(--text-color, #1e2b3c);
+    border-radius: 999px;
+    font-size: 11px;
+    line-height: 1;
+    padding: 5px 8px;
+    cursor: pointer;
+}
+
+.skillv2-action-filter-btn:hover {
+    background: #edf5fc;
+    border-color: #b8cee2;
+}
+
+.skillv2-action-filter-btn.active {
+    background: #1f6f9e;
+    border-color: #1f6f9e;
+    color: #ffffff;
+}
+
 .skillv2-timeline-line {
     border-top: 1px dashed var(--border-color, #d9e0e8);
     padding-top: 6px;
@@ -164,7 +239,8 @@
     background: rgba(30, 111, 159, 0.06);
 }
 
-.skillv2-timeline-line.active {
+.skillv2-timeline-line.active,
+.skillv2-timeline-line.selected {
     background: rgba(30, 111, 159, 0.1);
     outline: 1px solid rgba(30, 111, 159, 0.25);
 }
@@ -222,9 +298,43 @@
 .skillv2-flow-row {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 4px;
     margin-top: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    cursor: grab;
+    user-select: none;
+}
+
+.skillv2-timeline-line.nodes-collapsed .skillv2-flow-row {
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
+    margin-top: 0;
+    overflow: hidden;
+}
+
+.skillv2-timeline-line.nodes-hover .skillv2-flow-row,
+.skillv2-timeline-line.nodes-pinned .skillv2-flow-row {
+    max-height: 300px;
+    opacity: 1;
+    pointer-events: auto;
+    margin-top: 6px;
+}
+
+.skillv2-flow-row.dragging {
+    cursor: grabbing;
+}
+
+.skillv2-flow-row::-webkit-scrollbar {
+    height: 8px;
+}
+
+.skillv2-flow-row::-webkit-scrollbar-thumb {
+    background: #c2cfde;
+    border-radius: 999px;
 }
 
 .skillv2-timeline-lines {
@@ -278,7 +388,8 @@
     font-size: 12px;
     line-height: 1.2;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
-    white-space: nowrap;
+    white-space: normal;
+    max-width: min(720px, 88vw);
 }
 
 .skillv2-timeline-tooltip.show {
@@ -286,9 +397,21 @@
     transform: translateY(0);
 }
 
+.skillv2-tooltip-line-main {
+    white-space: nowrap;
+}
+
+.skillv2-tooltip-line-node {
+    margin-top: 4px;
+    color: #d8e8f6;
+    line-height: 1.3;
+    word-break: break-word;
+}
+
 .skillv2-flow-node {
     display: inline-flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: stretch;
     gap: 4px;
     background: var(--module-bg, #f8fafd);
     border: 1px solid var(--border-color, #d9e0e8);
@@ -297,6 +420,59 @@
     font-size: 11px;
     color: var(--text-color, #1e2b3c);
     max-width: 100%;
+}
+
+.skillv2-flow-main {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.skillv2-flow-node.has-branch {
+    border-radius: 10px;
+    padding: 5px 8px;
+}
+
+.skillv2-flow-branches {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 3px;
+    margin-top: 2px;
+}
+
+.skillv2-flow-branch {
+    font-size: 10px;
+    line-height: 1.2;
+    border-radius: 6px;
+    padding: 2px 6px;
+    border: 1px dashed rgba(0, 0, 0, 0.15);
+    background: rgba(255, 255, 255, 0.55);
+    color: #304f66;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 260px;
+}
+
+.skillv2-flow-branch.cond {
+    background: rgba(255, 248, 220, 0.8);
+}
+
+.skillv2-flow-branch.then {
+    background: rgba(225, 248, 230, 0.8);
+}
+
+.skillv2-flow-branch.else {
+    background: rgba(255, 235, 235, 0.8);
+}
+
+.skillv2-flow-cat {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 0.65);
+    color: #24445d;
 }
 
 .skillv2-flow-index {
@@ -312,9 +488,170 @@
     font-weight: 700;
 }
 
-.skillv2-flow-arrow {
-    color: var(--desc-color, #5b6f86);
-    font-size: 12px;
+.skillv2-flow-seq {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.skillv2-flow-step {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+
+.skillv2-flow-step-ifelse {
+    align-items: flex-start;
+}
+
+.skillv2-flow-link {
+    position: relative;
+    display: inline-block;
+    width: 18px;
+    height: 0;
+    border-top: 1px solid var(--desc-color, #5b6f86);
+    flex: 0 0 auto;
+}
+
+.skillv2-flow-link::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: -4px;
+    width: 0;
+    height: 0;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-left: 5px solid var(--desc-color, #5b6f86);
+}
+
+.skillv2-flow-ifelse {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 6px;
+    width: max-content;
+    border: 1px solid rgba(47, 77, 99, 0.32);
+    border-radius: 10px;
+    padding: 8px 10px;
+    background: linear-gradient(180deg, rgba(248, 251, 255, 0.95) 0%, rgba(242, 248, 252, 0.95) 100%);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+.skillv2-flow-ifelse-frame-title {
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 700;
+    color: #2f4d63;
+    background: rgba(226, 234, 249, 0.92);
+    border: 1px solid rgba(47, 77, 99, 0.18);
+    border-radius: 999px;
+    padding: 2px 8px;
+    width: fit-content;
+}
+
+.skillv2-flow-if-head {
+    display: inline-flex;
+    align-items: center;
+}
+
+.skillv2-flow-branch-lanes {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-left: 14px;
+    padding-left: 10px;
+}
+
+.skillv2-flow-branch-lane {
+    position: relative;
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 6px;
+    width: max-content;
+    padding-left: 10px;
+}
+
+.skillv2-flow-branch-lane::before {
+    content: '';
+    position: absolute;
+    left: -10px;
+    top: 8px;
+    width: 10px;
+    height: 1px;
+    background: var(--desc-color, #5b6f86);
+}
+
+.skillv2-flow-branch-lane.true::after {
+    content: '';
+    position: absolute;
+    left: -10px;
+    top: 8px;
+    width: 1px;
+    height: calc(100% + 6px);
+    background: var(--desc-color, #5b6f86);
+}
+
+.skillv2-flow-branch-entry {
+    position: relative;
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0;
+    min-width: 20px;
+    min-height: 14px;
+}
+
+.skillv2-flow-branch-entry .skillv2-flow-link {
+    display: block;
+    margin-top: 8px;
+}
+
+.skillv2-flow-if-cond {
+    font-size: 10px;
+    color: #2f4d63;
+    background: rgba(255, 248, 220, 0.8);
+    border: 1px dashed rgba(0, 0, 0, 0.18);
+    border-radius: 6px;
+    padding: 2px 6px;
+    margin-top: 2px;
+    max-width: 360px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.skillv2-flow-branch-text {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    border-radius: 999px;
+    padding: 1px 6px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.skillv2-flow-branch-text.true {
+    background: rgba(225, 248, 230, 0.82);
+    color: #2b5b33;
+}
+
+.skillv2-flow-branch-text.false {
+    background: rgba(255, 235, 235, 0.82);
+    color: #6a2f2f;
+}
+
+.skillv2-flow-branch-content {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 4px;
+    white-space: nowrap;
 }
 
 .skillv2-table {
@@ -334,6 +671,31 @@
 
 .skillv2-table thead th {
     background: var(--table-header-bg, #eef3fa);
+}
+
+.skillv2-value-details {
+    display: block;
+}
+
+.skillv2-value-summary {
+    cursor: pointer;
+    color: #2b5b7f;
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+}
+
+.skillv2-value-expanded {
+    margin: 6px 0 0;
+    padding: 8px;
+    border: 1px solid var(--border-color, #d9e0e8);
+    border-radius: 8px;
+    background: #ffffff;
+    max-height: 220px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 11px;
+    line-height: 1.35;
 }
 
 .skillv2-time-group,
@@ -401,6 +763,16 @@
     font-size: 12px;
 }
 
+.skillv2-action-cat {
+    font-size: 10px;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: #e8f0f7;
+    color: #2b526e;
+    border: 1px solid #cfdbe8;
+}
+
 .skillv2-action-full {
     font-family: Consolas, "Courier New", monospace;
     font-size: 10px;
@@ -410,6 +782,105 @@
 
 .skillv2-action-body {
     padding: 6px;
+}
+
+.skillv2-ifelse-node {
+    margin-left: calc(var(--depth, 0) * 14px);
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(280px, 1.4fr);
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.skillv2-ifelse-condition {
+    border: 1px solid var(--border-color, #d9e0e8);
+    border-radius: 10px;
+    background: #fffdf1;
+    overflow: hidden;
+}
+
+.skillv2-ifelse-branches {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.skillv2-ifelse-branch {
+    border: 1px solid var(--border-color, #d9e0e8);
+    border-radius: 10px;
+    background: var(--content-bg, #ffffff);
+    padding: 6px;
+    min-width: 0;
+}
+
+.skillv2-ifelse-branch.then {
+    background: #eefbf1;
+}
+
+.skillv2-ifelse-branch.else {
+    background: #fff0f0;
+}
+
+.skillv2-ifelse-branch-title {
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: #27455b;
+}
+
+.skillv2-flow-node.cat-anim,
+.skillv2-action-node.cat-anim .skillv2-action-head {
+    background: #e8f8ea;
+}
+
+.skillv2-flow-node.cat-damage,
+.skillv2-action-node.cat-damage .skillv2-action-head {
+    background: #fdeaea;
+}
+
+.skillv2-flow-node.cat-buff,
+.skillv2-action-node.cat-buff .skillv2-action-head {
+    background: #f4ecff;
+}
+
+.skillv2-flow-node.cat-target,
+.skillv2-action-node.cat-target .skillv2-action-head {
+    background: #e8f4ff;
+}
+
+.skillv2-flow-node.cat-move,
+.skillv2-action-node.cat-move .skillv2-action-head {
+    background: #fff4e8;
+}
+
+.skillv2-flow-node.cat-camera,
+.skillv2-action-node.cat-camera .skillv2-action-head {
+    background: #eef2ff;
+}
+
+.skillv2-flow-node.cat-av,
+.skillv2-action-node.cat-av .skillv2-action-head {
+    background: #eafaf6;
+}
+
+.skillv2-flow-node.cat-condition,
+.skillv2-action-node.cat-condition .skillv2-action-head {
+    background: #fff9e8;
+}
+
+.skillv2-flow-node.cat-spawn,
+.skillv2-action-node.cat-spawn .skillv2-action-head {
+    background: #e8fbff;
+}
+
+.skillv2-flow-node.cat-resource,
+.skillv2-action-node.cat-resource .skillv2-action-head {
+    background: #f1f3f6;
+}
+
+.skillv2-flow-node.cat-misc,
+.skillv2-action-node.cat-misc .skillv2-action-head {
+    background: #f3f4f7;
 }
 
 .skillv2-subtitle {
@@ -612,16 +1083,34 @@
         grid-template-columns: 1fr;
     }
 
-    .skillv2-flow-row {
-        gap: 4px;
+    .skillv2-action-filter-head {
+        align-items: flex-start;
+        flex-direction: column;
     }
 
     .skillv2-flow-node {
         border-radius: 10px;
     }
 
+    .skillv2-flow-if-cond {
+        max-width: 100%;
+    }
+
+    .skillv2-flow-branch-lanes {
+        margin-left: 10px;
+        padding-left: 8px;
+    }
+
     .skillv2-timeline-line {
         grid-template-columns: 44px 1fr;
         gap: 6px;
+    }
+
+    .skillv2-ifelse-node {
+        grid-template-columns: 1fr;
+    }
+
+    .skillv2-ifelse-branches {
+        grid-template-columns: 1fr;
     }
 }
