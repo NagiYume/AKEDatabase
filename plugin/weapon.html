@@ -411,6 +411,7 @@
                             const value = replaceMap[name];
                             evalExpr = evalExpr.replace(new RegExp(`\\b${name}\\b`, 'g'), value);
                         }
+                        if (!/^[0-9+\-*/().\s]+$/.test(evalExpr)) return match;
                         let result;
                         try {
                             result = new Function('return ' + evalExpr)();
