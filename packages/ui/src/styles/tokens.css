@@ -1,0 +1,184 @@
+@layer ake.tokens, ake.base, ake.components, ake.utilities;
+
+@layer ake.tokens {
+  :root {
+    color-scheme: light;
+    --ake-font-sans: Inter, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+    --ake-font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+
+    --ake-color-canvas: #f4f6f8;
+    --ake-color-surface: #ffffff;
+    --ake-color-surface-raised: #ffffff;
+    --ake-color-surface-muted: #edf1f4;
+    --ake-color-surface-hover: #e7edf0;
+    --ake-color-text: #162128;
+    --ake-color-text-muted: #5b6971;
+    --ake-color-text-subtle: #74828a;
+    --ake-color-border: #cad3d8;
+    --ake-color-border-strong: #9eacb4;
+    --ake-color-accent: #006f78;
+    --ake-color-accent-hover: #005b63;
+    --ake-color-accent-soft: #d9eff0;
+    --ake-color-on-accent: #ffffff;
+    --ake-color-focus: #007d8a;
+    --ake-color-success: #167447;
+    --ake-color-success-soft: #dcefe4;
+    --ake-color-warning: #8b5b00;
+    --ake-color-warning-soft: #f8e9bf;
+    --ake-color-danger: #b4232f;
+    --ake-color-danger-soft: #f8dfe2;
+    --ake-color-overlay: rgb(13 21 26 / 62%);
+    --ake-color-code: #10181d;
+    --ake-color-code-text: #dce7ec;
+
+    --ake-space-1: 0.25rem;
+    --ake-space-2: 0.5rem;
+    --ake-space-3: 0.75rem;
+    --ake-space-4: 1rem;
+    --ake-space-5: 1.25rem;
+    --ake-space-6: 1.5rem;
+    --ake-space-7: 1.75rem;
+    --ake-space-8: 2rem;
+    --ake-space-10: 2.5rem;
+    --ake-space-12: 3rem;
+
+    --ake-radius-sm: 2px;
+    --ake-radius-md: 4px;
+    --ake-radius-lg: 6px;
+    --ake-border-width: 1px;
+    --ake-control-height-sm: 2rem;
+    --ake-control-height: 2.5rem;
+    --ake-control-height-lg: 3rem;
+    --ake-icon-size: 1.125rem;
+    --ake-content-max: 100rem;
+    --ake-directory-width: 19rem;
+    --ake-drawer-width: min(28rem, 92vw);
+
+    --ake-font-size-xs: 0.75rem;
+    --ake-font-size-sm: 0.875rem;
+    --ake-font-size-md: 1rem;
+    --ake-font-size-lg: 1.125rem;
+    --ake-font-size-xl: 1.375rem;
+    --ake-font-size-2xl: 1.75rem;
+    --ake-line-height-tight: 1.25;
+    --ake-line-height: 1.55;
+    --ake-line-height-relaxed: 1.72;
+
+    --ake-shadow-popover: 0 12px 32px rgb(21 35 42 / 16%);
+    --ake-shadow-dialog: 0 20px 60px rgb(7 15 20 / 26%);
+    --ake-duration-fast: 120ms;
+    --ake-duration-normal: 180ms;
+    --ake-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ake-z-popover: 50;
+    --ake-z-dialog: 70;
+  }
+
+  :root[data-theme='dark'],
+  [data-theme='dark'] {
+    color-scheme: dark;
+    --ake-color-canvas: #11171b;
+    --ake-color-surface: #182126;
+    --ake-color-surface-raised: #202b31;
+    --ake-color-surface-muted: #263239;
+    --ake-color-surface-hover: #2d3a41;
+    --ake-color-text: #edf4f6;
+    --ake-color-text-muted: #b4c1c7;
+    --ake-color-text-subtle: #8e9da5;
+    --ake-color-border: #3b4a52;
+    --ake-color-border-strong: #5a6b74;
+    --ake-color-accent: #55c6ce;
+    --ake-color-accent-hover: #7ad5dc;
+    --ake-color-accent-soft: #183f43;
+    --ake-color-on-accent: #09282b;
+    --ake-color-focus: #65d6df;
+    --ake-color-success: #65c792;
+    --ake-color-success-soft: #193d2c;
+    --ake-color-warning: #f1be55;
+    --ake-color-warning-soft: #493716;
+    --ake-color-danger: #ff8b94;
+    --ake-color-danger-soft: #4b252b;
+    --ake-color-overlay: rgb(2 7 10 / 72%);
+    --ake-color-code: #0b1013;
+    --ake-color-code-text: #dce7ec;
+    --ake-shadow-popover: 0 14px 36px rgb(0 0 0 / 34%);
+    --ake-shadow-dialog: 0 24px 72px rgb(0 0 0 / 48%);
+  }
+
+  :root[data-theme='yellow'],
+  [data-theme='yellow'] {
+    color-scheme: light;
+    --ake-color-canvas: #f5f5f2;
+    --ake-color-surface: #ffffff;
+    --ake-color-surface-raised: #ffffff;
+    --ake-color-surface-muted: #efefe9;
+    --ake-color-surface-hover: #e8e8df;
+    --ake-color-text: #20231f;
+    --ake-color-text-muted: #62665c;
+    --ake-color-text-subtle: #7a7e73;
+    --ake-color-border: #d2d3c7;
+    --ake-color-border-strong: #a7a99a;
+    --ake-color-accent: #7a6200;
+    --ake-color-accent-hover: #604d00;
+    --ake-color-accent-soft: #f4e9ad;
+    --ake-color-on-accent: #ffffff;
+    --ake-color-focus: #846900;
+    --ake-color-success: #276b42;
+    --ake-color-success-soft: #deede2;
+    --ake-color-warning: #865600;
+    --ake-color-warning-soft: #f6e4b5;
+    --ake-color-danger: #a62a35;
+    --ake-color-danger-soft: #f5dfe1;
+  }
+}
+
+@layer ake.base {
+  :where(.ake-ui, .ake-ui *) {
+    box-sizing: border-box;
+  }
+
+  :where(.ake-ui) {
+    min-width: 0;
+    color: var(--ake-color-text);
+    font-family: var(--ake-font-sans);
+    font-size: var(--ake-font-size-md);
+    line-height: var(--ake-line-height);
+  }
+
+  :where(.ake-ui button, .ake-ui input, .ake-ui select, .ake-ui textarea) {
+    color: inherit;
+    font: inherit;
+    letter-spacing: 0;
+  }
+
+  :where(.ake-ui button, .ake-ui [role='button'], .ake-ui input, .ake-ui [tabindex]):focus-visible {
+    outline: 2px solid var(--ake-color-focus);
+    outline-offset: 2px;
+  }
+
+  :where(.ake-ui img, .ake-ui svg) {
+    display: block;
+  }
+}
+
+@layer ake.utilities {
+  .ake-visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(.ake-ui, .ake-ui *) {
+    scroll-behavior: auto !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}

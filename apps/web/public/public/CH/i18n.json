@@ -1,0 +1,463 @@
+{
+    "language": "CH",
+    "tableLanguage": "CN",
+    "messages": {
+        "app": { "title": "AKEData · 终末地数据库" },
+        "common": { "dataLoadProgress": "数据加载进度", "loadingData": "正在加载数据...", "loadingModule": "⏳ 加载模块内容...", "firstLoadTextTableHint": "首次加载需要加载文本映射表，可能速度较慢", "all": "全部", "none": "无", "unknown": "未知", "noDescription": "无描述", "list": "列表", "mobileList": "📋 列表", "filter": "筛选", "filterCount": "筛选 ({count})", "rarity": "稀有度：", "type": "类型：", "category": "分类：", "status": "状态：", "rarityStars": "{rarity}星", "rarityLabel": "稀有度 {rarity}", "level": "等级", "attack": "攻击力", "yes": "是", "no": "否", "rawValue": "原始值：{value}", "rawValueWithName": "{name}: {value}", "time": { "days": "{count}天", "hours": "{count}小时", "minutes": "{count}分", "seconds": "{count}秒", "lessThanSecond": "不足 1 秒" }, "expandAllLevels": "展开所有等级", "collapseExtraLevels": "收起多余等级" },
+        "home": { "heroImageAlt": "起始页图片", "title": "AKEData · 《明日方舟：终末地》数据库", "precisionNote": "游戏中所有数值通常情况下都不是整数，但是在游戏中只显示整数部分，本数据库中所有数据均比游戏内更精确一位以方便查阅计算。", "disclaimer": "免责声明：本网站为同好爱好者项目，与鹰角网络和 Gryphline 官方无关。所有商标权利均归属其各自所有者。", "settingsHint": "左下角 ⚙️ 按钮可打开全局设置", "exportFallback": "起始页", "announcement": "网站公告" },
+        "nav": { "home": "返回起始页", "moduleList": "模块列表", "loadingModules": "加载模块清单...", "selectModule": "选择模块", "export": "导出长图", "noVisibleModules": "📭 暂无可见模块" },
+        "settings": {
+            "title": "全局设置", "heading": "⚙️ 全局设置", "language": "语言/Language：", "theme": "页面样式：",
+            "themes": { "light": "亮色模式", "yellow": "护眼模式", "dark": "暗色模式" },
+            "showHidden": "显示隐藏模块：", "showExport": "显示导出按钮：", "showVersionChanges": "显示版本间数据改动（测试功能）：", "keepUrlSync": "保持 URL 完整（地址栏随导航更新）：", "reset": "恢复默认设置",
+            "dataSource": { "title": "游戏数据", "version": "数据版本：", "baseUrl": "请求域名：", "reset": "恢复生产数据源", "fixedVersions": "固定版本", "online": "版本清单已从数据服务加载", "fallback": "当前正在使用兼容版本配置", "debugLocal": "调试模式已启用，latest 使用当前本地服务器数据", "debugFixed": "调试模式下正在使用数据服务中的固定版本" },
+            "cache": { "forceRefresh": "强制刷新网页缓存", "description": "由于服务器数据存在延迟，若您显示的页面中没有最新的数据，可以点击此按钮获取最新数据", "refreshing": "正在清理缓存..." },
+            "levels": { "title": "📊 默认显示等级设置", "enabled": "激活设置：", "hint": "等级筛选：可以将需要显示的等级键入，使用英文逗号分隔", "character": "角色等级：", "weapon": "武器等级：", "enemy": "敌人等级：", "skill": "角色技能等级：", "levelPlaceholder": "例：80 或 10,20,30,80", "skillPlaceholder": "例：1,9,10,11,12" },
+            "tokens": { "title": "🔑 访问令牌", "hint": "输入令牌以解锁受保护的模块及内容，多个令牌使用英文逗号分隔", "label": "令牌：", "placeholder": "请输入访问令牌", "submit": "提交", "clear": "清除所有令牌", "empty": "尚未输入任何令牌", "count": "已输入 {count} 个令牌", "enterPrompt": "请输入令牌", "added": "已添加 {count} 个令牌", "duplicate": "这些令牌已存在", "noneSaved": "当前没有已保存的令牌", "cleared": "已清除 {count} 个令牌" },
+            "showHiddenConfirm": "是否确认开启隐藏内容？隐藏内容中包含开发中内容，可能存在 bug（我们建议您不要在直播或其他公开场合开启或阅读隐藏内容）。"
+        },
+        "version": { "loading": "正在读取更新信息...", "unavailable": "更新信息暂不可用", "appLine": "AKEData · 版本 {version}", "gameLine": "游戏版本 {version}", "hotfixLine": "Hotfix 版本 {version}", "updatedLine": "最后更新于：{updatedAt}{updatedBy}", "homeLine": "AKEData {app} · {game}", "countdown": "距离下次可能的数据更新还有 {time}", "updateReason": "更新原因：{desc}" },
+        "overview": { "count": "{count} 条数据", "hint": "选择卡片查看完整数据" },
+        "versionDiff": { "group": "版本差异 · 相比 {version}", "added": "新增", "modified": "修改", "detailTitle": "显示内容差异 · 相比 {version}", "changeCount": "{count} 处变更", "truncated": "差异过多，仅显示前 500 行。" },
+        "errors": { "load": "加载失败：{message}", "startup": "应用启动失败：{message}", "notFoundTitle": "页面未找到", "notFoundDesc": "您访问的模块或条目不存在", "returnHome": "返回首页", "hiddenContentHint": "🔒 该内容可能为隐藏内容。", "hiddenContentHelp": "您可以通过点击左下角 ⚙️ 全局设置按钮，开启“显示隐藏模块”来访问隐藏内容。", "moduleContentMissing": "模块内容文件未指定", "moduleLoad": "❌ 无法加载模块内容：{message}", "moduleManifestRead": "❌ 无法读取模块清单。<br>请通过本地服务器访问。", "exportFailed": "截图失败：{message}" },
+        "data": { "independentEquipment": "独立装备" },
+        "modules": {
+            "combat": { "title": "战斗", "description": "查看技能时序、伤害、削韧与战斗逻辑", "aria": { "sidebar": "战斗技能列表", "directory": "角色、怪物与技能", "mobileDirectory": "移动端角色、怪物与技能", "search": "搜索角色、怪物或技能", "close": "关闭技能列表" }, "search": { "label": "搜索", "placeholder": "角色、怪物或技能" }, "loading": { "directory": "正在读取数据", "skillData": "正在读取技能数据", "analyzing": "正在分析战斗数据", "switchingLevel": "正在切换技能等级", "buildingDirectory": "正在建立角色与技能目录" }, "buttons": { "skillList": "技能列表", "selectSkill": "选择技能", "close": "关闭", "showPerformance": "含表现事件", "combatOnly": "仅战斗事件" }, "errors": { "readSkillData": "无法读取 {id}", "skillReadTitle": "技能读取失败", "manifestLoad": "无法加载 SkillData 清单", "combatDataTitle": "战斗数据读取失败", "emptyTitle": "没有可展示的数据", "manifestEmpty": "SkillData 清单为空", "readFailed": "读取失败" }, "warnings": { "ANALYZER_UNAVAILABLE": "战斗分析器尚未加载，当前仅展示原始基础字段。", "ANALYSIS_FAILED": "分析失败：{message}", "INVALID_PATCH_BUNDLE": "SkillPatch 输入中没有可用的等级配置。", "PATCH_LEVEL_FALLBACK": "未指定等级，当前使用等级 {selectedLevel} 的配置。", "PATCH_LEVEL_FALLBACK_REQUESTED": "未找到等级 {requestedLevel} 的配置，当前使用等级 {selectedLevel}。", "DUPLICATE_BLACKBOARD_KEY": "黑板键“{key}”在 {source} 中重复出现。", "UNRESOLVED_BLACKBOARD_KEY": "未找到黑板键“{key}”，已使用内置回退值。", "EMPTY_DAMAGE_ACTION": "伤害动作没有伤害结算单元（{path}）。", "ACTION_DEPTH_LIMIT": "嵌套动作达到深度上限，已停止遍历（{path}）。", "ACTION_NODE_LIMIT": "动作节点达到数量上限，已停止遍历（{path}）。", "REVERSED_ACTION_GROUP": "动作组结束帧早于起始帧：{startFrame}–{endFrame}（{path}）。", "UNKNOWN": "分析警告：{message}" }, "directory": { "groupLabel": "技能组", "sections": { "characters": "角色", "monsters": "怪物", "other": "其他" }, "groups": { "normalAttack": "普通攻击", "combatSkill": "战技", "ultimate": "终结技", "comboSkill": "连携技", "otherCombatActions": "其他战斗动作", "monsterSkills": "怪物技能" }, "otherGroups": { "unmappedEnemy": "未映射怪物与召唤物", "interaction": "交互与场景实体", "equipment": "装备与被动", "system": "系统与通用逻辑", "misc": "其他" }, "entityKinds": { "character": "角色", "monster": "怪物", "category": "归类", "otherCombatEntities": "其他战斗实体" } }, "counts": { "sectionEntities": "{count} 个", "directorySummary": "{characters} 个角色 · {monsters} 个怪物 · {skills} 条 SkillData", "items": "{count} 项", "hits": "{count} 段", "events": "{count} 个事件", "filteredEvents": "{visible} / {total} 项", "actions": "{count} 个动作" }, "units": { "frames": "{value} 帧", "seconds": "{value} 秒", "frameSeconds": "{frames} 帧，约 {seconds} 秒", "frameRange": "{start}–{end} 帧", "atkPercent": "{value}% ATK", "level": "等级 {value}" }, "sections": { "skillLevelConfiguration": "技能等级配置", "coreMetrics": "核心指标", "keyWindows": "关键窗口", "hitLedger": "命中账本", "blackboardResolution": "黑板解析", "allEvents": "全部事件" }, "sectionNotes": { "keyCombatFields": "关键战斗字段" }, "tabs": { "timeline": "战斗时间轴", "logic": "逻辑链", "debug": "调试数据" }, "empty": { "noMatchingCombatData": "没有匹配的战斗数据", "noCoreMetrics": "分析器未返回核心指标", "noKeyWindows": "未识别到命中、取消、抗打断、无敌或续段窗口", "noHits": "未识别到命中结算", "noTimelineEvents": "分析器未返回战斗时间轴事件", "noLogic": "未识别到条件、跳转或后继动作", "noBlackboard": "没有解析后的黑板值", "noEvents": "没有事件", "noActionDetails": "没有可展示的动作参数", "noDisplayData": "没有可展示的数据" }, "columns": { "hits": { "index": "#", "time": "时点", "type": "类型", "damage": "倍率/伤害", "poise": "破韧/失衡", "resource": "资源/异常", "note": "条件/目标" }, "events": { "index": "#", "category": "分类", "time": "时点", "event": "事件", "details": "详情" } }, "metrics": { "durationFrame": "动作总时长", "exclusiveFrame": "排他期", "offsetRecordFrame": "续段记录帧", "offsetTime": "续段保留时间", "startupFrame": "起手", "firstHitFrame": "首段命中", "lastHitFrame": "末段命中", "recoveryFrame": "收招", "cancelFrame": "可取消时点", "cooldown": "冷却", "hitCount": "命中段数", "totalDamage": "总伤害倍率", "damage": "伤害倍率", "poiseDamage": "破韧", "atb": "失衡值", "superArmor": "抗打断", "moveDistance": "位移距离", "invulnerableFrame": "无敌时间", "runtimeCooldown": "运行时冷却", "costCommitFrame": "资源提交帧", "attackRangeType": "攻击距离类型", "castDistance": "施放距离", "confirmedPoiseDamage": "确定路径总削韧", "patchCost": "等级配置消耗", "runtimeCost": "运行时消耗", "skillSuperArmor": "技能抗打断", "canMove": "可移动施放", "canCastInAir": "可空中施放", "dontInterruptCombo": "保持连段标记", "level": "等级", "costType": "消耗类型", "costValue": "消耗值" }, "windows": { "damage": "命中", "superArmor": "抗打断", "buffSuperArmor": "霸体 Buff", "damageImmune": "无敌", "allowNextSkill": "允许接续", "comboCache": "输入缓存", "canInterrupt": "可取消", "canDash": "可闪避取消", "blockMoveInterrupt": "禁止移动打断", "hitStop": "顿帧", "timeDilation": "时间膨胀", "movement": "位移", "exclusive": "排他期", "offsetRecord": "续段记录帧", "costCommit": "资源提交帧", "named": "窗口 {index}" }, "events": { "presentation": "表现", "combat": "战斗", "named": "事件 {index}" }, "logic": { "named": "逻辑 {index}", "conditionBranch": "条件分支", "rootSkill": "根技能", "link": "链接" }, "blackboard": { "patchSource": "SkillPatch Lv.{level}", "defaultSource": "SkillData 默认值" }, "raw": { "analyzerOutput": "分析器输出", "currentPatch": "当前等级 SkillPatch", "skillData": "原始 SkillData" }, "sourceWarning": "当前 SkillData 使用共享最新数据，角色与等级表使用所选历史版本；跨版本字段仅供对照。", "enums": { "groupTypes": { "normalAttack": "普通攻击", "combatSkill": "战技", "ultimate": "终结技", "comboSkill": "连携技" }, "attackAttributes": { "physical": "物理伤害", "real": "真实伤害", "fire": "灼热伤害", "pulse": "电磁伤害", "cryst": "寒冷伤害", "crystal": "寒冷伤害", "lifedrain": "吸血伤害", "natural": "自然伤害", "ether": "超域伤害" }, "costTypes": { "ultimateSp": "终结技能量", "atb": "技力", "resource": "资源" }, "attackRanges": { "melee": "近战", "ranged": "远程" }, "entityKinds": { "character": "角色", "monster": "怪物", "other": "其他" }, "eventKinds": { "presentation": "表现", "combat": "战斗" }, "controlTypes": { "interrupt": "打断", "crush": "压倒", "fracture": "碎甲", "spellInfliction": "元素附着" }, "castTypes": { "active": "主动", "passive": "被动" }, "skillSpecifications": { "characterNormalSkill": "角色普通技能", "default": "默认" }, "passiveSkillTypes": { "default": "默认" } }, "timeline": { "summary": { "more": "另 {count} 项", "input": "输入", "duration": "持续 {value}", "damageUnits": "{count} 个结算单元" }, "enums": { "eq": "=", "ne": "≠", "gt": ">", "ge": "≥", "lt": "<", "le": "≤", "owner": "持有者", "actionOwner": "动作持有者", "source": "来源", "actionSource": "动作来源", "target": "目标", "context": "上下文", "atb": "ATB", "ultimateSp": "终结技能量", "usp": "USP", "gain": "获取", "consume": "消耗", "set": "设置", "assign": "赋值", "add": "相加", "subtract": "相减", "multiply": "相乘", "divide": "相除", "sourceForward": "来源朝向", "sourceToTarget": "来源指向目标", "targetToSource": "目标指向来源", "self": "自身", "friend": "友方", "anti": "敌方", "all": "全部", "hp": "生命", "poise": "韧性", "interrupt": "打断", "crush": "压倒", "fracture": "碎甲", "spellInfliction": "元素附着", "normalAttack": "普通攻击", "normalSkill": "战技", "ultimateSkill": "终结技", "comboSkill": "连携技", "melee": "近战", "ranged": "远程" }, "actions": {"AchieveSpecialGameEventAction":"达成特殊游戏事件","AddAIMarkerAction":"添加 AI 标记","AddCameraControlStateAction":"添加镜头控制状态","AddDynamicCcsAction":"添加动态镜头控制状态","AddDynamicNavmeshObstacle":"添加动态导航障碍","AddGlobalCDTimer":"添加全局冷却计时","AddTagAction":"添加标签","AddTagToEntities":"为实体添加标签","AirborneAction":"浮空","AllowNextSkillAction":"开放接续","AnimatedCameraAction":"播放演出镜头","AnimatorAimOffsetAction":"设置瞄准偏移","AnimEventReceiver":"监听动画事件","ApplyArmor":"应用护甲","AuraAction":"创建领域","BlightMiasmaToleranceZero":"瘴气耐受归零","BlockMoveInterruptSkill":"禁止移动打断","BlowOffAction":"击退","BlowOffCharacterAction":"击退角色","BlowOffEnemyAction":"击退敌人","BoneAttachAction":"骨骼挂接","BreakInteractiveAction":"破坏交互物","BroadcastAlertToCharactersAction":"广播角色警戒","CameraImpulseAction":"镜头震动","CameraRotateAction":"镜头旋转","CastSkill":"施放子技能","ChangeSkillAction":"替换技能","ChangeSpecificLayerAction":"切换指定层","ChannelingAction":"持续引导","ChannelingActionV2":"持续引导","ChannelingCastingAction":"引导施法","ChannelingDamageAction":"持续伤害结算","CharAlertJumpAction":"角色警戒跳跃","CharFollowAction":"角色跟随","CharHurtAnimAction":"角色受击动画","CharWeaponAnimationAction":"武器动画","CharWeaponVisibleAction":"武器显隐","CheckAllowNormalSkillHighlight":"检查普通技能高亮条件","CheckAbilityEntityCurDuration":"检查能力实体剩余时间","CheckAttackRangeType":"检查攻击距离类型","CheckBuffIdInContext":"检查上下文 Buff","CheckBuffIdInContextAdvanced":"高级检查上下文 Buff","CheckBuffStackNum":"检查 Buff 层数","CheckBuffStackNumAdvanced":"高级检查 Buff 层数","CheckBuffStackNumByTag":"按标签检查 Buff 层数","CheckComboSkillCameraAlphaSetting":"检查连携技镜头透明度","CheckConsumeBuffLayer":"检查消耗 Buff 层数","CheckDamageDecorateMask":"检查伤害修饰掩码","CheckDamageType":"检查伤害类型","CheckDamageTypeMask":"检查伤害类型掩码","CheckDistanceCondition":"检查距离","CheckEnemyRank":"检查敌人阶级","CheckEntityNum":"检查实体数量","CheckGlobalCDTimerAction":"检查全局冷却","CheckHasMoveInput":"检查移动输入","CheckHealTag":"检查治疗标签","CheckHitColliderOptions":"检查命中碰撞选项","CheckHp":"检查生命值","CheckIsCriticalDamage":"检查是否暴击","CheckMainCharacterCondition":"检查主控角色","CheckObjectTypeMatch":"检查对象类型","CheckObtainAtbType":"检查 ATB 获取方式","CheckOriginSkillType":"检查来源技能类型","CheckOverHeal":"检查溢出治疗","CheckPartTagMatch":"检查部件标签","CheckPerfectDodgeDirection":"检查完美闪避方向","CheckPhysicalInflictionType":"检查物理附着类型","CheckPoiseValue":"检查韧性值","CheckSkillCameraMotionFree":"检查技能镜头自由移动","CheckSkillHasHit":"检查技能是否命中","CheckSkillType":"检查技能类型","CheckSpellInflictionType":"检查元素附着类型","CheckSquadInFight":"检查小队战斗状态","CheckSuperArmor":"检查抗打断","CheckTagMatch":"检查标签匹配","CheckTargetAngle":"检查目标夹角","CheckTargetContains":"检查目标包含关系","CheckTargetInScreen":"检查目标是否在屏幕内","CheckTargetsEqual":"检查目标相同","CheckTimedMarkerCondition":"检查计时标记","CheckTwoDirectionAngle":"检查双方向夹角","CheckWeaponTypeCondition":"检查武器类型","ClearProjectileAction":"清除投射物","ComboAction":"执行连段","ComboCacheAction":"输入缓存","CommandToCharactersAction":"向角色下达指令","CompareDeckAttr":"比较卡组属性","CompareFloat":"比较数值","CompareString":"比较字符串","ContinuousFindTargetAction":"持续查找目标","ContinuousSetAnimTimeScale":"持续设置动画速度","ConvertToTargetContext":"转换目标上下文","CreateAdditionalBattleShape":"创建附加战斗形状","CreateBuffAction":"创建 Buff","CreateBuffAttachingSkill":"创建附属技能 Buff","CreateGlobalBuffAction":"创建全局 Buff","CreateTimedMarker":"创建计时标记","CrushAction":"压倒","CurveEvaluateFloat":"曲线取值","CustomRootMotionAction":"自定义根运动","DamageAction":"伤害结算","DebugPrintAction":"调试输出","DiceFloat":"随机浮点数","DisableMoveColliderAction":"禁用移动碰撞体","DisableRootMotionAction":"禁用根运动","DispelAction":"驱散","DoOnceAction":"仅执行一次","EffectAction":"播放特效","EffectControlAction":"控制特效","EffectFindTargetAction":"按特效查找目标","EliteBackSwingBeHit":"精英后摇受击","EnablePartsAction":"切换部件","EnemyHurtAnimAction":"敌人受击动画","EnemyWarningAction":"敌人攻击预警","EventListenerAction":"监听事件","ExtendBuffAction":"延长 Buff","FacBuildingPlayAnimationAction":"建筑播放动画","FindTargetAction":"查找目标","FinishAngryOnEnd":"结束时解除愤怒","FinishBuffAction":"移除 Buff","FinishBuffAdvanced":"高级移除 Buff","FinishBuffByTag":"按标签移除 Buff","FinishOwnerAction":"销毁持有者","ForceHideHeadBarAction":"强制隐藏血条","ForceSpellStatusAction":"强制元素状态","ForEachAction":"遍历目标","FractureAction":"碎甲","GainBreakingAttackAtb":"增加破防失衡值","GetAITransDataAction":"读取 AI 位姿","GetPatrolTeleportPos":"获取巡逻传送位置","GetTargetBuffBBAdvanced":"读取目标 Buff 黑板","HealAction":"治疗结算","HideUIAction":"隐藏界面","HitStopAction":"顿帧","HurtAnimAction":"受击动画","IfElseAction":"条件分支","IgniteAction":"点燃","IgnoreModelIntervalCheck":"忽略模型间隔检测","InheritBuffAction":"继承 Buff","InheritCCSAction":"继承镜头控制状态","InterruptAction":"施加打断","InterruptCurSkillAction":"中断当前技能","IntResourceHpCheckAction":"交互资源生命检查","IntResourceOnHpZeroAction":"交互资源生命归零","InverseSpellInfliction":"反向元素附着","JumpToAction":"跳转到指定帧","JumpToTargetAction":"跳向目标","KnockDownAction":"击倒","LaunchProjectile":"发射投射物","LaunchUpwardAction":"击飞","LockCameraAimAction":"锁定瞄准镜头","LogAction":"日志输出","LookAtAction":"朝向目标","MarkCanDash":"开放闪避取消","MarkCanInterrupt":"开放取消","MergeTargetAction":"合并目标","ModifyCameraLockPointAction":"修改镜头锁定点","ModifyCollectedBuffBbValue":"修改已收集 Buff 黑板值","ModifyDynamicBlackboard":"修改动态黑板","ModifyWeaponMountPoint":"修改武器挂点","MoveToAction":"移动","MoveToDirectionAction":"向指定方向移动","MoveToLocationAction":"移动到位置","MoveToSlotAction":"移动到站位","MoveToTargetAction":"移动到目标","NotNextCheckAction":"反转下一项检查","ObtainCostAction":"获取资源","ObtainUspInNormalSkill":"普通战技获取 USP","OrConditionAction":"或条件","OverrideBornPosition":"覆盖出生位置","OverrideCameraFollowAction":"覆盖镜头跟随","PatrolRefreshCheckPoint":"刷新巡逻检查点","PauseComboSkillTime":"暂停连携技计时","PhysicsCastAction":"物理投射检测","PickTargetAction":"选取目标","PlayAnimationAction":"播放动画","PlayAnimationWithStep":"分段播放动画","PlayNormalDashAnimAction":"播放普通冲刺动画","PlayPerfectDodgeAnim":"播放完美闪避动画","PlaySoundAction":"播放音效","Probablity":"概率判断","PullAction":"牵引","PushAction":"推动","PushBackAction":"推开","RandomAction":"生成随机值","RayCastEffectAction":"射线检测特效","ReadSkillSettingData":"读取技能设置","ReceiveMoveInputAction":"接收移动输入","RecoverPoiseAction":"恢复韧性","RemoveAIMarkerAction":"移除 AI 标记","RepeatAction":"重复执行","SaveAtbObtainValue":"保存 ATB 获取值","SaveBuffStackNumAdvanced":"高级保存 Buff 层数","SaveBuffStackNumByTag":"按标签保存 Buff 层数","SaveCameraAngle":"保存镜头角度","SaveCharTypeId":"保存角色类型 ID","SaveTargetDistanceAction":"保存目标距离","SaveTwoDirectionAngle":"保存双方向夹角","SaveValueFromAIBlackboard":"保存 AI 黑板值","SelfRotateAction":"自身转向","SendBattleSignalToLevel":"向关卡发送战斗信号","SetAbilityEntityDuration":"设置能力实体持续时间","SetAbilityEntityTarget":"设置能力实体目标","SetAbilityEntityToMainChar":"将能力实体关联至主控角色","SetAnimatorParamAction":"设置动画参数","SetIgnoreGlobalTimeScaleAction":"设置忽略全局时间缩放","SetMultiTimesWeakness":"设置多段弱点","SetSkillCdAtOnce":"立即设置技能冷却","SetSuperArmorAction":"设置抗打断","SetWeaknessAction":"设置弱点","ShowComboSkillUI":"显示连携技界面","ShowHideActorAction":"角色显隐","SimpleCalcBBAction":"黑板数值计算","SkillAIMoveAction":"技能 AI 移动","SlowAction":"减速","SnapToTargetWithRangeAction":"贴近目标","SpawnAbilityEntity":"生成能力实体","SpawnEnemyAction":"生成敌人","SpawnInteractiveGoldCoin":"生成交互金币","SpellInfliction":"元素附着","SpellInflictionOnChar":"对角色施加元素附着","StoreAttributeValue":"保存属性值","StoreCurSkillExecuteFrame":"保存当前技能执行帧","SwitchAction":"多分支选择","SwitchModeAction":"切换模式","TakeDownAction":"压制击倒","TargetPostProcessorAction":"目标后处理","TeleportAction":"瞬移","TeleportPosSelectAction":"选择瞬移位置","TemporaryUnlockAction":"临时解除锁定","ThrowPickupItemAction":"投掷拾取物","ThrowPickupItemStartAction":"开始投掷拾取物","TickIntervalAction":"间隔触发","TickIntervalActionV2":"间隔触发","TimeDilationAction":"时间膨胀","TogglableAction":"条件开关动作","ToggleMeshAction":"切换模型网格","TriggerComboSkillAction":"触发连携技","TriggerCustomAbilityEvent":"触发自定义能力事件","TryToTeleportSquadAction":"尝试传送小队","UltimateShowAction":"终结技演出","UltimateTimeAction":"终结技时间控制","VoiceInterruptAction":"中断语音","VoiceTriggerAction":"触发语音","WaterDroneHitAction":"水无人机命中","UnknownAction":"未知动作"}, "fields": { "templates": { "count": "{field}数量", "remainingCount": "{field}剩余数量", "type": "{field}类型" }, "unitCount":"结算单元数","targetSettings":"目标","targetGroupKey":"目标组","sourceSettings":"来源","source":"来源","actionSource":"动作来源","target":"目标","attacker":"攻击者","attackerTargetSettings":"攻击者","defender":"承受者","owner":"持有者","skillOwner":"技能持有者","buffOwner":"Buff 持有者","healer":"治疗者","caster":"施放者","auraRoot":"领域中心","calculationTarget":"计算目标","contextKey":"上下文键","targetContextKey":"目标上下文键","targetSource":"目标来源","selectorData":"目标选择器","selectorOwner":"选择器持有者","selectorDirection":"选择方向","center":"中心","centerContextKey":"中心上下文","saveToContext":"保存到上下文","excludeTarget":"排除目标","targets":"目标列表","skillId":"技能","targetSkillId":"目标技能","allowedSkillIdList":"可接续技能","allowedSkillIds":"可接续技能","projectileId":"投射物","projectileSkillId":"命中技能","skillIdOnBlock":"格挡技能","skillIdOnReach":"到达技能","skillIdOnFinish":"结束技能","linkedSkills":"关联技能","abilityEntityId":"能力实体","abilityEntitySkillId":"能力实体技能","enemyId":"敌人","buffId":"Buff","buffIds":"Buff 列表","buffIdList":"Buff 列表","buffs":"Buff","values":"赋值","tag":"标签","tags":"标签","tagQuery":"标签条件","marker":"标记","markerId":"标记","signalId":"战斗信号","modeId":"模式","effectId":"特效","effectName":"特效","animName":"动画","montageName":"动画","soundEvent":"音效事件","_soundEvent":"音效事件","triggerKey":"语音触发键","_triggerKey":"语音触发键","configKey":"配置键","key":"黑板键","blackboardKey":"黑板键","bbKey":"黑板键","storeKey":"保存键","saveTo":"保存到","duration":"持续时间","totalTime":"总时长","time":"时间","startFrame":"起始帧","destFrame":"目标帧","startOffsetFrame":"起始偏移帧","playbackSpeed":"播放速度","blendDuration":"混合时间","triggerInterval":"触发间隔","targetTriggerInterval":"单目标触发间隔","tickInterval":"触发间隔","fixedTickCount":"固定次数","totalTickCount":"总次数","maxCountPerTarget":"单目标上限","count":"数量","layer":"层级","value":"数值","directValue":"直接值","valueA":"左值","valueB":"右值","lhsValue":"左值","rhsValue":"右值","compare":"比较方式","compareType":"比较方式","operation":"运算","operationType":"运算","calculateType":"计算类型","inputValue":"输入值","minValue":"最小值","maxValue":"最大值","coefficient":"系数","multiplier":"倍率","addition":"附加值","rate":"比例","curveKey":"曲线","useDirectCurve":"使用直接曲线","useCurveKey":"使用曲线键","damageUnits":"伤害单元","damageType":"伤害类型","damageMultiplier":"伤害倍率","healType":"治疗类型","healCalculation":"治疗公式","poiseType":"韧性类型","recoverValue":"恢复值","superArmorValue":"抗打断","impactResistance":"冲击抗性","overrideSuperArmorLimit":"控制穿透","immobilizedTime":"定身时间","unmovableTime":"不可移动时间","blowOffDistance":"击退距离","distanceRandomRange":"距离随机范围","blowOffHeight":"击飞高度","verticalSpeed":"垂直速度","horizontalSpeed":"水平速度","distance":"距离","moveDistance":"位移距离","speed":"速度","moveSpeed":"移动速度","moveType":"移动类型","rotateType":"转向类型","height":"高度","floatingHeight":"浮空高度","floatingDuration":"浮空时间","directionType":"方向类型","costType":"资源类型","costValue":"资源值","atbSourceType":"ATB 来源","atbGainMethod":"ATB 获取方式","buffStackNumType":"Buff 层数类型","finishLayerCnt":"移除层数","mappings":"输入映射","command":"输入指令","cacheTime":"缓存时间","cacheEndByAction":"随动作结束缓存","overrideCacheTime":"覆盖缓存时间","skipApplyCost":"跳过消耗","inheritSourceSkillCastId":"继承来源施放 ID","overrideDuration":"覆盖持续时间","finishByAction":"随动作结束","alwaysNext":"始终继续","enabled":"启用","visible":"显示","finishAll":"全部移除","isExtra":"额外结算","isPercentValue":"百分比","playObtainAtbEffect":"播放 ATB 特效","playObtainAtbAudio":"播放 ATB 音效","affectType":"影响目标","controlType":"控制类型","condition":"条件","actionCount":"子动作数","successActionCount":"成功分支数","failActionCount":"失败分支数","tickActionCount":"单次触发动作数","enterActionCount":"进入动作数","exitActionCount":"离开动作数","shapeType":"形状","radius":"半径","range":"范围","faction":"阵营"} } },
+            "hidden": { "title": "隐藏模块", "description": "隐藏开关功能测试", "testTitle": "隐藏功能测试" },
+            "settings": { "title": "设置", "description": "主题、隐藏开关等", "basicTitle": "⚙️ 基础设置", "aboutTitle": "📖 关于", "aboutBody": "AKEData 动态模块演示 · 版本 1.0", "aboutTheme": "主题文件存放在 theme/ 文件夹，可自行扩展。" },
+            "character": {
+                "title": "角色",
+                "description": "查看干员详细数据",
+                "search": "搜索角色（名称/ID）",
+                "element": "属性：",
+                "profession": "职业：",
+                "weapon": "武器：",
+                "loading": "加载干员数据...",
+                "select": "请选择角色",
+                "noMatches": "无匹配角色",
+                "loadFailed": "加载失败：{name}",
+                "unknown": "未知",
+                "unknownProfession": "未知职业",
+                "attributeFallback": "属性{name}",
+                "rarityStars": "{name}星",
+                "rarityLabel": "稀有度 {name}",
+                "level": "等级",
+                "levelAbbreviation": "Lv.{name}",
+                "levelRange": "Lv.{name}",
+                "none": "无",
+                "developmentCost": "养成消耗",
+                "expandAllLevels": "展开所有等级",
+                "collapseExtraLevels": "收起多余等级",
+                "expandAllSkillLevels": "展开所有技能等级",
+                "collapseAllSkillLevels": "收起所有技能等级",
+                "potentialName": "潜能 {name}",
+                "overview": {
+                    "title": "角色总览",
+                    "description": "按职业分组，汇总属性、武器类型与稀有度",
+                    "fallback": "角色"
+                },
+                "columns": {
+                    "coolDown": "冷却时间",
+                    "costValue": "消耗能量"
+                },
+                "meta": {
+                    "profession": "职业",
+                    "weaponType": "武器类型",
+                    "mainAttribute": "主属性",
+                    "subAttribute": "副属性",
+                    "voiceActor": "CV"
+                },
+                "attributes": {
+                    "strength": "力量",
+                    "agility": "敏捷",
+                    "intellect": "智识",
+                    "will": "意志",
+                    "hp": "生命值",
+                    "attack": "攻击力",
+                    "defense": "防御力",
+                    "artsInflictionDamageMultiplier": "法术异常伤害系数",
+                    "physicalInflictionDamageMultiplier": "物理异常伤害系数"
+                },
+                "skillTypes": {
+                    "basicAttack": "普攻",
+                    "combatSkill": "战技",
+                    "comboSkill": "连携技",
+                    "ultimate": "终结技"
+                },
+                "sections": {
+                    "attributeGrowth": "属性成长",
+                    "attributeNodes": "属性节点",
+                    "talents": "天赋",
+                    "potentials": "潜能",
+                    "skills": "技能",
+                    "logisticsSkills": "后勤技能",
+                    "potentialImages": "潜能图片",
+                    "profile": "档案",
+                    "voiceRecords": "语音记录"
+                }
+            },
+            "weapon": {
+                "title": "武器",
+                "description": "查看武器详细数据",
+                "search": "搜索武器（名称/ID）",
+                "loading": "加载武器数据...",
+                "select": "请选择武器",
+                "noMatches": "无匹配武器",
+                "loadFailed": "加载失败：{message}",
+                "unknown": "未知",
+                "unknownType": "未知类型",
+                "levelAbbreviation": "Lv.{level}",
+                "gold": "金币",
+                "initial": "初始",
+                "baseAttackRange": "基础攻击力（1-{max}级）",
+                "skillLevelBounds": "技能{skill}：{lower}-{upper}",
+                "skillUpperBound": "技能{skill} 上限 +{upper}",
+                "breakthroughLevel": "突破 {level}",
+                "potentialLevel": "潜能 {level}",
+                "noExtraEffect": "无额外效果",
+                "weaponTypes": {
+                    "oneHandedSword": "单手剑",
+                    "artsUnit": "施术单元",
+                    "twoHandedSword": "双手剑",
+                    "polearm": "长柄武器",
+                    "handcannon": "手铳"
+                },
+                "overview": {
+                    "title": "武器总览",
+                    "description": "按武器类型分组，展示全部武器与稀有度",
+                    "fallback": "武器"
+                },
+                "sections": {
+                    "skillData": "技能数据",
+                    "breakthroughMaterials": "突破材料",
+                    "potentials": "潜能",
+                    "story": "武器故事"
+                }
+            },
+            "enemy": {
+                "title": "敌人", "description": "查看敌人详细数据", "search": "搜索敌人（名称/ID）", "loading": "加载敌人数据...", "select": "请选择敌人",
+                "noMatches": "无匹配敌人", "loadFailed": "加载失败：{message}", "attributeFallback": "属性{type}", "variantDifference": "与初始变种差异：", "noVariants": "无变种数据", "variantFallback": "变种 {number}",
+                "enemyTypes": { "normal": "普通敌人", "elite": "精英敌人", "boss": "首领敌人", "special": "特殊敌人", "dangerous": "高危敌人", "other": "其他敌人" },
+                "overview": { "title": "敌人总览", "description": "按敌人类型分组，展示模板、危险度与变种数量", "fallback": "敌人", "dangerLevel": "危险度 {level}", "variantCount": "{count} 个变种" },
+                "columns": { "maxHp": "最大生命值", "defense": "防御力" },
+                "flags": { "dangerous": "危险", "globalEffect": "全局特效", "pinnedHealthBar": "置顶血条" },
+                "sections": { "poiseBreakBuffs": "失衡打断 Buff", "variantAttributes": "变种属性" },
+                "meta": {
+                    "initialSuperArmor": "初始抗打断", "zeroPoiseSuperArmor": "失衡时抗打断", "superArmorWhenResilienceZero": "韧性归零时抗打断", "executionDamageScalar": "处决承伤系数", "breakingAttackedAtbObtain": "处决技力回复", "physicalDamageTakenScalar": "物理承伤系数", "naturalDamageTakenScalar": "自然承伤系数", "coldDamageTakenScalar": "寒冷承伤系数", "electroDamageTakenScalar": "电磁承伤系数", "fireDamageTakenScalar": "灼热承伤系数", "etherDamageTakenScalar": "超域承伤系数", "physicalResistScalar": "物理抗性系数", "naturalResistScalar": "自然抗性系数", "coldResistScalar": "寒冷抗性系数", "electroResistScalar": "电磁抗性系数", "fireResistScalar": "灼热抗性系数", "etherResistScalar": "超域抗性系数", "normalAttackRange": "普通攻击范围", "maxPoise": "失衡值上限", "poiseRecTime": "失衡恢复时间", "poiseKnotPct": "失衡节点", "weight": "重量", "attackValueAgainstTower": "对塔攻击值", "maxResilience": "最大韧性", "pushedBackCoefficient": "回弹系数", "resilienceDecreaseWhenHurt": "受伤韧性降低", "resilienceFullRecoverTime": "韧性完全回复时长", "resilienceRecover": "韧性回复值", "resilienceRecoverInterval": "韧性回复间隔", "criticalRate": "暴击率", "criticalDamage": "暴击伤害", "hatred": "仇恨值", "attackSpeed": "攻击速度"
+                }
+            },
+            "equip": {
+                "title": "装备", "description": "查看装备详细数据", "search": "搜索装备套组（名称/ID）", "loading": "加载装备数据...", "select": "选择装备套组",
+                "loadingSet": "加载套组数据...", "noMatches": "无匹配套组", "loadFailed": "加载失败：{message}",
+                "attributeFallback": "属性{type}", "partFallback": "部位{type}", "levelAbbreviation": "Lv.{level}", "independentEquipment": "独立装备", "equipmentSets": "装备套组",
+                "craftingCost": "制造消耗", "maxEnhancement": "最大强化 +{level}", "enhancementGuarantee": "精锻保底", "parameters": "参数：",
+                "maxCraftingCount": "最大制造数量", "recyclingReturnRate": "回收返还比例", "materialsConsumed": "消耗材料", "materialsReturned": "返还材料",
+                "parts": { "armor": "护甲", "gloves": "护手", "accessory": "配件" },
+                "columns": { "stat": "词条", "base": "基础", "value": "数值" },
+                "overview": { "title": "装备总览", "description": "按套装与独立装备分组，展示套组规模和最高稀有度", "fallback": "装备", "highestRarity": "最高 {rarity} 星", "equipmentCount": "{count} 件装备" },
+                "sections": { "setSkills": "套装技能", "setPieces": "套装部件", "enhancementInfo": "精锻信息" }
+            },
+            "item": {
+                "title": "物品", "description": "查看物品详细数据", "search": "搜索物品（名称/ID）", "loading": "加载物品数据...", "select": "请选择物品", "noMatches": "无匹配物品", "loadFailed": "加载失败：{message}", "typeFallback": "类型 {type}", "otherItems": "其他物品",
+                "overview": { "title": "物品总览", "description": "按游戏内展示分类分组，汇总所有物品与稀有度", "fallback": "物品" },
+                "sections": { "obtainWays": "获取方式", "properties": "属性", "useEffects": "使用效果", "craftingPaths": "合成路径", "applicableWeapons": "适用武器", "choiceBoxContents": "自选箱内容", "iconComposite": "图标合成", "displayType": "显示类型", "encyclopediaEntry": "百科条目" },
+                "properties": { "maxStack": "最大堆叠", "backpackStackLimit": "背包堆叠上限", "storageSpace": "占用空间" },
+                "effects": { "afterUse": "使用后效果", "afterEquip": "装备后效果", "duration": "持续时间 {duration}", "useCount": "使用次数 {count}", "cooldown": "冷却 {duration}", "castTime": "施放 {duration}", "recoverCount": "可恢复 {count} 次", "recoveryInterval": "恢复间隔 {duration}" },
+                "craft": { "duration": "制作时间 {duration}", "notConfigured": "未配置", "noMaterials": "无物品材料", "sources": "合成来源", "uses": "可用于合成", "usableLevel": "可用等级 {level}", "facilityLevel": "设施等级 {level}" },
+                "recipeKinds": { "integratedIndustry": "集成工业生产", "manualCrafting": "简易制作", "hubManufacturing": "枢纽制造", "equipmentManufacturing": "装备制造", "growCabinPlanting": "培养舱种植", "growCabinSeedCollection": "培养舱采种", "spaceshipManufacturing": "飞船制造" },
+                "choiceBox": { "selectableCount": "可选数量：{count}" },
+                "iconComposite": { "type": "合成类型", "showRarity": "显示稀有度", "markIcon": "标记图标" },
+                "encyclopedia": { "entryId": "条目 ID", "group": "分组" }
+            },
+            "shop": {
+                "title": "商店", "description": "查看商店数据", "groupHint": "按商店组浏览商品", "search": "搜索商店或商品（名称/ID）", "groupList": "商店组列表", "loading": "正在读取商店数据", "groups": "商店组", "selectGroup": "选择商店组", "close": "关闭", "recommendations": "帝江号精选", "goodsCount": "{count} 件商品", "noMatches": "没有匹配的商店组", "noGoods": "该商店组下没有匹配商品", "loadFailed": "商店数据加载失败", "unknown": "未知", "permanent": "永久", "separator": "、", "free": "免费", "unlimited": "不限购", "limitWithRefresh": "限购 {count} · {refresh}", "hidden": "游戏内隐藏", "weaponClaim": "武器申领", "bonusReward": "充值加赠", "monthlyReward": "周期奖励",
+                "groupTypes": { "type0": "地区与活动商店", "type2": "配额兑换", "type3": "地区物资调度", "type4": "信用交易", "type5": "付费商店", "cash": "付费商店", "recommend": "精选推荐", "other": "其他商店" },
+                "context": { "activity": "关联活动", "openTime": "开放时间", "domain": "所属地区", "channels": "调度员" },
+                "refresh": { "none": "永久限购", "daily": "每日刷新", "weekly": "每周刷新", "monthly": "每月刷新", "pool": "随武器卡池刷新", "subVersion": "随子版本刷新", "byTime": "按配置时段刷新", "unknown": "刷新类型 {type}" },
+                "rotation": { "title": "武库轮换", "weekly": "周轮换", "daily": "日轮换", "fullTable": "完整轮换表", "weekly6": "六星周轮换", "weekly5": "五星周轮换", "dailyTitle": "五星日轮换", "startDate": "起", "endDate": "止", "thu": "周四", "fri": "周五", "sat": "周六", "sun": "周日", "mon": "周一", "tue": "周二", "wed": "周三", "refreshIn": "距下次刷新", "nextBatch": "下批轮换" },
+                "shopNames": {
+                    "shop_pay_weapon_gacha": "武器申领",
+                    "shop_pay_weapon_weekly": "周轮换",
+                    "shop_pay_weapon_daily": "日轮换",
+                    "shop_pay_weapon_constant": "武器购买（常驻）"
+                }
+            },
+            "dungeon": {
+                "title": "副本", "description": "查看副本详细数据", "search": "搜索副本系列（名称/ID）", "loading": "加载副本数据...", "select": "选择副本系列", "noMatches": "无匹配系列", "loadFailed": "加载失败：{message}", "noData": "该系列下没有副本数据", "attributeFallback": "属性{type}", "enemyDetails": "敌人详情", "stamina": "理智：{value}",
+                "overview": { "title": "副本总览", "description": "按副本类型分组，展示系列与所含关卡数量", "fallback": "副本", "stageCount": "{count} 个关卡" },
+                "categories": { "highDifficulty": "高难挑战", "bossRush": "首领挑战", "protocolSpace": "协议空间", "eventCombat": "活动作战", "challenge": "挑战副本", "resource": "资源副本", "weeklyRaid": "每周讨伐", "characterMission": "角色任务", "characterTutorial": "角色教学", "contingencyContract": "危机合约", "training": "训练副本", "worldLevel": "世界等级", "wulingA": "武陵区域 A", "wulingB": "武陵区域 B", "mystery": "密境", "protocolDivergence": "像差", "other": "其他副本" },
+                "spawnModes": { "parallel": "同时", "sequence": "顺序", "partKilled": "击杀后", "allKilled": "全灭后", "deadline": "计时后" },
+                "spawnConditions": { "partKilled": "组{group}击杀{count}只后", "allKilled": "组{group}全灭后" },
+                "spawn": { "randomRadius": " ±{radius}", "delay": "延迟 {seconds}s", "interval": "间隔 {seconds}s", "preWarning": "预告 {seconds}s", "faceMainCharacter": "面向主控", "coordinates": "坐标 {position}{radius}", "groupMode": "组{group} · {mode}{condition}" },
+                "flags": { "dangerous": "危险", "globalEffect": "全局特效", "pinnedHealthBar": "置顶血条" },
+                "goals": { "main": "主要目标：", "extra": "额外目标：" },
+                "rewards": { "fixed": "固定奖励", "random": "随机奖励", "hunterMode": "深潜模式奖励", "firstClear": "首通奖励" },
+                "waves": { "repeatable": "无限刷新", "aliveLimit": "上限{count}只", "externallyControlled": "该波次的生成受其他因素控制", "number": "波次 {number}", "summaryLabel": "波次统计", "summary": "{waves}波 | 共{enemies}只" },
+                "meta": { "staminaCost": "消耗理智", "recommendedLevel": "推荐等级", "category": "类型" }
+            },
+            "activity": {
+                "title": "活动", "description": "查看活动信息", "search": "搜索活动（名称/ID）", "loading": "加载活动数据...", "select": "请选择活动", "noMatches": "无匹配活动", "loadFailed": "加载失败：{message}", "typeFallback": "类型 {type}",
+                "types": { "regular": "常规活动", "signIn": "签到", "levelRewards": "等级奖励", "staged": "阶段性活动", "staminaDiscount": "理智减耗", "beginnerBanner": "新手卡池", "mysteryWanderer": "秘境行者", "highDifficulty": "高难副本", "combatTraining": "作战演练", "characterGuide": "角色指南", "returningPlayer": "回归活动", "supply": "物资供给", "areaGuide": "区域指南", "weeklyTasks": "每周事务", "survivalTraining": "生存特训", "purification": "净流涤尘", "beginnerGift": "新手赠礼", "characterDevelopment": "角色养成", "special": "特殊活动", "limitedChallenge": "限时挑战", "version": "版本活动", "collaboration": "联动活动", "contingencyContract": "危机合约", "recurring": "周期活动" },
+                "statuses": { "active": "进行中", "upcoming": "即将开始", "closed": "已结束", "permanent": "永久" },
+                "countdown": { "started": "已开始", "ended": "已结束", "untilStart": "距开始还有 {duration}", "untilEnd": "距结束还有 {duration}", "unitSeparator": "" },
+                "dates": { "permanent": "永久", "opensOn": "开放 {date}", "permanentContent": "常驻内容", "range": "开放时间：{start} 至 {end}", "stageOpenTime": "开放时间：{time}", "stageOpenTimeWithCountdown": "开放时间：{time}（{countdown}）" },
+                "overview": { "title": "活动总览", "description": "按当前状态分组，展示活动类型与开放时间", "fallback": "活动" },
+                "sections": { "stages": "关卡列表", "conditions": "参与条件" },
+                "rewards": { "none": "无奖励", "stage": "关卡奖励", "activity": "活动奖励", "count": "x{count}" }
+            },
+            "achievement": {
+                "title": "奖章", "description": "查看蚀刻章数据", "search": "搜索奖章分类（名称/ID）", "loading": "加载奖章数据...", "select": "请选择分类", "noMatches": "无匹配分类", "loadFailed": "加载失败：{message}",
+                "overview": { "title": "奖章总览", "description": "按分类展示全部奖章数据与特殊奖章统计", "group": "奖章分类", "fallback": "奖章", "achievementCount": "{count} 枚", "groupCount": "{count} 个分组", "platedCount": "{count} 枚可镀层" },
+                "badges": { "upgradable": "可升级", "platable": "可镀层", "rareEffect": "止境认证", "hidden": "隐藏成就" },
+                "detail": { "title": "{name}" }
+            },
+            "cc": {
+                "title": "危机合约",
+                "description": "查看危机合约数据",
+                "search": "搜索合约（ID/名称）",
+                "loading": "加载合约数据...",
+                "select": "选择合约赛季",
+                "noMatches": "无匹配合约",
+                "loadFailed": "加载失败：{message}",
+                "attributeFallback": "属性{type}",
+                "overview": { "title": "危机合约总览", "description": "按赛季状态分组，汇总合约词条、关卡与开放时间" },
+                "statuses": { "active": "进行中", "upcoming": "即将开始", "ended": "已结束", "permanent": "永久" },
+                "counts": { "indicatorGroups": "{count} 个指标组", "terms": "{count} 个词条" },
+                "activityInfo": { "activityId": "活动 ID", "gameplayType": "玩法类型", "stageId": "关卡 ID", "maxTagColumns": "标签最大列数", "currencyAmount": "兑换货币数量", "shopGroup": "商店组" },
+                "sections": { "activityConfiguration": "活动配置", "contractTerms": "合约词条", "levelRewards": "等级奖励", "tasks": "任务", "dungeonEnemies": "副本敌人", "selectedTermDetails": "已选词条详情" },
+                "termTypes": { "enemyBuff": "敌方增益", "selfDebuff": "己方减益", "timeReduction": "减少时间", "none": "无效果" },
+                "conflicts": { "tagMissing": "词条不存在", "withTag": "与词条 {tag} 冲突（{conflict}）", "missingKeys": "缺少钥匙：{keys}" },
+                "score": { "currentTotal": "当前总分", "selectedTerms": "已选 {count} 个词条", "reset": "重置选择" },
+                "contract": { "group": "分组 {id}", "key": "钥匙：{key}", "requires": "需要：{key}", "conflict": "冲突：{conflict}", "conflictWith": "冲突：{conflict}（与词条 {tag}）", "previewUnavailable": "不可预览" },
+                "rewards": { "separator": "、", "scoreLevel": "<b>{score} 指标</b> → Lv.{level}，获得 {rewards}", "allCompletedLevel": "<b>全部达成</b> → Lv.{level}，获得 {rewards}" },
+                "shop": { "title": "商店 · {name}", "goodsCount": "{count} 件商品", "item": "物品", "price": "价格", "limit": "限购" },
+                "tasks": { "count": "{count} 个任务", "updatable": "可更新", "unlockCondition": "解锁条件：{condition}", "rewards": "奖励：", "empty": "暂无任务" },
+                "enemyFlags": { "dangerous": "危险", "globalEffect": "全局特效", "pinnedHealthBar": "置顶血条" },
+                "spawnModes": { "parallel": "同时", "sequence": "顺序", "partKilled": "击杀后", "allKilled": "全灭后", "deadline": "计时后" },
+                "spawnConditions": { "partKilled": "组{group}击杀{count}只后", "allKilled": "组{group}全灭后" },
+                "spawn": { "randomRadius": " ±{radius}", "delay": "延迟 {seconds}s", "interval": "间隔 {seconds}s", "preWarning": "预告 {seconds}s", "faceMainCharacter": "面向主控", "coordinates": "生成坐标 {position}{radius}", "groupMode": "组{group} · {mode}{condition}" },
+                "dungeon": { "recommendedLevel": "推荐{label} {level}", "loadFailed": "副本数据加载失败：{message}" },
+                "waves": { "repeatable": "无限刷新", "aliveLimit": "上限{count}只", "externallyControlled": "该波次的生成受其他因素控制", "number": "波次 {number}", "configuration": "配置 {number}", "brief": "{waves}波 · {enemies}只", "summaryLabel": "波次统计", "summary": "{waves}波 | 共{enemies}只" },
+                "detail": { "subtitle": "{activity} · {groups} 个分组 · {terms} 个词条" }
+            },
+            "research": {
+                "title": "研究", "description": "查看数据研究与分析文档", "search": "搜索文档", "loading": "加载研究文档...", "index": "📑 索引", "select": "选择文档",
+                "overview": { "title": "研究总览", "description": "数据机制、专题分析与参考资料", "fallback": "文档" },
+                "topics": { "general": "专题研究" },
+                "toc": { "title": "目录" },
+                "document": { "loading": "加载文档内容...", "loadFailed": "加载失败：{message}" },
+                "notFound": { "title": "页面未找到", "description": "您访问的文档不存在" },
+                "empty": { "noMatches": "无匹配文档", "noDocuments": "暂无研究文档", "selectDocument": "请选择文档" }
+            },
+            "about": {
+                "title": "关于",
+                "description": "查看项目介绍与帮助",
+                "introduction": {
+                    "title": "📘 AKEData 项目介绍",
+                    "aiNotice": "观前提示：本项目大量使用了人工智能技术（包括下面的文档）",
+                    "summary": "本项目为《明日方舟：终末地》玩家自制作品，旨在提供便捷的游戏数据查询与展示功能。",
+                    "authorLabel": "作者："
+                },
+                "features": {
+                    "title": "✨ 核心功能",
+                    "separator": " – ",
+                    "dynamicNavigation": { "name": "动态模块导航", "beforeManifest": "左侧栏根据 ", "afterManifest": " 动态生成模块列表，点击加载对应 HTML。" },
+                    "globalSettings": { "name": "全局设置", "description": "左下角齿轮按钮可切换亮/暗主题、控制隐藏模块的显示（开发中内容）。" },
+                    "linkPopups": { "name": "超链接浮窗", "beforeTags": "支持双层浮窗，解析 ", "betweenTags": " 和 ", "afterTags": " 标签，显示详细描述。" },
+                    "tagParsing": { "name": "标签解析", "beforeFunction": "全局 ", "afterFunction": " 函数处理文本中的样式标签和超链接标签，支持嵌套深度限制。" }
+                },
+                "usage": {
+                    "title": "🚀 如何使用",
+                    "hint": "直接点击使用即可",
+                    "modules": {
+                        "weapon": { "name": "武器模块", "description": "查看武器基础攻击力、技能数据、背景故事。" },
+                        "character": { "name": "角色模块", "description": "查看干员属性成长、天赋、潜能、技能、档案、语音等。（0002，0003管理员的数据为废案，请以9000的数据为准）" },
+                        "enemy": { "name": "敌人模块", "description": "查看敌人基本信息、承伤系数、变种属性表格。" },
+                        "equipment": { "name": "装备模块", "description": "查看装备套组效果及各个部件的主副词条。" },
+                        "medal": { "name": "奖章模块", "description": "查看蚀刻章数据。" },
+                        "dungeon": { "name": "副本模块", "description": "查看副本信息以及副本内怪物数据。" }
+                    }
+                },
+                "partners": {
+                    "title": "✨ 数据合作",
+                    "introduction": "本项目同时也为以下工具/网站提供数据支持：",
+                    "perlicaBot": "QQ机器人，《明日方舟：终末地》游戏助手。",
+                    "endfieldAtlas": "《明日方舟：终末地》地图工具。",
+                    "cepPlanner": "《明日方舟：终末地》规划工具集——基质规划与计算、精锻规划与计算、角色攻略、卡池日历等一站式解决方案。",
+                    "endaxis": "《明日方舟：终末地》排轴模拟器。",
+                    "combatLogs": "《明日方舟：终末地》战斗数据记录工具，竞速排行网站。",
+                    "yituliu": "《明日方舟：终末地》材料价值计算、性价比计算，以及攒抽计算等其它小工具。"
+                },
+                "sponsor": {
+                    "title": "✨ 赞助支持 ✨",
+                    "description": "您的赞助将用于服务器维护、功能开发、内容创作；您在备注中填写的内容会显示在赞助列表中（手动更新）。如不希望在赞助列表中被记录请注明；您的鼓励与认可是我维护的动力!!!（广告位招租）",
+                    "alipayNotice": "由于支付宝渠道无法正常获取赞助者信息，如果您通过支付宝赞助并需要署名及添加备注，请通过任意渠道私发我您的赞助截图",
+                    "payment": { "wechat": "微信", "wechatAlt": "微信赞赏码", "alipay": "支付宝", "alipayAlt": "支付宝收款码" },
+                    "thanks": "✨ 感谢支持 ✨",
+                    "loading": "加载赞助列表...",
+                    "empty": "暂无赞助记录，期待您的支持！",
+                    "loadFailed": "加载赞助列表失败，请稍后重试。",
+                    "noRemarks": "无备注"
+                },
+                "contact": {
+                    "title": "🔧 联系我们",
+                    "description": "您可以通过以下方式联系开发者进行 bug 反馈和新功能提议，若您是其他工具的作者或者相关开发者需要本网站提供数据支持，也欢迎您通过下面的方式联系我。",
+                    "bilibiliLabel": "BiliBili：",
+                    "feedbackGroupLabel": "用户反馈群：",
+                    "feedbackGroupPurpose": "（数据合作 & bug 反馈）",
+                    "repositoryLabel": "项目地址：",
+                    "version": "版本：1.0 · 最后更新：2026年7月15日"
+                }
+            },
+            "buff": {
+                "v3": {"common":{"loadFailedShort":"BuffData 加载失败","manifestFailed":"Buff 清单加载失败","readFailed":"BuffData 读取失败：{id}","loading":"正在加载 Buff 目录...","loadingDetail":"正在加载 Buff 详情...","loadFailed":"BuffData 加载失败：{message}","retry":"重试","unknown":"未知","notAvailable":"不可用"},"list":{"searchPlaceholder":"搜索 Buff ID 或归属实体","searchAria":"搜索 BuffData","sidebarAria":"Buff 目录","directoryAria":"Buff 分组与条目","mobileDirectoryAria":"打开 Buff 目录","summary":"{count} 个 Buff","sectionCount":"{count} 个条目","ownerHint":"归属提示","buffData":"BuffData"},"groups":{"characters":"角色","monsters":"怪物","weapons":"武器","common":"通用战斗","modes":"玩法与关卡","equipment":"装备","abilityEntities":"能力实体","other":"其他"},"header":{"linksScope":"这里只显示该 BuffData 条目中的直接 Buff 引用；运行时动态引用会被标记，且无法直接跳转。","ownerHint":"归属实体","technicalId":"Buff ID","buffData":"BuffData 条目","prefixNotice":"归属根据 ID 前缀推断，不代表战斗中的实际施加来源。"},"sections":{"warnings":"解析警告","core":"核心配置","effects":"战斗效果","attributes":"属性修饰","damage":"伤害修饰","heal":"治疗修饰","poise":"韧性修饰","global":"全局修饰","shields":"护盾","tags":"战斗标签","stacking":"堆叠规则","dispel":"驱散规则","timing":"时序","conditions":"条件","processors":"处理器链","blackboard":"Blackboard 参数","eventLogic":"事件逻辑"},"metrics":{"selfTimeDilationOnly":"仅使用自身时间膨胀","finishOnRepatriate":"归位时结束","ignoreCooldownWhenAdding":"添加时忽略冷却","lifeType":"生命周期","duration":"持续时间","triggerInterval":"触发间隔","firstTriggerDelay":"首次触发延迟","maxTriggerCount":"最大触发次数","addingCooldown":"添加冷却","stackingType":"堆叠策略","stackingIdentifier":"堆叠标识","maxStacks":"最大层数","priority":"优先级","dispel":"可驱散","ignoreTagImmune":"忽略标签免疫","timeDilation":"受时间膨胀影响"},"tabs":{"events":"事件","timeline":"时间轴","links":"关联 Buff","technical":"技术详情"},"buttons":{"selectBuff":"选择 Buff","closeListAria":"关闭 Buff 目录","openList":"打开 Buff 目录","close":"关闭","showPerformance":"显示表现类 Action","hidePerformance":"隐藏表现类 Action","showPresentation":"显示表现类 Action","hidePresentation":"隐藏表现类 Action","openLinkedBuff":"打开关联 Buff","expand":"展开","collapse":"收起"},"empty":{"manifest":"清单中没有可用的 Buff 条目。","noCoreMetrics":"没有可显示的核心指标","noVisibleActions":"当前显示筛选下没有 Action。","select":"请选择一个 Buff 查看其战斗逻辑。","noMatches":"没有匹配的 Buff","noEffects":"未配置战斗修饰","noEvents":"未配置事件 Action","noTimeline":"未配置时间轴 Action","noLinks":"没有关联 Buff 引用","noTechnical":"没有可用的技术详情","noModifiers":"没有修饰器","noTags":"没有战斗标签"},"units":{"blackboardKey":"Blackboard 键：{key}","frameApprox":"帧，约 {seconds} 秒","group":"第 {number} 组","secondsLabel":"秒","stacksLabel":"层","timesLabel":"次","seconds":"{value} 秒","frames":"{value} 帧","entries":"{count} 项","actions":"{count} 个 Action","events":"{count} 个事件","stacks":"{count} 层","processors":"{count} 个处理器"},"values":{"configured":"已配置","directReference":"直接引用","presentation":"仅表现","finishAfterIgnited":"点燃后结束","yes":"是","no":"否","infinite":"永久","openEnded":"持续至结束","unknown":"未知","notConfigured":"未配置","notApplicable":"不适用","literal":"固定值","dynamic":"动态值","enabled":"启用","disabled":"禁用"},"lifeTypes":{"Infinity":"永久","Limited":"限时"},"identifierTypes":{"Id":"Buff ID","StackingKey":"堆叠键"},"stackingTypes":{"Unlimited":"无限共存","Unique":"唯一","Stack":"叠加层数","Refresh":"刷新持续时间","HighPriority":"高优先级覆盖","EnhanceAndRefresh":"强化并刷新","Enhance":"强化","HighPriorityWithMaxStack":"带层数上限的优先级覆盖","Modify":"修改现有 Buff","EnhanceAndOverwriteDuration":"强化并覆盖持续时间","OverwriteDuration":"覆盖持续时间","Extend":"延长持续时间"},"modifierTypes":{"attributeConversion":"属性转换","attribute":"属性","damage":"伤害","heal":"治疗","poise":"韧性","global":"全局规则","shield":"护盾","tag":"战斗标签"},"formulaTypes":{"BaseAddition":"基础值加算","BaseMultiplier":"基础值乘算","BaseFinalMultiplier":"基础值最终乘算","Multiplier":"乘算","Addition":"加算","FinalMultiplier":"最终乘算","BaseFinalAddition":"基础值最终加算","FinalAddition":"最终加算"},"processorTypes":{"DamageScaleProcessor":"伤害倍率","DamageTextProcessor":"伤害飘字","ModifyCalcResult":"修改计算结果","InstantModifyAttribute":"即时修改属性","AttackerPenProcessor":"攻击方穿透","DamageIndependentHealthProcessor":"独立生命值伤害","AttackCriticalRateProcessor":"暴击率","AttackerCriticalDamageProcessor":"暴击伤害"},"globalModifierTypes":{"AtbRecover":"技力恢复","DashRecover":"闪避恢复","ExtraAtbEfficiencyPowerAttack":"重击技力效率"},"eventKinds":{"stacking":"堆叠效果","config":"配置 Action","damage-modifier":"伤害修饰","heal-modifier":"治疗修饰","poise-modifier":"韧性修饰","buff":"Buff 生命周期","ability":"能力事件","ignite":"点燃事件","timeline":"时间轴事件","presentation":"表现","combat":"战斗"},"eventNames":{"modifierCondition":"修饰器条件","stacking":"堆叠配置","otherConfigActions":"其他配置 Action","DuringBuffEnable":"启用期间","OnBuffEnable":"启用时","OnBuffStart":"开始时","OnBuffTrigger":"触发时","OnBuffFinish":"结束时","OnBeforeTakeDamage":"受到伤害前","OnTakeDamage":"受到伤害时","OnBeforeCastSkill":"施放技能前","OnBeforeOutputDamage":"造成伤害前","OnOutputDamage":"造成伤害时","OnOutputBuff":"施加 Buff 时","OnAddedBuff":"获得 Buff 时","OnSkillStart":"技能开始时","OnSkillEnd":"技能结束时","OnOwnerSwitchToGuard":"切换至防御时","OnAfterOutputWeaknessTriggered":"触发弱点后","OnIgniteStart":"点燃开始时","OnIgniteTrigger":"点燃触发时","OnIgniteEnd":"点燃结束时"},"blackboardSources":{"literal":"固定值","local-default":"本 Buff Blackboard 默认值","external-key":"外部 Blackboard 键","empty-key-fallback":"空键回退值"},"actions":{"AttackClickListenerAction":"监听攻击输入","BindBountyEnemyAction":"绑定悬赏目标","BombClearAction":"清除炸弹","BombTouchLayerAction":"设置炸弹碰撞层","BreakPassingSmallSceneObject":"破坏路径上的小型场景物件","CastPlungingAttack":"施放下落攻击","ChangeGeneralAbilityButton":"修改通用能力按钮","ChangeMoveGaitMultiplier":"修改移动步态倍率","ChangePushBackDistanceFactor":"修改击退距离系数","ChangeSeasonTowerEnergyAction":"修改战争回响能量","ChangeSkillType":"修改技能类型","CheckBuffEnhanceChangedLayer":"检查 Buff 强化层数变化","CheckCustomAbilityEvent":"检查自定义能力事件","CheckDamageIgnoreImmuneLevel":"检查伤害无视免疫等级","CheckDamageTransferredSource":"检查伤害转移来源","CheckMoveSpeed":"检查移动速度","CheckNavmeshRaycastCondition":"检查导航网格射线条件","CheckProfession":"检查职业","CheckProjectileIgnoreImmuneLevel":"检查投射物无视免疫等级","CheckProjectileInPerfectDodgeCd":"检查投射物是否处于完美闪避冷却","CheckSkillCastId":"检查技能施放 ID","CheckSkillDamageType":"检查技能伤害类型","CheckUsp":"检查终结技能量","CostAtbRefreshLongestSkillCd":"消耗技力并刷新冷却最长的技能","CreateDynamicBattleShape":"创建动态战斗形状","EffectLineCenterAction":"设置特效连线中心","EnableSpecialAim":"启用特殊瞄准","EnhancedAction":"强化","FlowTextAction":"显示战斗浮字","FootStepChangeAction":"修改脚步效果","ForceTargetInFightAction":"强制目标进入战斗","ForceTriggerWeakness":"强制触发弱点","GainCostAction":"获得技能资源","IgniteBuffTextAction":"显示点燃 Buff 文本","ImmuneTextAction":"显示免疫文本","IntRollingStoneRepatriateAction":"重置滚石","ModifyPartsDamageRatio":"修改部位伤害倍率","ModifyPartsPoiseRatio":"修改部位韧性倍率","ModifyResilienceDecreaseFactor":"修改韧性削减系数","MoveGaitAction":"设置移动步态","MoveTickAction":"按 Tick 移动","NotifyCharPassiveUIAction":"通知角色被动 UI","OnPhysicalNoGuardStart":"物理失衡开始时","OnSpellInflictionStart":"法术附着开始时","OverrideJumpAction":"覆盖跳跃行为","OverrideMultiDashLimit":"覆盖连续闪避上限","OverrideStateAnimationWithMontageAction":"使用 Montage 覆盖状态动画","PassiveJumpAction":"被动跳跃","PatrolTeleport":"巡逻传送","PatrolTeleportToCachePos":"传送至缓存的巡逻位置","PausePoiseRecover":"暂停韧性恢复","PreventBuffConsumeAction":"阻止 Buff 消耗","RecordBattleDetails":"记录战斗详情","RecoverDashEnergy":"恢复闪避能量","RecoverFromPoiseBreak":"从韧性击破中恢复","RecoverLockOnEndIfNoLockAction":"结束时恢复锁定（若未锁定）","RefrainObtainUsp":"阻止获得终结技能量","ReplaceAnimationShake":"替换动画震动","ReturnFalseAction":"返回 False","SaveBuffStackNum":"记录 Buff 层数","SaveCollectedBuffBbValue":"记录收集到的 Buff Blackboard 值","SaveDamageContext":"记录伤害上下文","SaveHealValue":"记录治疗值","SaveShieldValueToBB":"将护盾值写入 Blackboard","SealAction":"施加封印","SetAllowedDamageDecoMask":"设置允许的伤害修饰掩码","SetAnimTimeScaleAction":"设置动画时间倍率","SetFirstDashParam":"设置首次闪避参数","SetGeneralAbilityCd":"设置通用能力冷却","SetHpFloor":"设置生命值下限","SetStrafeModeAction":"设置侧移模式","SetWaterDroneItemModePersistLiquidIdAction":"设置水无人机物品模式持久液体 ID","ShowComboRingQte":"显示连携环 QTE","ShowSquadTipsAction":"显示小队提示","SkillAffixAction":"应用技能词缀","SpeedupAction":"加速","StoreEntityProperty":"记录实体属性","StoreSkillDamageType":"记录技能伤害类型","TagQueryListenerAction":"监听标签查询","TriggerLiinoUIEvent":"触发 Liino UI 事件","TriggerSpellBurstEventAction":"触发法术爆发事件","UpdateGlobalContextTarget":"更新全局上下文目标","WeakAction":"施加虚弱","RaiseTrainLevelEvent":"提升列车等级事件","CheckSkillId":"检查技能 ID","OnSpellAbnormalStartFinish":"处理法术异常开始/结束","VulnerableAction":"施加易伤","RefreshBuffAttrModifierValue":"刷新 Buff 属性修饰值","StoreBuffCount":"记录 Buff 数量","PauseBuffTime":"暂停 Buff 计时","FinishGlobalBuffAction":"结束全局 Buff","TriggerCharSpellInflictionEvent":"触发角色法术附着事件","SetBuffDurationAction":"设置 Buff 持续时间","SaveBuffLifeTime":"记录 Buff 剩余时间","ShelterAction":"施加庇护","StackEffect":"层数表现效果"},"fields":{"extendTags":"触发延长后施加的标签","damageAbsorptions":"伤害吸收","calculation":"计算","rules":"规则","attributeType":"属性类型","formula":"公式","parameter":"参数","parameterValue":"参数值","resolvedValue":"解析值","processorType":"处理器类型","processors":"处理器","conditions":"条件","value":"值","duration":"持续时间","triggerInterval":"触发间隔","waitFirstTriggerInterval":"首次触发前等待","maxTriggerCnt":"最大触发次数","stackingType":"堆叠类型","identifierType":"标识类型","stackingKey":"堆叠键","maxStackCnt":"最大层数","priority":"优先级","usePriorityKey":"使用优先级键","priorityKey":"优先级键","negatePriority":"优先级取反","dispelType":"驱散类型","dispelLevel":"驱散等级","buffId":"Buff ID","buffIds":"Buff ID 列表","targetBuffId":"目标 Buff ID","sourceBuffId":"来源 Buff ID","skillId":"技能 ID","targetSkillId":"目标技能 ID","targetGroupKey":"目标组键","stackCount":"层数","stackNum":"层数","layer":"层级","actionCount":"Action 数量","effectName":"特效名称","stackIndex":"层数索引","saveKey":"记录键","blackboardKey":"Blackboard 键","usesBlackboard":"使用 Blackboard","fallbackValue":"回退值","source":"取值来源","igniteType":"点燃类型","finishAfterIgnited":"点燃后结束","eventName":"事件","startFrame":"起始帧","endFrame":"结束帧","serverActionIndex":"服务端 Action 索引","damageType":"伤害类型","healType":"治疗类型","poiseType":"韧性类型","globalModifierType":"全局修饰类型","shieldValue":"护盾值","tags":"标签","applyTags":"施加标签","target":"目标","operation":"运算","compareType":"比较方式","checkType":"检查类型","triggerCount":"触发次数"},"links":{"outgoing":"引用的 Buff","relation":"引用字段：{field}","cycle":"检测到循环引用"},"relations":{"condition":"条件","success":"成功分支","failure":"失败分支","tick":"周期 Action","aura-enter":"进入光环","aura-exit":"离开光环","on-end":"结束时","switch-case":"Switch 分支","ability-event":"能力事件","stack-effect":"层数效果","reference":"引用","aura":"光环","create":"创建","extend":"延长","inherit":"继承","dispel":"驱散","finish":"结束","buffInput":"Buff 输入"},"warnings":{"ANALYZER_UNAVAILABLE":"BuffData 解析器不可用。","ANALYSIS_FAILED":"BuffData 解析失败：{message}","duplicateBlackboardKey":"Blackboard 键重复：{key}","actionDepthLimit":"Action 嵌套超过显示深度上限（{limit}）。","actionNodeLimit":"Action 解析已在节点上限（{limit}）处停止。","actionEventLimit":"Action 解析已在事件上限（{limit}）处停止。","emptyDamageAction":"伤害 Action 未配置伤害单元。","reversedTimelineRange":"时间轴区间的结束帧早于起始帧：{start}-{end}。"},"technical":{"references":"Blackboard 引用","blackboard":"Blackboard 参数","dependencies":"外部依赖","presentation":"仅表现配置","rawData":"原始 BuffData","externalNotice":"外部 Blackboard 键需要运行时来源上下文，不视为解析错误。"}},
+                "title": "Buff", "description": "查看 BuffData", "search": "搜索效果（ID/名称）", "loading": "加载效果数据...", "select": "请选择效果", "noMatches": "无匹配效果", "loadFailed": "加载失败：{message}", "actionDetailTitle": "动作详细信息", "unlimited": "无限制",
+                "alerts": { "actionUnavailable": "无法获取该动作数据" },
+                "columns": { "attributeType": "属性类型", "formula": "公式", "parameterValue": "参数值", "key": "键", "value": "数值", "dynamic": "动态", "stackIndex": "层级索引", "actionCount": "动作数量" },
+                "parameter": { "keyWithDefault": "键：{key}（默认：{value}）" },
+                "meta": { "lifeType": "生命周期：{value}", "duration": "持续时间：{value}", "triggerInterval": "触发间隔：{value}", "maximumTriggers": "最大触发次数：{value}", "dispellable": "可被驱散：{value}" },
+                "sections": { "attributeModifiers": "属性修改器", "parameters": "使用参数", "stacking": "堆叠规则", "buffEvents": "Buff 触发事件", "abilityEvents": "能力事件", "igniteEvents": "点燃事件" },
+                "stacking": {
+                    "types": { "unique": "唯一（重复时通常替换）", "unlimited": "可重复（理论无限）", "stack": "叠层（层数累加）", "refresh": "刷新（重复时刷新持续）", "enhance": "强化（重复时增强）", "enhanceAndRefresh": "强化并刷新", "enhanceAndOverwriteDuration": "强化并覆盖持续时间", "highPriority": "高优先级覆盖", "extend": "延长持续" },
+                    "defaultKey": "无（默认按 Buff ID）", "valueNotFound": "未命中", "emptyKey": "空", "noLimit": "不限", "priorityKey": "键：{key}（实际：{actual}）", "priorityKeyNegated": "键：{key}（实际：{actual}，取反）", "maximumKey": "键：{key}（默认：{fallback}，实际：{actual}）", "identifierType": "标识类型：{value}", "stackingType": "堆叠类型：{value}", "stackingKey": "堆叠键：{value}", "priorityRule": "优先级规则：{value}", "maximumRule": "最大堆叠层数规则：{value}", "effectEnabled": "层效果开关：{value}", "effectCount": "层效果配置数量：{count}", "effectDetails": "层效果详情："
+                },
+                "events": {
+                    "unknown": "未知事件", "named": "{name}（{description}）", "actionSummary": "事件：{event} | {summary}",
+                    "names": { "duringBuffEnable": "持续生效中", "onBuffEnable": "Buff 启用", "onBuffStart": "Buff 开始", "onBuffTrigger": "Buff 触发", "onBuffFinish": "Buff 结束", "onBeforeTakeDamage": "受伤前", "onBeforeCastSkill": "施法前", "onBeforeOutputDamage": "造成伤害前", "onOutputDamage": "造成伤害时", "onOutputBuff": "施加 Buff 时", "onAddedBuff": "获得 Buff 时", "onSkillEnd": "技能结束", "onOwnerSwitchToGuard": "切换防御", "onAfterOutputWeaknessTriggered": "触发弱点后", "onIgniteStart": "点燃开始", "onIgniteTrigger": "点燃触发", "onIgniteEnd": "点燃结束" }
+                },
+                "actions": {
+                    "unknownType": "未知类型", "viewDetails": "查看详细信息",
+                    "summary": { "animation": "动画：{name}", "damageTypes": "伤害类型：{types}", "damage": "造成伤害", "addBuffs": "添加 Buff：{ids}", "addBuff": "添加 Buff", "findTarget": "查找目标（目标组：{group}）", "effectNamed": "特效：{effect}", "effect": "播放特效", "selfRotate": "自身旋转（类型：{type}）", "rootMotion": "根运动移动（动画：{animation}）", "sound": "播放音效：{event}", "hitStop": "命中停顿（时长：{duration}）", "enemyHurt": "敌人受击动画（{animation}）", "obtainCost": "获取能量（{type}）", "superArmor": "设置霸体值：{value}", "timeDilation": "时间膨胀（时长：{duration}）", "voice": "语音触发（{key}）", "stepAnimation": "踏步动画（{animation}）", "parameters": "参数：{keys}" }
+                },
+                "timeline": { "title": "时间轴动作", "group": "动作组 {number}", "frameRange": "帧范围 [{start}, {end}]", "actionCount": "{count} 个动作", "empty": "无具体动作数据" }
+            },
+            "skill": {
+                "title": "Skill (V2)", "description": "SkillData 全量条目与动作节点调试视图（开发中）", "search": "搜索 SkillData (id/name)", "loading": "正在加载 SkillData...", "loadingDetail": "加载技能详情中...", "select": "请选择技能", "noMatches": "没有匹配项", "loadFailed": "加载失败：{message}",
+                "list": { "count": "共 {count} 项" },
+                "labels": {
+                    "keys": { "skillId": "技能ID", "level": "等级", "skillName": "技能名", "castType": "施放类型", "skillSpecification": "技能规格", "durationFrame": "持续帧", "exclusiveFrame": "独占帧", "timelineActions": "时间轴动作组", "passiveEventActions": "被动事件动作组", "actionGroupData": "动作组数据", "conditionAction": "条件动作", "succeedActions": "成功分支", "failActions": "失败分支", "actionData": "动作列表", "isEnable": "启用", "priorityLevel": "优先级", "priorityOffset": "优先级偏移", "serverActionIndex": "服务端动作索引", "duration": "持续时间", "startTime": "开始时间", "playbackSpeed": "播放速度", "blendDuration": "混合时长", "blendOut": "混出时长", "exitToIdle": "退出到待机", "contextKey": "上下文键", "targetSettings": "目标设置", "selectorData": "选择器", "finderData": "查找器", "validatorData": "校验器", "postProcessorData": "后处理器", "rotateType": "旋转类型", "compareType": "比较方式", "checkType": "检查类型", "targetSource": "目标来源", "selectorOwner": "选择器归属", "centerType": "中心类型", "startFrame": "起始帧", "endFrame": "结束帧", "targetGroupKey": "目标组键", "checkTarget": "检查目标", "minNum": "最小数量", "abilityEvent": "触发事件", "animName": "动画名", "cooldownTime": "冷却时间", "castDistance": "施放距离", "costData": "消耗数据", "costType": "消耗类型", "costValue": "消耗值", "atbValueThreshold": "阈值", "canMove": "可移动施放", "canCastInAir": "可空中施放", "passiveSkillType": "被动技能类型" },
+                    "values": { "active": "主动", "passive": "被动", "characterNormalSkill": "角色普通技能", "default": "默认", "ultimateSp": "终极能量", "rotateToTarget": "朝向目标", "rotateToMoveDirection": "朝向移动方向", "ge": "大于等于", "le": "小于等于", "eq": "等于", "hasAny": "满足任一标签", "context": "上下文", "source": "施法者", "owner": "拥有者", "target": "目标", "actionSource": "动作源", "contextTarget": "上下文目标" }
+                },
+                "categories": { "anim": "动画", "damage": "伤害/受击", "buff": "Buff/状态", "target": "选目标/判定", "move": "位移/旋转", "camera": "镜头/时间", "av": "音效/特效", "condition": "条件/分支", "spawn": "投射物/召唤", "resource": "资源/数值", "misc": "其他" },
+                "table": { "key": "键", "value": "值", "valueSummary": "值摘要", "type": "类型", "field": "字段" },
+                "empty": { "noDisplayParams": "无可展示参数", "noActionNodes": "无动作节点", "noNodes": "无节点", "noCondition": "无条件", "timelineGraphUnavailable": "timelineActions 为空，无法绘制时间轴", "selectTimelineGroup": "请点击一个动作组查看详情。", "timelineGroupUnavailable": "该动作组数据不可用。", "timelineActions": "timelineActions 为空", "passiveEventActions": "passiveEventActions 为空", "passiveEventNoActions": "该事件没有动作", "blackboard": "blackboard 为空", "noPassiveEvents": "无被动事件", "timelineDetailInitial": "默认隐藏全部 timelineActions 详情。请点击上方时间轴中的动作组查看。" },
+                "branches": { "conditionAction": "条件节点 conditionAction", "succeedActions": "成立分支 succeedActions", "failActions": "失败分支 failActions" },
+                "node": { "named": "节点 {id}" },
+                "titles": { "parameterSummary": "参数摘要", "castRules": "施放规则", "cost": "消耗", "skillTags": "技能标签 skillTags", "tagDuringAttach": "附着期间标签 tagDuringAttach", "dataMap": "SkillData 数据地图", "actionTypeOverview": "动作类型概览", "timelineHealth": "时间轴健康", "castData": "施放数据 castData", "blackboard": "黑板 blackboard", "tags": "标签", "passiveEventSummary": "被动事件摘要", "otherTopLevelFields": "其他顶层字段", "rawData": "完整原始数据", "overview": "概览", "actionGroupView": "ActionGroupData 节点执行视图", "timelineFlowGraph": "时间轴图 / 节点流图（直观模式）", "timelineActionsDetail": "timelineActions（点击时间轴动作组后显示详情）", "passiveEventActions": "passiveEventActions（被动事件触发）" },
+                "timeline": { "nodeSummaryEmpty": "节点：无", "nodeSummaryMore": " ...（共 {count} 个）", "nodeSummary": "节点：{summary}{more}", "groupShort": "组 {id}", "reversed": "反向", "frame": "帧 {id}", "axis": "全局帧区间：{start} - {end}（默认显示约 5 组高度，可滚轮查看全部）", "group": "时间组 #{id}", "frameRange": "帧 {start} - {end}", "nodeCount": "节点数 {count}" },
+                "filter": { "title": "筛选动作组（按功能分类，可多选）" },
+                "buttons": { "showNodes": "显示节点", "hideNodes": "隐藏节点", "expandAll": "展开全部", "restoreScrollView": "恢复滚动视图", "expandRawJson": "展开完整 JSON" },
+                "tooltip": { "invalidRangeNote": " ｜ 异常：结束帧早于起始帧", "lineMain": "起始帧：{start} ｜ 结束帧：{end} ｜ 持续帧：{durationFrame} ｜ 持续时间：{durationTime}{note}" },
+                "passive": { "triggerSequence": "触发序列 {id}（节点 {count}）", "event": "事件 #{id}: {name}" },
+                "blackboard": { "dynamic": "动态", "fixed": "固定" },
+                "summary": { "dynamicSuffix": " / 动态", "size": "尺寸({value})", "radius": "半径={value}", "height": "高度={value}", "offset": "偏移({value})", "position": "位置={value}", "direction": "方向={value}", "finder": "查找器：{value}", "shape": "形状：{value}", "validators": "校验器：{value}", "postProcessors": "后处理器：{value}", "target": "目标={value}", "cost": "消耗={value}", "effect": "特效={value}", "sound": "音效={value}", "buff": "Buff={value}", "scale": "倍率={value}", "condition": "条件：{value}" },
+                "json": { "array": "数组({count})", "object": "对象({count})" },
+                "metrics": { "distanceCheck": "距离检查", "customDistance": "自定义距离", "castDistance": "施放距离", "heightDiffCheck": "高度差检查", "heightDiffLimit": "高度差限制", "rotation": "旋转", "angle": "角度", "cooldown": "冷却", "startCdFrame": "起始CD帧", "maxCharge": "最大充能", "iconBackground": "图标背景", "attackRange": "攻击范围", "selectStrategy": "选择策略", "smartTargetSelect": "智能选目标", "canDummyCast": "可空放", "canMove": "可移动", "canCastInAir": "可空中施放", "rootMotionCliffCheck": "RootMotion悬崖检查", "returnToIdle": "返回待机", "blackboardItems": "黑板项", "buffs": "Buff 数", "toggleBuffs": "Toggle Buff 数", "timelineGroups": "时间组", "reversedFrameGroups": "反向帧组", "emptyActionGroups": "空动作组", "unsortedNeighborGroups": "乱序相邻组" },
+                "raw": { "note": "用于审计遗漏字段。默认折叠，展开后可查看完整 SkillData JSON。" }
+            },
+            "spawn": {
+                "title": "生成",
+                "description": "SpawnerConfig",
+                "search": "搜索分组（名称/ID）",
+                "loading": "加载生成数据...",
+                "loadingStageData": "加载关卡数据中...",
+                "select": "请选择分组",
+                "loadFailed": "加载失败：{message}",
+                "configId": "ConfigId: {id}",
+                "sections": {
+                    "globalSettings": "全局设置",
+                    "waves": "波次与生成逻辑",
+                    "routes": "路线数据"
+                },
+                "modal": {
+                    "jsonTitle": "JSON 数据详情"
+                },
+                "buttons": {
+                    "viewFullJson": "完整 JSON",
+                    "viewRouteJson": "查看路线 JSON",
+                    "viewWaveJson": "查看波次 JSON",
+                    "viewGroupJson": "查看组 JSON",
+                    "viewActionJson": "查看敌人参数 JSON",
+                    "viewEnemyRawJson": "查看怪物原始数据",
+                    "viewSettingsJson": "查看全局设置 JSON"
+                },
+                "settings": {
+                    "autoComplete": "自动完成：{value}",
+                    "forbidDrop": "禁止掉落：{value}",
+                    "stopExploreMusic": "停止探索音乐：{value}",
+                    "enemyLevelUseLevelGrade": "等级受世界等级影响：{value}"
+                },
+                "route": {
+                    "title": "路线 {id}",
+                    "fields": {
+                        "loopMode": "循环模式：",
+                        "snapMode": "附着方式：",
+                        "motionType": "移动类型：",
+                        "bornOverrideSpeed": "出生移动速度：",
+                        "bornWaitDuration": "出生等待时间：",
+                        "useWorldOffset": "是否使用世界偏移：",
+                        "localSpace": "是否本地空间：",
+                        "pathPointCount": "路径点数量：",
+                        "stopWalkInplace": "停止行走原地：",
+                        "forbidNpcInteract": "禁止 NPC 交互："
+                    },
+                    "values": {
+                        "overrideEnabled": "启用覆盖",
+                        "overrideDisabled": "未覆盖"
+                    }
+                },
+                "wave": {
+                    "title": "第 {index} 波",
+                    "mode": "模式：{mode}",
+                    "killCount": "需击杀：{count}",
+                    "hidden": "隐藏波次"
+                },
+                "group": {
+                    "title": "组 {id}",
+                    "mode": "模式：{mode}",
+                    "killCount": "需击杀：{count}"
+                },
+                "enemy": {
+                    "spawnTime": "{seconds}s",
+                    "spawnCount": "数量：{count}",
+                    "position": "({x}, {y}, {z})",
+                    "rotation": "{degrees}°",
+                    "buffParam": "{key}={value}",
+                    "fields": {
+                        "enemyId": "敌人 ID：",
+                        "level": "等级：",
+                        "position": "位置：",
+                        "rotation": "朝向：",
+                        "aiConfig": "AI 配置：",
+                        "preWarnTime": "预警时间：",
+                        "patrolGait": "移动方式：",
+                        "buffs": "携带 Buff："
+                    }
+                },
+                "mobile": {
+                    "selectGroup": "选择分组",
+                    "emptyGroups": "无分组"
+                },
+                "empty": {
+                    "noMatchingGroups": "无匹配分组",
+                    "noStageData": "该分组下暂无关卡数据",
+                    "noWaveData": "无波次数据",
+                    "noValidData": "无有效数据"
+                },
+                "json": {
+                    "serializeFailed": "无法序列化数据",
+                    "commentTitle": "// {title}",
+                    "autoGeneratedTitle": "Auto generated via akedata.top",
+                    "rawTextTitle": "原始文本"
+                },
+                "units": {
+                    "seconds": "{value}s"
+                },
+                "values": {
+                    "default": "默认",
+                    "notApplicable": "-"
+                }
+            }
+        }
+    }
+}

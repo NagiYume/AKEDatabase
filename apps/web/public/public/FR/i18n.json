@@ -1,0 +1,473 @@
+{
+    "language": "EN",
+    "tableLanguage": "EN",
+    "messages": {
+        "app": {
+            "title": "AKEData · Endfield Database"
+        },
+        "common": {
+            "dataLoadProgress": "Data loading progress",
+            "loadingData": "Loading data...",
+            "loadingModule": "⏳ Loading module...",
+            "firstLoadTextTableHint": "The first load requires a text mapping table and may take a while.",
+            "all": "All",
+            "none": "None", "unknown": "Unknown", "noDescription": "No description", "list": "List", "mobileList": "📋 List", "filter": "Filters", "filterCount": "Filters ({count})", "rarity": "Rarity:", "type": "Type:", "category": "Category:", "status": "Status:", "rarityStars": "{rarity}-star", "rarityLabel": "Rarity {rarity}", "level": "Level", "attack": "Attack", "yes": "Yes", "no": "No", "rawValue": "Raw value: {value}", "rawValueWithName": "{name}: {value}", "time": { "days": "{count}d", "hours": "{count}h", "minutes": "{count}m", "seconds": "{count}s", "lessThanSecond": "Less than 1s" }, "expandAllLevels": "Show all levels", "collapseExtraLevels": "Hide extra levels"
+        },
+        "home": { "heroImageAlt": "Home image", "title": "AKEData · Arknights: Endfield Database", "precisionNote": "Most in-game values are not integers, although the game only shows the integer portion. This database keeps one extra decimal place for easier reference and calculation.", "disclaimer": "Disclaimer: This fan-made website is not affiliated with Hypergryph or Gryphline. All trademarks belong to their respective owners.", "settingsHint": "Use the ⚙️ button at the bottom left to open global settings.", "exportFallback": "Home", "announcement": "Announcement" },
+        "nav": {
+            "home": "Return home",
+            "moduleList": "Modules",
+            "loadingModules": "Loading modules...",
+            "selectModule": "Select module",
+            "export": "Export long image",
+            "noVisibleModules": "📭 No visible modules"
+        },
+        "settings": {
+            "title": "Global settings",
+            "heading": "⚙️ Global Settings",
+            "language": "Language:", "theme": "Theme:",
+            "themes": { "light": "Light", "yellow": "Warm", "dark": "Dark" },
+            "showHidden": "Show hidden modules:", "showExport": "Show export button:", "showVersionChanges": "Show changes between data versions (experimental):", "keepUrlSync": "Keep URL synchronized with navigation:", "reset": "Restore defaults",
+            "levels": { "title": "📊 Default Level Display", "enabled": "Enable:", "hint": "Enter levels to display, separated by commas.", "character": "Character levels:", "weapon": "Weapon levels:", "enemy": "Enemy levels:", "skill": "Character skill levels:", "levelPlaceholder": "e.g. 80 or 10,20,30,80", "skillPlaceholder": "e.g. 1,9,10,11,12" },
+            "tokens": { "title": "🔑 Access Tokens", "hint": "Enter tokens to unlock protected modules and content. Separate multiple tokens with commas.", "label": "Token:", "placeholder": "Enter an access token", "submit": "Submit", "clear": "Clear all tokens", "empty": "No tokens entered", "count": "{count} tokens entered", "enterPrompt": "Enter a token", "added": "Added {count} token(s)", "duplicate": "These tokens already exist", "noneSaved": "There are no saved tokens", "cleared": "Cleared {count} token(s)" },
+            "showHiddenConfirm": "Are you sure you want to enable hidden content? Hidden content may include in-development features and bugs. Avoid enabling or viewing it during livestreams or other public settings."
+        },
+        "version": { "loading": "Chargement des informations de mise à jour...", "unavailable": "Les informations de mise à jour sont indisponibles", "appLine": "AKEData · Version {version}", "gameLine": "Game version {version}", "hotfixLine": "Hotfix version {version}", "updatedLine": "Last updated: {updatedAt}{updatedBy}", "homeLine": "AKEData {app} · {game}", "countdown": "Temps avant la prochaine mise à jour des données : {time}", "updateReason": "Motif de la mise à jour : {desc}" },
+        "overview": {
+            "count": "{count} entries",
+            "hint": "Select a card to view full details"
+        },
+        "versionDiff": { "group": "Différences de version · par rapport à {version}", "added": "Nouveau", "modified": "Modifié", "detailTitle": "Changements visibles · par rapport à {version}", "changeCount": "{count} changements", "truncated": "Trop de changements ; seules les 500 premières lignes sont affichées." },
+        "errors": {
+            "load": "Failed to load: {message}", "startup": "Application startup failed: {message}", "notFoundTitle": "Page not found", "notFoundDesc": "The requested module or entry does not exist", "returnHome": "Return home", "hiddenContentHint": "🔒 This content may be hidden.", "hiddenContentHelp": "Enable Show hidden modules in Global Settings to access hidden content.", "moduleContentMissing": "Module content file is not specified", "moduleLoad": "❌ Failed to load module content: {message}", "moduleManifestRead": "❌ Failed to read the module manifest.<br>Please access the site through a local server.", "exportFailed": "Screenshot failed: {message}"
+        },
+        "data": {
+            "independentEquipment": "Independent Equipment"
+        },
+        "modules": {
+            "combat": { "title": "Combat", "description": "View skill timing, damage, poise damage, and combat logic", "aria": { "sidebar": "Combat skill list", "directory": "Characters, monsters, and skills", "mobileDirectory": "Mobile character, monster, and skill list", "search": "Search characters, monsters, or skills", "close": "Close skill list" }, "search": { "label": "Search", "placeholder": "Character, monster, or skill" }, "loading": { "directory": "Loading data", "skillData": "Loading skill data", "analyzing": "Analyzing combat data", "switchingLevel": "Switching skill level", "buildingDirectory": "Building character and skill directory" }, "buttons": { "skillList": "Skill List", "selectSkill": "Select Skill", "close": "Close", "showPerformance": "Include presentation events", "combatOnly": "Combat events only" }, "errors": { "readSkillData": "Unable to read {id}", "skillReadTitle": "Failed to load skill", "manifestLoad": "Unable to load the SkillData manifest", "combatDataTitle": "Failed to load combat data", "emptyTitle": "No data to display", "manifestEmpty": "The SkillData manifest is empty", "readFailed": "Load failed" }, "warnings": { "ANALYZER_UNAVAILABLE": "The combat analyzer is unavailable. Only raw basic fields are shown.", "ANALYSIS_FAILED": "Analysis failed: {message}", "INVALID_PATCH_BUNDLE": "The SkillPatch input does not contain a usable level configuration.", "PATCH_LEVEL_FALLBACK": "No level was specified. Using the level {selectedLevel} configuration.", "PATCH_LEVEL_FALLBACK_REQUESTED": "The level {requestedLevel} configuration was not found. Using level {selectedLevel}.", "DUPLICATE_BLACKBOARD_KEY": "Blackboard key \"{key}\" occurs more than once in {source}.", "UNRESOLVED_BLACKBOARD_KEY": "Blackboard key \"{key}\" was not found. The embedded fallback value is used.", "EMPTY_DAMAGE_ACTION": "The damage action has no damage units ({path}).", "ACTION_DEPTH_LIMIT": "Nested action traversal reached the depth limit and stopped ({path}).", "ACTION_NODE_LIMIT": "Action traversal reached the node limit and stopped ({path}).", "REVERSED_ACTION_GROUP": "The action group ends before it starts: {startFrame}-{endFrame} ({path}).", "UNKNOWN": "Analysis warning: {message}" }, "directory": { "groupLabel": "Skill group", "sections": { "characters": "Characters", "monsters": "Monsters", "other": "Other" }, "groups": { "normalAttack": "Normal Attack", "combatSkill": "Combat Skill", "ultimate": "Ultimate", "comboSkill": "Combo Skill", "otherCombatActions": "Other Combat Actions", "monsterSkills": "Monster Skills" }, "otherGroups": { "unmappedEnemy": "Unmapped Monsters and Summons", "interaction": "Interactive and Scene Entities", "equipment": "Equipment and Passives", "system": "System and Shared Logic", "misc": "Other" }, "entityKinds": { "character": "Character", "monster": "Monster", "category": "Category", "otherCombatEntities": "Other Combat Entities" } }, "counts": { "sectionEntities": "{count}", "directorySummary": "{characters} characters · {monsters} monsters · {skills} SkillData entries", "items": "{count} items", "hits": "{count} hits", "events": "{count} events", "filteredEvents": "{visible} / {total} items", "actions": "{count} actions" }, "units": { "frames": "{value} frames", "seconds": "{value} seconds", "frameSeconds": "{frames} frames, approx. {seconds} s", "frameRange": "{start}-{end} frames", "atkPercent": "{value}% ATK", "level": "Level {value}" }, "sections": { "skillLevelConfiguration": "Skill Level Configuration", "coreMetrics": "Core Metrics", "keyWindows": "Key Windows", "hitLedger": "Hit Ledger", "blackboardResolution": "Blackboard Resolution", "allEvents": "All Events" }, "sectionNotes": { "keyCombatFields": "Key combat fields" }, "tabs": { "timeline": "Combat Timeline", "logic": "Logic Chain", "debug": "Debug Data" }, "empty": { "noMatchingCombatData": "No matching combat data", "noCoreMetrics": "The analyzer returned no core metrics", "noKeyWindows": "No hit, cancel, super armor, invulnerability, or continuation windows were found", "noHits": "No hit resolution was found", "noTimelineEvents": "The analyzer returned no combat timeline events", "noLogic": "No conditions, jumps, or successor actions were found", "noBlackboard": "No resolved blackboard values", "noEvents": "No events", "noActionDetails": "No action parameters to display", "noDisplayData": "No data to display" }, "columns": { "hits": { "index": "#", "time": "Timing", "type": "Type", "damage": "Multiplier / Damage", "poise": "Poise / Stagger", "resource": "Resource / Infliction", "note": "Condition / Target" }, "events": { "index": "#", "category": "Category", "time": "Timing", "event": "Event", "details": "Details" } }, "metrics": { "durationFrame": "Total Action Duration", "exclusiveFrame": "Exclusive Window", "offsetRecordFrame": "Continuation Record Frame", "offsetTime": "Continuation Retention Time", "startupFrame": "Startup", "firstHitFrame": "First Hit", "lastHitFrame": "Last Hit", "recoveryFrame": "Recovery", "cancelFrame": "Cancel Timing", "cooldown": "Cooldown", "hitCount": "Hit Count", "totalDamage": "Total Damage Multiplier", "damage": "Damage Multiplier", "poiseDamage": "Poise Damage", "atb": "Stagger Value", "superArmor": "Super Armor", "moveDistance": "Movement Distance", "invulnerableFrame": "Invulnerability", "runtimeCooldown": "Runtime Cooldown", "costCommitFrame": "Resource Commit Frame", "attackRangeType": "Attack Range Type", "castDistance": "Cast Distance", "confirmedPoiseDamage": "Confirmed-Path Poise Damage", "patchCost": "Level Configuration Cost", "runtimeCost": "Runtime Cost", "skillSuperArmor": "Skill Super Armor", "canMove": "Can Cast While Moving", "canCastInAir": "Can Cast in Air", "dontInterruptCombo": "Preserve Combo Flag", "level": "Level", "costType": "Cost Type", "costValue": "Cost Value" }, "windows": { "damage": "Hit", "superArmor": "Super Armor", "buffSuperArmor": "Super Armor Buff", "damageImmune": "Invulnerability", "allowNextSkill": "Allow Continuation", "comboCache": "Input Buffer", "canInterrupt": "Cancelable", "canDash": "Dash Cancel", "blockMoveInterrupt": "Block Move Interrupt", "hitStop": "Hit Stop", "timeDilation": "Time Dilation", "movement": "Movement", "exclusive": "Exclusive Window", "offsetRecord": "Continuation Record Frame", "costCommit": "Resource Commit Frame", "named": "Window {index}" }, "events": { "presentation": "Presentation", "combat": "Combat", "named": "Event {index}" }, "logic": { "named": "Logic {index}", "conditionBranch": "Conditional Branch", "rootSkill": "Root Skill", "link": "Link" }, "blackboard": { "patchSource": "SkillPatch Lv.{level}", "defaultSource": "SkillData default" }, "raw": { "analyzerOutput": "Analyzer Output", "currentPatch": "Current-Level SkillPatch", "skillData": "Raw SkillData" }, "sourceWarning": "SkillData currently uses the shared latest data, while character and level tables use the selected historical version. Cross-version fields are for comparison only.", "enums": { "groupTypes": { "normalAttack": "Normal Attack", "combatSkill": "Combat Skill", "ultimate": "Ultimate", "comboSkill": "Combo Skill" }, "attackAttributes": { "physical": "Physical Damage", "real": "True Damage", "fire": "Heat Damage", "pulse": "Electric Damage", "cryst": "Cryo Damage", "crystal": "Cryo Damage", "lifedrain": "Life Drain Damage", "natural": "Nature Damage", "ether": "Ether Damage" }, "costTypes": { "ultimateSp": "Ultimate Energy", "atb": "Skill Points", "resource": "Resource" }, "attackRanges": { "melee": "Melee", "ranged": "Ranged" }, "entityKinds": { "character": "Character", "monster": "Monster", "other": "Other" }, "eventKinds": { "presentation": "Presentation", "combat": "Combat" }, "controlTypes": { "interrupt": "Interrupt", "crush": "Crush", "fracture": "Fracture", "spellInfliction": "Elemental Infliction" }, "castTypes": { "active": "Active", "passive": "Passive" }, "skillSpecifications": { "characterNormalSkill": "Character Normal Skill", "default": "Default" }, "passiveSkillTypes": { "default": "Default" } }, "timeline": { "summary": { "more": "{count} more", "input": "Input", "duration": "Duration {value}", "damageUnits": "{count} damage units" }, "enums": { "eq": "=", "ne": "≠", "gt": ">", "ge": "≥", "lt": "<", "le": "≤", "owner": "Owner", "actionOwner": "Action Owner", "source": "Source", "actionSource": "Action Source", "target": "Target", "context": "Context", "atb": "ATB", "ultimateSp": "Ultimate Energy", "usp": "USP", "gain": "Gain", "consume": "Consume", "set": "Set", "assign": "Assign", "add": "Add", "subtract": "Subtract", "multiply": "Multiply", "divide": "Divide", "sourceForward": "Source Forward", "sourceToTarget": "Source to Target", "targetToSource": "Target to Source", "self": "Self", "friend": "Ally", "anti": "Enemy", "all": "All", "hp": "HP", "poise": "Poise", "interrupt": "Interrupt", "crush": "Crush", "fracture": "Fracture", "spellInfliction": "Elemental Infliction", "normalAttack": "Normal Attack", "normalSkill": "Combat Skill", "ultimateSkill": "Ultimate", "comboSkill": "Combo Skill", "melee": "Melee", "ranged": "Ranged" }, "actions": {"AchieveSpecialGameEventAction":"Achieve Special Game Event","AddAIMarkerAction":"Add AI Marker","AddCameraControlStateAction":"Add Camera Control State","AddDynamicCcsAction":"Add Dynamic CCS","AddDynamicNavmeshObstacle":"Add Dynamic Navmesh Obstacle","AddGlobalCDTimer":"Add Global Cooldown Timer","AddTagAction":"Add Tag","AddTagToEntities":"Add Tag To Entities","AirborneAction":"Airborne","AllowNextSkillAction":"Allow Next Skill","AnimatedCameraAction":"Animated Camera","AnimatorAimOffsetAction":"Animator Aim Offset","AnimEventReceiver":"Anim Event Receiver","ApplyArmor":"Apply Armor","AuraAction":"Aura","BlightMiasmaToleranceZero":"Blight Miasma Tolerance Zero","BlockMoveInterruptSkill":"Block Move Interrupt Skill","BlowOffAction":"Blow Off","BlowOffCharacterAction":"Blow Off Character","BlowOffEnemyAction":"Blow Off Enemy","BoneAttachAction":"Bone Attach","BreakInteractiveAction":"Break Interactive","BroadcastAlertToCharactersAction":"Broadcast Alert To Characters","CameraImpulseAction":"Camera Impulse","CameraRotateAction":"Camera Rotate","CastSkill":"Cast Skill","ChangeSkillAction":"Change Skill","ChangeSpecificLayerAction":"Change Specific Layer","ChannelingAction":"Channeling","ChannelingActionV2":"Channeling Action V2","ChannelingCastingAction":"Channeling Casting","ChannelingDamageAction":"Channeling Damage","CharAlertJumpAction":"Char Alert Jump","CharFollowAction":"Char Follow","CharHurtAnimAction":"Char Hurt Anim","CharWeaponAnimationAction":"Char Weapon Animation","CharWeaponVisibleAction":"Char Weapon Visible","CheckAllowNormalSkillHighlight":"Check normal skill highlight condition","CheckAbilityEntityCurDuration":"Check Ability Entity Cur Duration","CheckAttackRangeType":"Check Attack Range Type","CheckBuffIdInContext":"Check Buff ID In Context","CheckBuffIdInContextAdvanced":"Check Buff ID In Context Advanced","CheckBuffStackNum":"Check Buff Stack Num","CheckBuffStackNumAdvanced":"Check Buff Stack Num Advanced","CheckBuffStackNumByTag":"Check Buff Stack Num By Tag","CheckComboSkillCameraAlphaSetting":"Check Combo Skill Camera Alpha Setting","CheckConsumeBuffLayer":"Check Consume Buff Layer","CheckDamageDecorateMask":"Check Damage Decorate Mask","CheckDamageType":"Check Damage Type","CheckDamageTypeMask":"Check Damage Type Mask","CheckDistanceCondition":"Check Distance Condition","CheckEnemyRank":"Check Enemy Rank","CheckEntityNum":"Check Entity Num","CheckGlobalCDTimerAction":"Check Global Cooldown Timer","CheckHasMoveInput":"Check Has Move Input","CheckHealTag":"Check Heal Tag","CheckHitColliderOptions":"Check Hit Collider Options","CheckHp":"Check HP","CheckIsCriticalDamage":"Check Is Critical Damage","CheckMainCharacterCondition":"Check Main Character Condition","CheckObjectTypeMatch":"Check Object Type Match","CheckObtainAtbType":"Check Obtain ATB Type","CheckOriginSkillType":"Check Origin Skill Type","CheckOverHeal":"Check Over Heal","CheckPartTagMatch":"Check Part Tag Match","CheckPerfectDodgeDirection":"Check Perfect Dodge Direction","CheckPhysicalInflictionType":"Check Physical Infliction Type","CheckPoiseValue":"Check Poise Value","CheckSkillCameraMotionFree":"Check Skill Camera Motion Free","CheckSkillHasHit":"Check Skill Has Hit","CheckSkillType":"Check Skill Type","CheckSpellInflictionType":"Check Spell Infliction Type","CheckSquadInFight":"Check Squad In Fight","CheckSuperArmor":"Check Super Armor","CheckTagMatch":"Check Tag Match","CheckTargetAngle":"Check Target Angle","CheckTargetContains":"Check Target Contains","CheckTargetInScreen":"Check Target In Screen","CheckTargetsEqual":"Check Targets Equal","CheckTimedMarkerCondition":"Check Timed Marker Condition","CheckTwoDirectionAngle":"Check Two Direction Angle","CheckWeaponTypeCondition":"Check Weapon Type Condition","ClearProjectileAction":"Clear Projectile","ComboAction":"Combo","ComboCacheAction":"Combo Cache","CommandToCharactersAction":"Command To Characters","CompareDeckAttr":"Compare Deck Attr","CompareFloat":"Compare Float","CompareString":"Compare String","ContinuousFindTargetAction":"Continuous Find Target","ContinuousSetAnimTimeScale":"Continuous Set Anim Time Scale","ConvertToTargetContext":"Convert To Target Context","CreateAdditionalBattleShape":"Create Additional Battle Shape","CreateBuffAction":"Create Buff","CreateBuffAttachingSkill":"Create Buff Attaching Skill","CreateGlobalBuffAction":"Create Global Buff","CreateTimedMarker":"Create Timed Marker","CrushAction":"Crush","CurveEvaluateFloat":"Curve Evaluate Float","CustomRootMotionAction":"Custom Root Motion","DamageAction":"Damage","DebugPrintAction":"Debug Print","DiceFloat":"Dice Float","DisableMoveColliderAction":"Disable Move Collider","DisableRootMotionAction":"Disable Root Motion","DispelAction":"Dispel","DoOnceAction":"Do Once","EffectAction":"Effect","EffectControlAction":"Effect Control","EffectFindTargetAction":"Effect Find Target","EliteBackSwingBeHit":"Elite Back Swing Be Hit","EnablePartsAction":"Enable Parts","EnemyHurtAnimAction":"Enemy Hurt Anim","EnemyWarningAction":"Enemy Warning","EventListenerAction":"Event Listener","ExtendBuffAction":"Extend Buff","FacBuildingPlayAnimationAction":"Fac Building Play Animation","FindTargetAction":"Find Target","FinishAngryOnEnd":"Finish Angry On End","FinishBuffAction":"Finish Buff","FinishBuffAdvanced":"Finish Buff Advanced","FinishBuffByTag":"Finish Buff By Tag","FinishOwnerAction":"Finish Owner","ForceHideHeadBarAction":"Force Hide Head Bar","ForceSpellStatusAction":"Force Spell Status","ForEachAction":"For Each","FractureAction":"Fracture","GainBreakingAttackAtb":"Gain Breaking Attack ATB","GetAITransDataAction":"Get AI Trans Data","GetPatrolTeleportPos":"Get Patrol Teleport Pos","GetTargetBuffBBAdvanced":"Get Target Buff Blackboard Advanced","HealAction":"Heal","HideUIAction":"Hide UI","HitStopAction":"Hit Stop","HurtAnimAction":"Hurt Anim","IfElseAction":"If Else","IgniteAction":"Ignite","IgnoreModelIntervalCheck":"Ignore Model Interval Check","InheritBuffAction":"Inherit Buff","InheritCCSAction":"Inherit CCS","InterruptAction":"Interrupt","InterruptCurSkillAction":"Interrupt Cur Skill","IntResourceHpCheckAction":"Int Resource HP Check","IntResourceOnHpZeroAction":"Int Resource On HP Zero","InverseSpellInfliction":"Inverse Spell Infliction","JumpToAction":"Jump To","JumpToTargetAction":"Jump To Target","KnockDownAction":"Knock Down","LaunchProjectile":"Launch Projectile","LaunchUpwardAction":"Launch Upward","LockCameraAimAction":"Lock Camera Aim","LogAction":"Log","LookAtAction":"Look At","MarkCanDash":"Mark Can Dash","MarkCanInterrupt":"Mark Can Interrupt","MergeTargetAction":"Merge Target","ModifyCameraLockPointAction":"Modify Camera Lock Point","ModifyCollectedBuffBbValue":"Modify Collected Buff Blackboard Value","ModifyDynamicBlackboard":"Modify Dynamic Blackboard","ModifyWeaponMountPoint":"Modify Weapon Mount Point","MoveToAction":"Move To","MoveToDirectionAction":"Move To Direction","MoveToLocationAction":"Move To Location","MoveToSlotAction":"Move To Slot","MoveToTargetAction":"Move To Target","NotNextCheckAction":"Not Next Check","ObtainCostAction":"Obtain Cost","ObtainUspInNormalSkill":"Obtain USP In Normal Skill","OrConditionAction":"Or Condition","OverrideBornPosition":"Override Born Position","OverrideCameraFollowAction":"Override Camera Follow","PatrolRefreshCheckPoint":"Patrol Refresh Check Point","PauseComboSkillTime":"Pause Combo Skill Time","PhysicsCastAction":"Physics Cast","PickTargetAction":"Pick Target","PlayAnimationAction":"Play Animation","PlayAnimationWithStep":"Play Animation With Step","PlayNormalDashAnimAction":"Play Normal Dash Anim","PlayPerfectDodgeAnim":"Play Perfect Dodge Anim","PlaySoundAction":"Play Sound","Probablity":"Probablity","PullAction":"Pull","PushAction":"Push","PushBackAction":"Push Back","RandomAction":"Random","RayCastEffectAction":"Ray Cast Effect","ReadSkillSettingData":"Read Skill Setting Data","ReceiveMoveInputAction":"Receive Move Input","RecoverPoiseAction":"Recover Poise","RemoveAIMarkerAction":"Remove AI Marker","RepeatAction":"Repeat","SaveAtbObtainValue":"Save ATB Obtain Value","SaveBuffStackNumAdvanced":"Save Buff Stack Num Advanced","SaveBuffStackNumByTag":"Save Buff Stack Num By Tag","SaveCameraAngle":"Save Camera Angle","SaveCharTypeId":"Save Char Type ID","SaveTargetDistanceAction":"Save Target Distance","SaveTwoDirectionAngle":"Save Two Direction Angle","SaveValueFromAIBlackboard":"Save Value From AI Blackboard","SelfRotateAction":"Self Rotate","SendBattleSignalToLevel":"Send Battle Signal To Level","SetAbilityEntityDuration":"Set Ability Entity Duration","SetAbilityEntityTarget":"Set Ability Entity Target","SetAbilityEntityToMainChar":"Set Ability Entity To Main Char","SetAnimatorParamAction":"Set Animator Param","SetIgnoreGlobalTimeScaleAction":"Set Ignore Global Time Scale","SetMultiTimesWeakness":"Set Multi Times Weakness","SetSkillCdAtOnce":"Set Skill Cooldown At Once","SetSuperArmorAction":"Set Super Armor","SetWeaknessAction":"Set Weakness","ShowComboSkillUI":"Show Combo Skill UI","ShowHideActorAction":"Show Hide Actor","SimpleCalcBBAction":"Simple Calc Blackboard","SkillAIMoveAction":"Skill AI Move","SlowAction":"Slow","SnapToTargetWithRangeAction":"Snap To Target With Range","SpawnAbilityEntity":"Spawn Ability Entity","SpawnEnemyAction":"Spawn Enemy","SpawnInteractiveGoldCoin":"Spawn Interactive Gold Coin","SpellInfliction":"Spell Infliction","SpellInflictionOnChar":"Spell Infliction On Char","StoreAttributeValue":"Store Attribute Value","StoreCurSkillExecuteFrame":"Store Cur Skill Execute Frame","SwitchAction":"Switch","SwitchModeAction":"Switch Mode","TakeDownAction":"Take Down","TargetPostProcessorAction":"Target Post Processor","TeleportAction":"Teleport","TeleportPosSelectAction":"Teleport Pos Select","TemporaryUnlockAction":"Temporary Unlock","ThrowPickupItemAction":"Throw Pickup Item","ThrowPickupItemStartAction":"Throw Pickup Item Start","TickIntervalAction":"Tick Interval","TickIntervalActionV2":"Tick Interval Action V2","TimeDilationAction":"Time Dilation","TogglableAction":"Togglable","ToggleMeshAction":"Toggle Mesh","TriggerComboSkillAction":"Trigger Combo Skill","TriggerCustomAbilityEvent":"Trigger Custom Ability Event","TryToTeleportSquadAction":"Try To Teleport Squad","UltimateShowAction":"Ultimate Show","UltimateTimeAction":"Ultimate Time","VoiceInterruptAction":"Voice Interrupt","VoiceTriggerAction":"Voice Trigger","WaterDroneHitAction":"Water Drone Hit","UnknownAction":"Unknown"}, "fields": { "templates": { "count": "{field} count", "remainingCount": "Remaining {field} count", "type": "{field} type" }, "unitCount":"Unit Count","targetSettings":"Target Settings","targetGroupKey":"Target Group Key","sourceSettings":"Source Settings","source":"Source","actionSource":"Action Source","target":"Target","attacker":"Attacker","attackerTargetSettings":"Attacker Target Settings","defender":"Defender","owner":"Owner","skillOwner":"Skill Owner","buffOwner":"Buff Owner","healer":"Healer","caster":"Caster","auraRoot":"Aura Root","calculationTarget":"Calculation Target","contextKey":"Context Key","targetContextKey":"Target Context Key","targetSource":"Target Source","selectorData":"Selector Data","selectorOwner":"Selector Owner","selectorDirection":"Selector Direction","center":"Center","centerContextKey":"Center Context Key","saveToContext":"Save To Context","excludeTarget":"Exclude Target","targets":"Targets","skillId":"Skill ID","targetSkillId":"Target Skill ID","allowedSkillIdList":"Allowed Skill ID List","allowedSkillIds":"Allowed Skill Ids","projectileId":"Projectile ID","projectileSkillId":"Projectile Skill ID","skillIdOnBlock":"Skill ID On Block","skillIdOnReach":"Skill ID On Reach","skillIdOnFinish":"Skill ID On Finish","linkedSkills":"Linked Skills","abilityEntityId":"Ability Entity ID","abilityEntitySkillId":"Ability Entity Skill ID","enemyId":"Enemy ID","buffId":"Buff ID","buffIds":"Buff Ids","buffIdList":"Buff ID List","buffs":"Buffs","values":"Values","tag":"Tag","tags":"Tags","tagQuery":"Tag Query","marker":"Marker","markerId":"Marker ID","signalId":"Signal ID","modeId":"Mode ID","effectId":"Effect ID","effectName":"Effect Name","animName":"Anim Name","montageName":"Montage Name","soundEvent":"Sound Event","_soundEvent":"_Sound Event","triggerKey":"Trigger Key","_triggerKey":"_Trigger Key","configKey":"Config Key","key":"Key","blackboardKey":"Blackboard Key","bbKey":"Blackboard Key","storeKey":"Store Key","saveTo":"Save To","duration":"Duration","totalTime":"Total Time","time":"Time","startFrame":"Start Frame","destFrame":"Dest Frame","startOffsetFrame":"Start Offset Frame","playbackSpeed":"Playback Speed","blendDuration":"Blend Duration","triggerInterval":"Trigger Interval","targetTriggerInterval":"Target Trigger Interval","tickInterval":"Tick Interval","fixedTickCount":"Fixed Tick Count","totalTickCount":"Total Tick Count","maxCountPerTarget":"Max Count Per Target","count":"Count","layer":"Layer","value":"Value","directValue":"Direct Value","valueA":"Value A","valueB":"Value B","lhsValue":"Lhs Value","rhsValue":"Rhs Value","compare":"Compare","compareType":"Compare Type","operation":"Operation","operationType":"Operation Type","calculateType":"Calculate Type","inputValue":"Input Value","minValue":"Min Value","maxValue":"Max Value","coefficient":"Coefficient","multiplier":"Multiplier","addition":"Addition","rate":"Rate","curveKey":"Curve Key","useDirectCurve":"Use Direct Curve","useCurveKey":"Use Curve Key","damageUnits":"Damage Units","damageType":"Damage Type","damageMultiplier":"Damage Multiplier","healType":"Heal Type","healCalculation":"Heal Calculation","poiseType":"Poise Type","recoverValue":"Recover Value","superArmorValue":"Super Armor Value","impactResistance":"Impact Resistance","overrideSuperArmorLimit":"Override Super Armor Limit","immobilizedTime":"Immobilized Time","unmovableTime":"Unmovable Time","blowOffDistance":"Blow Off Distance","distanceRandomRange":"Distance Random Range","blowOffHeight":"Blow Off Height","verticalSpeed":"Vertical Speed","horizontalSpeed":"Horizontal Speed","distance":"Distance","moveDistance":"Move Distance","speed":"Speed","moveSpeed":"Move Speed","moveType":"Move Type","rotateType":"Rotate Type","height":"Height","floatingHeight":"Floating Height","floatingDuration":"Floating Duration","directionType":"Direction Type","costType":"Cost Type","costValue":"Cost Value","atbSourceType":"ATB Source Type","atbGainMethod":"ATB Gain Method","buffStackNumType":"Buff Stack Num Type","finishLayerCnt":"Finish Layer Cnt","mappings":"Mappings","command":"Command","cacheTime":"Cache Time","cacheEndByAction":"Cache End By","overrideCacheTime":"Override Cache Time","skipApplyCost":"Skip Apply Cost","inheritSourceSkillCastId":"Inherit Source Skill Cast ID","overrideDuration":"Override Duration","finishByAction":"Finish By","alwaysNext":"Always Next","enabled":"Enabled","visible":"Visible","finishAll":"Finish All","isExtra":"Is Extra","isPercentValue":"Is Percent Value","playObtainAtbEffect":"Play Obtain ATB Effect","playObtainAtbAudio":"Play Obtain ATB Audio","affectType":"Affect Type","controlType":"Control Type","condition":"Condition","actionCount":"Action Count","successActionCount":"Success Action Count","failActionCount":"Fail Action Count","tickActionCount":"Tick Action Count","enterActionCount":"Enter Action Count","exitActionCount":"Exit Action Count","shapeType":"Shape Type","radius":"Radius","range":"Range","faction":"Faction"} } },
+            "shop": { "title": "Shop", "description": "Browse goods, prices, and contents by shop group", "groupHint": "Browse by shop group", "search": "Search shops or goods (name/ID)", "groupList": "Shop group list", "loading": "Loading shop data", "groups": "Shop Groups", "selectGroup": "Select a shop group", "close": "Close", "recommendations": "Dijiang Picks", "goodsCount": "{count} goods", "noMatches": "No matching shop groups", "noGoods": "No matching goods in this shop group", "loadFailed": "Failed to load shop data", "unknown": "Unknown", "permanent": "Permanent", "separator": ", ", "free": "Free", "unlimited": "No purchase limit", "limitWithRefresh": "Limit {count} · {refresh}", "hidden": "Hidden in game", "weaponClaim": "Weapon Claim", "bonusReward": "Recharge Bonus", "monthlyReward": "Recurring Rewards", "groupTypes": { "type0": "Regional and Event Shops", "type2": "Quota Exchange", "type3": "Regional Dispatch", "type4": "Credit Exchange", "type5": "Paid Shop", "cash": "Paid Shop", "recommend": "Featured", "other": "Other Shops" }, "context": { "activity": "Event", "openTime": "Availability", "domain": "Region", "channels": "Dispatchers" }, "refresh": { "none": "No refresh", "daily": "Daily refresh", "weekly": "Weekly refresh", "pool": "Banner refresh", "unknown": "Refresh type {type}" } },
+            "hidden": { "title": "Hidden Module", "description": "Hidden-module toggle test", "testTitle": "Hidden feature test" },
+            "settings": { "title": "Settings", "description": "Theme and hidden-module settings", "basicTitle": "⚙️ Basic Settings", "aboutTitle": "📖 About", "aboutBody": "AKEData dynamic module demo · version 1.0", "aboutTheme": "Theme files are stored in the theme/ folder and can be extended." },
+            "character": {
+                "title": "Characters",
+                "description": "View detailed character data",
+                "search": "Search characters (name/ID)",
+                "element": "Element:",
+                "profession": "Class:",
+                "weapon": "Weapon:",
+                "loading": "Loading character data...",
+                "select": "Select a character",
+                "noMatches": "No matching characters",
+                "loadFailed": "Failed to load: {name}",
+                "unknown": "Unknown",
+                "unknownProfession": "Unknown class",
+                "attributeFallback": "Attribute {name}",
+                "rarityStars": "{name}-star",
+                "rarityLabel": "Rarity {name}",
+                "level": "Level",
+                "levelAbbreviation": "Lv.{name}",
+                "levelRange": "Lv.{name}",
+                "none": "None",
+                "developmentCost": "Upgrade cost",
+                "expandAllLevels": "Show all levels",
+                "collapseExtraLevels": "Hide extra levels",
+                "expandAllSkillLevels": "Show all skill levels",
+                "collapseAllSkillLevels": "Hide extra skill levels",
+                "potentialName": "Potential {name}",
+                "overview": {
+                    "title": "Character Overview",
+                    "description": "Grouped by class with attributes, weapon types, and rarity",
+                    "fallback": "Character"
+                },
+                "columns": {
+                    "coolDown": "Cooldown",
+                    "costValue": "Energy Cost"
+                },
+                "meta": {
+                    "profession": "Class",
+                    "weaponType": "Weapon Type",
+                    "mainAttribute": "Main Attribute",
+                    "subAttribute": "Sub Attribute",
+                    "voiceActor": "VA"
+                },
+                "attributes": {
+                    "strength": "Strength",
+                    "agility": "Agility",
+                    "intellect": "Intellect",
+                    "will": "Will",
+                    "hp": "HP",
+                    "attack": "Attack",
+                    "defense": "Defense",
+                    "artsInflictionDamageMultiplier": "Arts Infliction Damage Multiplier",
+                    "physicalInflictionDamageMultiplier": "Physical Infliction Damage Multiplier"
+                },
+                "skillTypes": {
+                    "basicAttack": "Basic Attack",
+                    "combatSkill": "Battle Skill",
+                    "comboSkill": "Combo Skill",
+                    "ultimate": "Ultimate"
+                },
+                "sections": {
+                    "attributeGrowth": "Attribute Growth",
+                    "attributeNodes": "Attribute Nodes",
+                    "talents": "Talents",
+                    "potentials": "Potentials",
+                    "skills": "Skills",
+                    "logisticsSkills": "Base Skills",
+                    "potentialImages": "Potential Images",
+                    "profile": "Profile",
+                    "voiceRecords": "Voice Records"
+                }
+            },
+            "weapon": {
+                "title": "Weapons",
+                "description": "View detailed weapon data",
+                "search": "Search weapons (name/ID)",
+                "loading": "Loading weapon data...",
+                "select": "Select a weapon",
+                "noMatches": "No matching weapons",
+                "loadFailed": "Failed to load: {message}",
+                "unknown": "Unknown",
+                "unknownType": "Unknown type",
+                "levelAbbreviation": "Lv.{level}",
+                "gold": "Gold",
+                "initial": "Initial",
+                "baseAttackRange": "Base Attack (Levels 1-{max})",
+                "skillLevelBounds": "Skill {skill}: {lower}-{upper}",
+                "skillUpperBound": "Skill {skill} cap +{upper}",
+                "breakthroughLevel": "Breakthrough {level}",
+                "potentialLevel": "Potential {level}",
+                "noExtraEffect": "No additional effect",
+                "weaponTypes": {
+                    "oneHandedSword": "One-handed Sword",
+                    "artsUnit": "Arts Unit",
+                    "twoHandedSword": "Two-handed Sword",
+                    "polearm": "Polearm",
+                    "handcannon": "Handcannon"
+                },
+                "overview": {
+                    "title": "Weapon Overview",
+                    "description": "Grouped by weapon type with all weapons and rarities",
+                    "fallback": "Weapon"
+                },
+                "sections": {
+                    "skillData": "Skill Data",
+                    "breakthroughMaterials": "Breakthrough Materials",
+                    "potentials": "Potentials",
+                    "story": "Weapon Story"
+                }
+            },
+            "enemy": {
+                "title": "Enemies", "description": "View detailed enemy data", "search": "Search enemies (name/ID)", "loading": "Loading enemy data...", "select": "Select an enemy",
+                "noMatches": "No matching enemies", "loadFailed": "Failed to load: {message}", "attributeFallback": "Attribute {type}", "variantDifference": "Differences from initial variant:", "noVariants": "No variant data", "variantFallback": "Variant {number}",
+                "enemyTypes": { "normal": "Normal Enemies", "elite": "Elite Enemies", "boss": "Boss Enemies", "special": "Special Enemies", "dangerous": "High-risk Enemies", "other": "Other Enemies" },
+                "overview": { "title": "Enemy Overview", "description": "Grouped by enemy type with templates, danger levels, and variant counts", "fallback": "Enemy", "dangerLevel": "Danger {level}", "variantCount": "{count} variants" },
+                "columns": { "maxHp": "Max HP", "defense": "Defense" },
+                "flags": { "dangerous": "Dangerous", "globalEffect": "Global Effect", "pinnedHealthBar": "Pinned Health Bar" },
+                "sections": { "poiseBreakBuffs": "Poise Break Buffs", "variantAttributes": "Variant Attributes" },
+                "meta": {
+                    "initialSuperArmor": "Initial Super Armor", "zeroPoiseSuperArmor": "Super Armor While Poise Is Zero", "superArmorWhenResilienceZero": "Super Armor While Resilience Is Zero", "executionDamageScalar": "Execution Damage Taken Scalar", "breakingAttackedAtbObtain": "Execution ATB Recovery", "physicalDamageTakenScalar": "Physical Damage Taken Scalar", "naturalDamageTakenScalar": "Nature Damage Taken Scalar", "coldDamageTakenScalar": "Cold Damage Taken Scalar", "electroDamageTakenScalar": "Electric Damage Taken Scalar", "fireDamageTakenScalar": "Heat Damage Taken Scalar", "etherDamageTakenScalar": "Ether Damage Taken Scalar", "physicalResistScalar": "Physical Resistance Scalar", "naturalResistScalar": "Nature Resistance Scalar", "coldResistScalar": "Cold Resistance Scalar", "electroResistScalar": "Electric Resistance Scalar", "fireResistScalar": "Heat Resistance Scalar", "etherResistScalar": "Ether Resistance Scalar", "normalAttackRange": "Normal Attack Range", "maxPoise": "Max Poise", "poiseRecTime": "Poise Recovery Time", "poiseKnotPct": "Poise Thresholds", "weight": "Weight", "attackValueAgainstTower": "Attack Against Towers", "maxResilience": "Max Resilience", "pushedBackCoefficient": "Knockback Coefficient", "resilienceDecreaseWhenHurt": "Resilience Loss When Hit", "resilienceFullRecoverTime": "Full Resilience Recovery Time", "resilienceRecover": "Resilience Recovery", "resilienceRecoverInterval": "Resilience Recovery Interval", "criticalRate": "Critical Rate", "criticalDamage": "Critical Damage", "hatred": "Aggro", "attackSpeed": "Attack Speed"
+                }
+            },
+            "equip": {
+                "title": "Equipment", "description": "View detailed equipment data", "search": "Search equipment sets (name/ID)", "loading": "Loading equipment data...", "select": "Select equipment set",
+                "loadingSet": "Loading equipment set data...", "noMatches": "No matching equipment sets", "loadFailed": "Failed to load: {message}",
+                "attributeFallback": "Attribute {type}", "partFallback": "Part {type}", "levelAbbreviation": "Lv.{level}", "independentEquipment": "Independent Equipment", "equipmentSets": "Equipment Sets",
+                "craftingCost": "Crafting Cost", "maxEnhancement": "Max Enhancement +{level}", "enhancementGuarantee": "Enhancement Guarantee", "parameters": "Parameters:",
+                "maxCraftingCount": "Max Crafting Count", "recyclingReturnRate": "Recycling Return Rate", "materialsConsumed": "Materials Consumed", "materialsReturned": "Materials Returned",
+                "parts": { "armor": "Armor", "gloves": "Gloves", "accessory": "Accessory" },
+                "columns": { "stat": "Stat", "base": "Base", "value": "Value" },
+                "overview": { "title": "Equipment Overview", "description": "Grouped by sets and independent equipment with set sizes and highest rarities", "fallback": "Equipment", "highestRarity": "Up to {rarity} Stars", "equipmentCount": "{count} Pieces" },
+                "sections": { "setSkills": "Set Skills", "setPieces": "Set Pieces", "enhancementInfo": "Enhancement Info" }
+            },
+            "item": {
+                "title": "Items", "description": "View detailed item data", "search": "Search items (name/ID)", "loading": "Loading item data...", "select": "Select an item", "noMatches": "No matching items", "loadFailed": "Failed to load: {message}", "typeFallback": "Type {type}", "otherItems": "Other Items",
+                "overview": { "title": "Item Overview", "description": "Grouped by in-game display category with all items and rarities", "fallback": "Item" },
+                "sections": { "obtainWays": "How to Obtain", "properties": "Properties", "useEffects": "Effects", "craftingPaths": "Crafting Paths", "applicableWeapons": "Applicable Weapons", "choiceBoxContents": "Choice Box Contents", "iconComposite": "Icon Composition", "displayType": "Display Type", "encyclopediaEntry": "Encyclopedia Entry" },
+                "properties": { "maxStack": "Max Stack", "backpackStackLimit": "Backpack Stack Limit", "storageSpace": "Storage Space" },
+                "effects": { "afterUse": "Effect After Use", "afterEquip": "Effect When Equipped", "duration": "Duration {duration}", "useCount": "Uses {count}", "cooldown": "Cooldown {duration}", "castTime": "Cast Time {duration}", "recoverCount": "Recoverable {count} times", "recoveryInterval": "Recovery Interval {duration}" },
+                "craft": { "duration": "Crafting Time {duration}", "notConfigured": "Not configured", "noMaterials": "No item materials", "sources": "Crafted From", "uses": "Used to Craft", "usableLevel": "Available at Level {level}", "facilityLevel": "Facility Level {level}" },
+                "recipeKinds": { "integratedIndustry": "Integrated Industry", "manualCrafting": "Manual Crafting", "hubManufacturing": "Hub Manufacturing", "equipmentManufacturing": "Equipment Manufacturing", "growCabinPlanting": "Grow Cabin Planting", "growCabinSeedCollection": "Grow Cabin Seed Collection", "spaceshipManufacturing": "Spaceship Manufacturing" },
+                "choiceBox": { "selectableCount": "Selectable: {count}" },
+                "iconComposite": { "type": "Composition Type", "showRarity": "Show Rarity", "markIcon": "Marker Icon" },
+                "encyclopedia": { "entryId": "Entry ID", "group": "Group" }
+            },
+            "dungeon": {
+                "title": "Dungeons", "description": "View detailed dungeon data", "search": "Search dungeon series (name/ID)", "loading": "Loading dungeon data...", "select": "Select dungeon series", "noMatches": "No matching series", "loadFailed": "Failed to load: {message}", "noData": "No dungeon data in this series", "attributeFallback": "Attribute {type}", "enemyDetails": "Enemy Details", "stamina": "Stamina: {value}",
+                "overview": { "title": "Dungeon Overview", "description": "Grouped by dungeon type with series and stage counts", "fallback": "Dungeon", "stageCount": "{count} stages" },
+                "categories": { "highDifficulty": "High-Difficulty Challenges", "bossRush": "Boss Challenges", "protocolSpace": "Protocol Space", "eventCombat": "Event Operations", "challenge": "Challenge Dungeons", "resource": "Resource Dungeons", "weeklyRaid": "Weekly Raids", "characterMission": "Character Missions", "characterTutorial": "Character Tutorials", "contingencyContract": "Contingency Contract", "training": "Training Dungeons", "worldLevel": "World Level", "wulingA": "Wuling Area A", "wulingB": "Wuling Area B", "mystery": "Mysteries", "protocolDivergence": "Protocol Divergence", "other": "Other Dungeons" },
+                "spawnModes": { "parallel": "Simultaneous", "sequence": "Sequential", "partKilled": "After Kills", "allKilled": "After Elimination", "deadline": "After Timer" },
+                "spawnConditions": { "partKilled": "after defeating {count} in group {group}", "allKilled": "after eliminating group {group}" },
+                "spawn": { "randomRadius": " ±{radius}", "delay": "Delay {seconds}s", "interval": "Interval {seconds}s", "preWarning": "Warning {seconds}s", "faceMainCharacter": "Faces Controlled Character", "coordinates": "Coordinates {position}{radius}", "groupMode": "Group {group} · {mode}{condition}" },
+                "flags": { "dangerous": "Dangerous", "globalEffect": "Global Effect", "pinnedHealthBar": "Pinned Health Bar" },
+                "goals": { "main": "Main Objective: ", "extra": "Bonus Objective: " },
+                "rewards": { "fixed": "Fixed Rewards", "random": "Random Rewards", "hunterMode": "Deep-Dive Mode Rewards", "firstClear": "First-Clear Rewards" },
+                "waves": { "repeatable": "Repeats Indefinitely", "aliveLimit": "Limit {count} alive", "externallyControlled": "Spawning in this wave is controlled by other factors", "number": "Wave {number}", "summaryLabel": "Wave Summary", "summary": "{waves} waves | {enemies} enemies total" },
+                "meta": { "staminaCost": "Stamina Cost", "recommendedLevel": "Recommended Level", "category": "Type" }
+            },
+            "activity": {
+                "title": "Events", "description": "View event information", "search": "Search events (name/ID)", "loading": "Loading event data...", "select": "Select an event", "noMatches": "No matching events", "loadFailed": "Failed to load: {message}", "typeFallback": "Type {type}",
+                "types": { "regular": "Regular Event", "signIn": "Sign-in", "levelRewards": "Level Rewards", "staged": "Staged Event", "staminaDiscount": "Stamina Discount", "beginnerBanner": "Beginner Banner", "mysteryWanderer": "Mystery Wanderer", "highDifficulty": "High-Difficulty Operation", "combatTraining": "Combat Training", "characterGuide": "Character Guide", "returningPlayer": "Returning Player Event", "supply": "Supply Event", "areaGuide": "Area Guide", "weeklyTasks": "Weekly Tasks", "survivalTraining": "Survival Training", "purification": "Purification", "beginnerGift": "Beginner Gift", "characterDevelopment": "Character Development", "special": "Special Event", "limitedChallenge": "Limited Challenge", "version": "Version Event", "collaboration": "Collaboration Event", "contingencyContract": "Contingency Contract", "recurring": "Recurring Event" },
+                "statuses": { "active": "Active", "upcoming": "Upcoming", "closed": "Ended", "permanent": "Permanent" },
+                "countdown": { "started": "Started", "ended": "Ended", "untilStart": "Starts in {duration}", "untilEnd": "Ends in {duration}", "unitSeparator": " " },
+                "dates": { "permanent": "Permanent", "opensOn": "Opens {date}", "permanentContent": "Permanent Content", "range": "Open: {start} to {end}", "stageOpenTime": "Opens: {time}", "stageOpenTimeWithCountdown": "Opens: {time} ({countdown})" },
+                "overview": { "title": "Event Overview", "description": "Grouped by current status with event types and availability", "fallback": "Event" },
+                "sections": { "stages": "Stages", "conditions": "Participation Requirements" },
+                "rewards": { "none": "No rewards", "stage": "Stage Rewards", "activity": "Event Rewards", "count": "x{count}" }
+            },
+            "achievement": {
+                "title": "Medals", "description": "View medal data", "search": "Search medal categories (name/ID)", "loading": "Loading medal data...", "select": "Select a category", "noMatches": "No matching categories", "loadFailed": "Failed to load: {message}",
+                "overview": { "title": "Medal Overview", "description": "All medals by category with special medal statistics", "group": "Medal Categories", "fallback": "Medal", "achievementCount": "{count} medals", "groupCount": "{count} groups", "platedCount": "{count} plateable medals" },
+                "badges": { "upgradable": "Upgradable", "platable": "Plateable", "rareEffect": "Endless Certification", "hidden": "Hidden Achievement" },
+                "detail": { "title": "{name}" }
+            },
+            "cc": {
+                "title": "Contingency Contract",
+                "description": "View Contingency Contract data",
+                "search": "Search contracts (ID/name)",
+                "loading": "Loading contract data...",
+                "select": "Select contract season",
+                "noMatches": "No matching contracts",
+                "loadFailed": "Failed to load: {message}",
+                "attributeFallback": "Attribute {type}",
+                "overview": { "title": "Contingency Contract Overview", "description": "Grouped by season status with contract terms, stages, and availability" },
+                "statuses": { "active": "Active", "upcoming": "Upcoming", "ended": "Ended", "permanent": "Permanent" },
+                "counts": { "indicatorGroups": "{count} indicator groups", "terms": "{count} terms" },
+                "activityInfo": { "activityId": "Activity ID", "gameplayType": "Gameplay Type", "stageId": "Stage ID", "maxTagColumns": "Maximum Tag Columns", "currencyAmount": "Exchange Currency Amount", "shopGroup": "Shop Group" },
+                "sections": { "activityConfiguration": "Activity Configuration", "contractTerms": "Contract Terms", "levelRewards": "Level Rewards", "tasks": "Tasks", "dungeonEnemies": "Dungeon Enemies", "selectedTermDetails": "Selected Term Details" },
+                "termTypes": { "enemyBuff": "Enemy Buff", "selfDebuff": "Ally Debuff", "timeReduction": "Time Reduction", "none": "No Effect" },
+                "conflicts": { "tagMissing": "Term does not exist", "withTag": "Conflicts with term {tag} ({conflict})", "missingKeys": "Missing keys: {keys}" },
+                "score": { "currentTotal": "Current Score", "selectedTerms": "{count} terms selected", "reset": "Reset Selection" },
+                "contract": { "group": "Group {id}", "key": "Key: {key}", "requires": "Requires: {key}", "conflict": "Conflict: {conflict}", "conflictWith": "Conflict: {conflict} (with term {tag})", "previewUnavailable": "Preview Unavailable" },
+                "rewards": { "separator": ", ", "scoreLevel": "<b>{score} indicators</b> → Lv.{level}, receive {rewards}", "allCompletedLevel": "<b>All completed</b> → Lv.{level}, receive {rewards}" },
+                "shop": { "title": "Shop · {name}", "goodsCount": "{count} items", "item": "Item", "price": "Price", "limit": "Purchase Limit" },
+                "tasks": { "count": "{count} tasks", "updatable": "Updatable", "unlockCondition": "Unlock Requirement: {condition}", "rewards": "Rewards:", "empty": "No tasks" },
+                "enemyFlags": { "dangerous": "Dangerous", "globalEffect": "Global Effect", "pinnedHealthBar": "Pinned Health Bar" },
+                "spawnModes": { "parallel": "Simultaneous", "sequence": "Sequential", "partKilled": "After Kills", "allKilled": "After Elimination", "deadline": "After Timer" },
+                "spawnConditions": { "partKilled": "after defeating {count} in group {group}", "allKilled": "after eliminating group {group}" },
+                "spawn": { "randomRadius": " ±{radius}", "delay": "Delay {seconds}s", "interval": "Interval {seconds}s", "preWarning": "Warning {seconds}s", "faceMainCharacter": "Faces Controlled Character", "coordinates": "Spawn Coordinates {position}{radius}", "groupMode": "Group {group} · {mode}{condition}" },
+                "dungeon": { "recommendedLevel": "Recommended {label} {level}", "loadFailed": "Failed to load dungeon data: {message}" },
+                "waves": { "repeatable": "Repeats Indefinitely", "aliveLimit": "Limit {count} alive", "externallyControlled": "Spawning in this wave is controlled by other factors", "number": "Wave {number}", "configuration": "Configuration {number}", "brief": "{waves} waves · {enemies} enemies", "summaryLabel": "Wave Summary", "summary": "{waves} waves | {enemies} enemies total" },
+                "detail": { "subtitle": "{activity} · {groups} groups · {terms} terms" }
+            },
+            "research": {
+                "title": "Research", "description": "Read data research and analysis", "search": "Search documents", "loading": "Loading research documents...", "index": "📑 Contents", "select": "Select document",
+                "overview": { "title": "Research Overview", "description": "Data mechanics, focused analyses, and reference materials", "fallback": "Document" },
+                "topics": { "general": "Research Topics" },
+                "toc": { "title": "Contents" },
+                "document": { "loading": "Loading document...", "loadFailed": "Failed to load: {message}" },
+                "notFound": { "title": "Page Not Found", "description": "The requested document does not exist" },
+                "empty": { "noMatches": "No matching documents", "noDocuments": "No research documents are available", "selectDocument": "Select a document" }
+            },
+            "about": {
+                "title": "About",
+                "description": "View project information and help",
+                "introduction": {
+                    "title": "📘 About AKEData",
+                    "aiNotice": "Please note: this project makes extensive use of artificial intelligence, including for the documentation below.",
+                    "summary": "This is a fan-made Arknights: Endfield project designed to make game data easy to browse and view.",
+                    "authorLabel": "Author: "
+                },
+                "features": {
+                    "title": "✨ Core Features",
+                    "separator": " – ",
+                    "dynamicNavigation": { "name": "Dynamic module navigation", "beforeManifest": "The sidebar builds its module list from ", "afterManifest": " and loads the corresponding HTML when selected." },
+                    "globalSettings": { "name": "Global settings", "description": "The gear button in the lower-left corner switches between light and dark themes and controls whether modules under development are shown." },
+                    "linkPopups": { "name": "Link popups", "beforeTags": "Two-level popups parse ", "betweenTags": " and ", "afterTags": " tags to display detailed descriptions." },
+                    "tagParsing": { "name": "Tag parsing", "beforeFunction": "The global ", "afterFunction": " function handles style and hyperlink tags in text with a nesting-depth limit." }
+                },
+                "usage": {
+                    "title": "🚀 How to Use",
+                    "hint": "Select a module to start using it.",
+                    "modules": {
+                        "weapon": { "name": "Weapons", "description": "View base attack, skill data, and background stories for weapons." },
+                        "character": { "name": "Characters", "description": "View operator stat growth, talents, potentials, skills, profiles, voice lines, and more. (Administrator data 0002 and 0003 is discarded; use data 9000 instead.)" },
+                        "enemy": { "name": "Enemies", "description": "View enemy details, damage-taken multipliers, and variant stat tables." },
+                        "equipment": { "name": "Equipment", "description": "View equipment set effects and the primary and secondary stats of each piece." },
+                        "medal": { "name": "Medals", "description": "View medal data." },
+                        "dungeon": { "name": "Dungeons", "description": "View dungeon information and enemy data for each dungeon." }
+                    }
+                },
+                "partners": {
+                    "title": "✨ Data Partners",
+                    "introduction": "This project also provides data support for the following tools and websites:",
+                    "perlicaBot": "A QQ bot and Arknights: Endfield game assistant.",
+                    "endfieldAtlas": "An interactive map for Arknights: Endfield.",
+                    "cepPlanner": "An all-in-one Arknights: Endfield toolkit for matrix planning and calculations, gear refinement planning, character guides, banner calendars, and more.",
+                    "endaxis": "A combat rotation simulator for Arknights: Endfield.",
+                    "combatLogs": "An Arknights: Endfield combat log and speedrun ranking website."
+                },
+                "sponsor": {
+                    "title": "✨ Sponsor the Project ✨",
+                    "description": "Your sponsorship supports server maintenance, feature development, and content creation. Notes you provide will appear in the manually updated sponsor list. Please say so if you prefer not to be listed. Your encouragement and recognition help keep this project going. Advertising space is also available.",
+                    "alipayNotice": "Alipay does not provide sponsor details reliably. If you sponsor through Alipay and want your name and note displayed, please send me a screenshot through any contact channel.",
+                    "payment": { "wechat": "WeChat", "wechatAlt": "WeChat sponsorship QR code", "alipay": "Alipay", "alipayAlt": "Alipay payment QR code" },
+                    "thanks": "✨ Thank You for Your Support ✨",
+                    "loading": "Loading sponsors...",
+                    "empty": "No sponsorships yet. Your support is appreciated!",
+                    "loadFailed": "Failed to load sponsors. Please try again later.",
+                    "noRemarks": "No note"
+                },
+                "contact": {
+                    "title": "🔧 Contact",
+                    "description": "Contact the developer through any of the channels below to report bugs or suggest features. Authors of other tools and developers who need data support from this website are also welcome to get in touch.",
+                    "bilibiliLabel": "BiliBili: ",
+                    "feedbackGroupLabel": "Feedback group: ",
+                    "feedbackGroupPurpose": " (data partnerships and bug reports)",
+                    "repositoryLabel": "Repository: ",
+                    "version": "Version: 1.0 · Last updated: March 27, 2026"
+                }
+            },
+            "buff": {
+                "v3": {"common":{"loadFailedShort":"Failed to load BuffData","manifestFailed":"Failed to load the Buff manifest","readFailed":"Failed to read BuffData: {id}","loading":"Loading Buff directory...","loadingDetail":"Loading Buff details...","loadFailed":"Failed to load BuffData: {message}","retry":"Retry","unknown":"Unknown","notAvailable":"Not available"},"list":{"searchPlaceholder":"Search Buff ID or assigned entity","searchAria":"Search BuffData","sidebarAria":"Buff directory","directoryAria":"Buff groups and entries","mobileDirectoryAria":"Open Buff directory","summary":"{count} Buffs","sectionCount":"{count} entries","ownerHint":"Ownership hint","buffData":"BuffData"},"groups":{"characters":"Characters","monsters":"Monsters","weapons":"Weapons","common":"Common combat","modes":"Modes and stages","equipment":"Equipment","abilityEntities":"Ability entities","other":"Other"},"header":{"linksScope":"Only direct Buff references in this BuffData entry are shown. Runtime-dynamic references are marked and cannot be opened directly.","ownerHint":"Assigned entity","technicalId":"Buff ID","buffData":"BuffData entry","prefixNotice":"Ownership is inferred from the ID prefix and does not identify the runtime applier."},"sections":{"warnings":"Analysis warnings","core":"Core settings","effects":"Combat effects","attributes":"Attribute modifiers","damage":"Damage modifiers","heal":"Healing modifiers","poise":"Poise modifiers","global":"Global modifiers","shields":"Shields","tags":"Combat tags","stacking":"Stacking rules","dispel":"Dispel rules","timing":"Timing","conditions":"Conditions","processors":"Processor chain","blackboard":"Blackboard","eventLogic":"Event logic"},"metrics":{"selfTimeDilationOnly":"Only uses self time dilation","finishOnRepatriate":"Finishes on repatriation","ignoreCooldownWhenAdding":"Ignores cooldown when applied","lifeType":"Life cycle","duration":"Duration","triggerInterval":"Trigger interval","firstTriggerDelay":"First trigger delay","maxTriggerCount":"Maximum triggers","addingCooldown":"Application cooldown","stackingType":"Stacking strategy","stackingIdentifier":"Stacking identifier","maxStacks":"Maximum stacks","priority":"Priority","dispel":"Dispellable","ignoreTagImmune":"Ignores tag immunity","timeDilation":"Uses time dilation"},"tabs":{"events":"Events","timeline":"Timeline","links":"Related Buffs","technical":"Technical details"},"buttons":{"selectBuff":"Select Buff","closeListAria":"Close Buff directory","openList":"Open Buff directory","close":"Close","showPerformance":"Show presentation actions","hidePerformance":"Hide presentation actions","showPresentation":"Show presentation actions","hidePresentation":"Hide presentation actions","openLinkedBuff":"Open related Buff","expand":"Expand","collapse":"Collapse"},"empty":{"manifest":"No Buff entries are available in the manifest.","noCoreMetrics":"No core metrics to display","noVisibleActions":"No actions match the current display filter.","select":"Select a Buff to inspect its combat logic.","noMatches":"No matching Buffs","noEffects":"No combat modifiers configured","noEvents":"No event actions configured","noTimeline":"No timeline actions configured","noLinks":"No related Buff references","noTechnical":"No technical details available","noModifiers":"No modifiers","noTags":"No combat tags"},"units":{"blackboardKey":"Blackboard key: {key}","frameApprox":"frames, approx. {seconds} s","group":"Group {number}","secondsLabel":"seconds","stacksLabel":"stacks","timesLabel":"times","seconds":"{value} seconds","frames":"{value} frames","entries":"{count} entries","actions":"{count} actions","events":"{count} events","stacks":"{count} stacks","processors":"{count} processors"},"values":{"configured":"Configured","directReference":"Direct reference","presentation":"Presentation only","finishAfterIgnited":"Finishes after ignition","yes":"Yes","no":"No","infinite":"Permanent","openEnded":"Open-ended","unknown":"Unknown","notConfigured":"Not configured","notApplicable":"Not applicable","literal":"Literal value","dynamic":"Dynamic value","enabled":"Enabled","disabled":"Disabled"},"lifeTypes":{"Infinity":"Permanent","Limited":"Timed"},"identifierTypes":{"Id":"Buff ID","StackingKey":"Stacking key"},"stackingTypes":{"Unlimited":"Unlimited coexistence","Unique":"Unique","Stack":"Add stacks","Refresh":"Refresh duration","HighPriority":"Higher priority wins","EnhanceAndRefresh":"Enhance and refresh","Enhance":"Enhance","HighPriorityWithMaxStack":"Priority with stack limit","Modify":"Modify existing Buff","EnhanceAndOverwriteDuration":"Enhance and overwrite duration","OverwriteDuration":"Overwrite duration","Extend":"Extend duration"},"modifierTypes":{"attributeConversion":"Attribute conversion","attribute":"Attribute","damage":"Damage","heal":"Healing","poise":"Poise","global":"Global rule","shield":"Shield","tag":"Combat tag"},"formulaTypes":{"BaseAddition":"Base addition","BaseMultiplier":"Base multiplier","BaseFinalMultiplier":"Base final multiplier","Multiplier":"Multiplier","Addition":"Addition","FinalMultiplier":"Final multiplier","BaseFinalAddition":"Base final addition","FinalAddition":"Final addition"},"processorTypes":{"DamageScaleProcessor":"Damage scaling","DamageTextProcessor":"Damage text","ModifyCalcResult":"Modify calculation result","InstantModifyAttribute":"Instant attribute change","AttackerPenProcessor":"Attacker penetration","DamageIndependentHealthProcessor":"Health-independent damage","AttackCriticalRateProcessor":"Critical rate","AttackerCriticalDamageProcessor":"Critical damage"},"globalModifierTypes":{"AtbRecover":"ATB recovery","DashRecover":"Dash recovery","ExtraAtbEfficiencyPowerAttack":"Power-attack ATB efficiency"},"eventKinds":{"stacking":"Stacking effect","config":"Configuration action","damage-modifier":"Damage modifier","heal-modifier":"Healing modifier","poise-modifier":"Poise modifier","buff":"Buff lifecycle","ability":"Ability event","ignite":"Ignite event","timeline":"Timeline event","presentation":"Presentation","combat":"Combat"},"eventNames":{"modifierCondition":"Modifier condition","stacking":"Stacking configuration","otherConfigActions":"Other configuration actions","DuringBuffEnable":"While enabled","OnBuffEnable":"On enable","OnBuffStart":"On start","OnBuffTrigger":"On trigger","OnBuffFinish":"On finish","OnBeforeTakeDamage":"Before taking damage","OnTakeDamage":"When taking damage","OnBeforeCastSkill":"Before casting a skill","OnBeforeOutputDamage":"Before dealing damage","OnOutputDamage":"When dealing damage","OnOutputBuff":"When applying a Buff","OnAddedBuff":"When receiving a Buff","OnSkillStart":"When a skill starts","OnSkillEnd":"When a skill ends","OnOwnerSwitchToGuard":"When switching to guard","OnAfterOutputWeaknessTriggered":"After triggering weakness","OnIgniteStart":"When ignite starts","OnIgniteTrigger":"When ignite triggers","OnIgniteEnd":"When ignite ends"},"blackboardSources":{"literal":"Literal value","local-default":"Local Blackboard default","external-key":"External Blackboard key","empty-key-fallback":"Empty key fallback"},"actions":{"AttackClickListenerAction":"Listen for attack input","BindBountyEnemyAction":"Bind bounty target","BombClearAction":"Clear bombs","BombTouchLayerAction":"Set bomb collision layer","BreakPassingSmallSceneObject":"Break small objects in path","CastPlungingAttack":"Cast plunging attack","ChangeGeneralAbilityButton":"Change general ability button","ChangeMoveGaitMultiplier":"Change movement gait multiplier","ChangePushBackDistanceFactor":"Change pushback distance factor","ChangeSeasonTowerEnergyAction":"Change War Echo energy","ChangeSkillType":"Change skill type","CheckBuffEnhanceChangedLayer":"Check changed Buff enhancement stacks","CheckCustomAbilityEvent":"Check custom ability event","CheckDamageIgnoreImmuneLevel":"Check damage immunity-bypass level","CheckDamageTransferredSource":"Check damage-transfer source","CheckMoveSpeed":"Check movement speed","CheckNavmeshRaycastCondition":"Check navmesh raycast","CheckProfession":"Check profession","CheckProjectileIgnoreImmuneLevel":"Check projectile immunity-bypass level","CheckProjectileInPerfectDodgeCd":"Check projectile perfect-dodge cooldown","CheckSkillCastId":"Check skill cast ID","CheckSkillDamageType":"Check skill damage type","CheckUsp":"Check ultimate energy","CostAtbRefreshLongestSkillCd":"Spend ATB to refresh the longest skill cooldown","CreateDynamicBattleShape":"Create dynamic battle shape","EffectLineCenterAction":"Set effect-line center","EnableSpecialAim":"Enable special aiming","EnhancedAction":"Enhance","FlowTextAction":"Show floating combat text","FootStepChangeAction":"Change footstep effect","ForceTargetInFightAction":"Force target into combat","ForceTriggerWeakness":"Force weakness trigger","GainCostAction":"Gain skill resource","IgniteBuffTextAction":"Show ignite Buff text","ImmuneTextAction":"Show immunity text","IntRollingStoneRepatriateAction":"Reset rolling stone","ModifyPartsDamageRatio":"Modify part damage ratio","ModifyPartsPoiseRatio":"Modify part poise ratio","ModifyResilienceDecreaseFactor":"Modify resilience reduction factor","MoveGaitAction":"Set movement gait","MoveTickAction":"Move on tick","NotifyCharPassiveUIAction":"Notify character passive UI","OnPhysicalNoGuardStart":"On physical guard break","OnSpellInflictionStart":"On spell infliction start","OverrideJumpAction":"Override jump behavior","OverrideMultiDashLimit":"Override consecutive-dash limit","OverrideStateAnimationWithMontageAction":"Override state animation with montage","PassiveJumpAction":"Passive jump","PatrolTeleport":"Patrol teleport","PatrolTeleportToCachePos":"Teleport to cached patrol position","PausePoiseRecover":"Pause poise recovery","PreventBuffConsumeAction":"Prevent Buff consumption","RecordBattleDetails":"Record battle details","RecoverDashEnergy":"Recover dash energy","RecoverFromPoiseBreak":"Recover from poise break","RecoverLockOnEndIfNoLockAction":"Restore lock-on at end if unlocked","RefrainObtainUsp":"Prevent ultimate-energy gain","ReplaceAnimationShake":"Replace animation shake","ReturnFalseAction":"Return false","SaveBuffStackNum":"Store Buff stack count","SaveCollectedBuffBbValue":"Store collected Buff Blackboard value","SaveDamageContext":"Store damage context","SaveHealValue":"Store healing value","SaveShieldValueToBB":"Store shield value in Blackboard","SealAction":"Apply seal","SetAllowedDamageDecoMask":"Set allowed damage-decoration mask","SetAnimTimeScaleAction":"Set animation time scale","SetFirstDashParam":"Set first-dash parameters","SetGeneralAbilityCd":"Set general ability cooldown","SetHpFloor":"Set HP floor","SetStrafeModeAction":"Set strafe mode","SetWaterDroneItemModePersistLiquidIdAction":"Set persistent liquid ID for water-drone item mode","ShowComboRingQte":"Show combo-ring QTE","ShowSquadTipsAction":"Show squad tip","SkillAffixAction":"Apply skill affix","SpeedupAction":"Speed up","StoreEntityProperty":"Store entity property","StoreSkillDamageType":"Store skill damage type","TagQueryListenerAction":"Listen for tag query","TriggerLiinoUIEvent":"Trigger Liino UI event","TriggerSpellBurstEventAction":"Trigger spell-burst event","UpdateGlobalContextTarget":"Update global context target","WeakAction":"Apply weakness","RaiseTrainLevelEvent":"Raise train level event","CheckSkillId":"Check skill ID","OnSpellAbnormalStartFinish":"Handle abnormal spell start/end","VulnerableAction":"Apply vulnerability","RefreshBuffAttrModifierValue":"Refresh attribute modifier value","StoreBuffCount":"Store Buff count","PauseBuffTime":"Pause Buff timer","FinishGlobalBuffAction":"Finish global Buff","TriggerCharSpellInflictionEvent":"Trigger character spell-infliction event","SetBuffDurationAction":"Set Buff duration","SaveBuffLifeTime":"Store Buff remaining lifetime","ShelterAction":"Apply shelter","StackEffect":"Stack presentation effect"},"fields":{"extendTags":"Tags applied after trigger extension","damageAbsorptions":"Damage absorption","calculation":"Calculation","rules":"Rules","attributeType":"Attribute type","formula":"Formula","parameter":"Parameter","parameterValue":"Parameter value","resolvedValue":"Resolved value","processorType":"Processor type","processors":"Processors","conditions":"Conditions","value":"Value","duration":"Duration","triggerInterval":"Trigger interval","waitFirstTriggerInterval":"Wait before first trigger","maxTriggerCnt":"Maximum trigger count","stackingType":"Stacking type","identifierType":"Identifier type","stackingKey":"Stacking key","maxStackCnt":"Maximum stack count","priority":"Priority","usePriorityKey":"Use priority key","priorityKey":"Priority key","negatePriority":"Negate priority","dispelType":"Dispel type","dispelLevel":"Dispel level","buffId":"Buff ID","buffIds":"Buff IDs","targetBuffId":"Target Buff ID","sourceBuffId":"Source Buff ID","skillId":"Skill ID","targetSkillId":"Target skill ID","targetGroupKey":"Target group key","stackCount":"Stack count","stackNum":"Stack count","layer":"Layer","actionCount":"Action count","effectName":"Effect name","stackIndex":"Stack index","saveKey":"Store key","blackboardKey":"Blackboard key","usesBlackboard":"Uses Blackboard","fallbackValue":"Fallback value","source":"Value source","igniteType":"Ignite type","finishAfterIgnited":"Finish after ignition","eventName":"Event","startFrame":"Start frame","endFrame":"End frame","serverActionIndex":"Server action index","damageType":"Damage type","healType":"Healing type","poiseType":"Poise type","globalModifierType":"Global modifier type","shieldValue":"Shield value","tags":"Tags","applyTags":"Applied tags","target":"Target","operation":"Operation","compareType":"Comparison","checkType":"Check type","triggerCount":"Trigger count"},"links":{"outgoing":"Referenced Buffs","relation":"Reference field: {field}","cycle":"Circular reference detected"},"relations":{"condition":"Condition","success":"Success branch","failure":"Failure branch","tick":"Tick actions","aura-enter":"Aura enter","aura-exit":"Aura exit","on-end":"On end","switch-case":"Switch branch","ability-event":"Ability event","stack-effect":"Stack effect","reference":"Reference","aura":"Aura","create":"Create","extend":"Extend","inherit":"Inherit","dispel":"Dispel","finish":"Finish","buffInput":"Buff input"},"warnings":{"ANALYZER_UNAVAILABLE":"The BuffData analyzer is unavailable.","ANALYSIS_FAILED":"Failed to analyze BuffData: {message}","duplicateBlackboardKey":"Duplicate Blackboard key: {key}","actionDepthLimit":"Action nesting exceeds the display depth limit ({limit}).","actionNodeLimit":"Action parsing stopped at the node limit ({limit}).","actionEventLimit":"Action parsing stopped at the event limit ({limit}).","emptyDamageAction":"Damage Action contains no damage units.","reversedTimelineRange":"Timeline range ends before it starts: {start}-{end}."},"technical":{"references":"Blackboard references","blackboard":"Blackboard values","dependencies":"External dependencies","presentation":"Presentation-only configuration","rawData":"Raw BuffData","externalNotice":"External Blackboard keys require runtime source context and are not treated as parse errors."}},
+                "title": "Buff", "description": "Browse BuffData", "search": "Search effects (ID/name)", "loading": "Loading effect data...", "select": "Select an effect", "noMatches": "No matching effects", "loadFailed": "Failed to load: {message}", "actionDetailTitle": "Action Details", "unlimited": "Unlimited",
+                "alerts": { "actionUnavailable": "Unable to retrieve this action's data" },
+                "columns": { "attributeType": "Attribute Type", "formula": "Formula", "parameterValue": "Parameter Value", "key": "Key", "value": "Value", "dynamic": "Dynamic", "stackIndex": "Stack Index", "actionCount": "Actions" },
+                "parameter": { "keyWithDefault": "Key: {key} (default: {value})" },
+                "meta": { "lifeType": "Life Cycle: {value}", "duration": "Duration: {value}", "triggerInterval": "Trigger Interval: {value}", "maximumTriggers": "Maximum Triggers: {value}", "dispellable": "Dispellable: {value}" },
+                "sections": { "attributeModifiers": "Attribute Modifiers", "parameters": "Parameters", "stacking": "Stacking Rules", "buffEvents": "Buff Trigger Events", "abilityEvents": "Ability Events", "igniteEvents": "Ignite Events" },
+                "stacking": {
+                    "types": { "unique": "Unique (usually replaces duplicates)", "unlimited": "Repeatable (theoretically unlimited)", "stack": "Stack (accumulates stacks)", "refresh": "Refresh (renews duration)", "enhance": "Enhance (strengthens on repeat)", "enhanceAndRefresh": "Enhance and refresh", "enhanceAndOverwriteDuration": "Enhance and overwrite duration", "highPriority": "Higher priority overrides", "extend": "Extend duration" },
+                    "defaultKey": "None (uses Buff ID by default)", "valueNotFound": "Not found", "emptyKey": "Empty", "noLimit": "No limit", "priorityKey": "Key: {key} (actual: {actual})", "priorityKeyNegated": "Key: {key} (actual: {actual}, negated)", "maximumKey": "Key: {key} (default: {fallback}, actual: {actual})", "identifierType": "Identifier Type: {value}", "stackingType": "Stacking Type: {value}", "stackingKey": "Stacking Key: {value}", "priorityRule": "Priority Rule: {value}", "maximumRule": "Maximum Stack Rule: {value}", "effectEnabled": "Stack Effects Enabled: {value}", "effectCount": "Stack Effect Configurations: {count}", "effectDetails": "Stack Effect Details:"
+                },
+                "events": {
+                    "unknown": "Unknown event", "named": "{name} ({description})", "actionSummary": "Event: {event} | {summary}",
+                    "names": { "duringBuffEnable": "Active continuously", "onBuffEnable": "Buff enabled", "onBuffStart": "Buff started", "onBuffTrigger": "Buff triggered", "onBuffFinish": "Buff finished", "onBeforeTakeDamage": "Before taking damage", "onBeforeCastSkill": "Before casting a skill", "onBeforeOutputDamage": "Before dealing damage", "onOutputDamage": "When dealing damage", "onOutputBuff": "When applying a Buff", "onAddedBuff": "When receiving a Buff", "onSkillEnd": "Skill ended", "onOwnerSwitchToGuard": "Switched to guard", "onAfterOutputWeaknessTriggered": "After triggering weakness", "onIgniteStart": "Ignite started", "onIgniteTrigger": "Ignite triggered", "onIgniteEnd": "Ignite ended" }
+                },
+                "actions": {
+                    "unknownType": "Unknown type", "viewDetails": "View details",
+                    "summary": { "animation": "Animation: {name}", "damageTypes": "Damage Types: {types}", "damage": "Deals damage", "addBuffs": "Add Buffs: {ids}", "addBuff": "Add Buff", "findTarget": "Find target (group: {group})", "effectNamed": "Effect: {effect}", "effect": "Play effect", "selfRotate": "Self rotation (type: {type})", "rootMotion": "Root motion (animation: {animation})", "sound": "Play sound: {event}", "hitStop": "Hit stop (duration: {duration})", "enemyHurt": "Enemy hit animation ({animation})", "obtainCost": "Obtain energy ({type})", "superArmor": "Set super armor: {value}", "timeDilation": "Time dilation (duration: {duration})", "voice": "Trigger voice ({key})", "stepAnimation": "Step animation ({animation})", "parameters": "Parameters: {keys}" }
+                },
+                "timeline": { "title": "Timeline Actions", "group": "Action Group {number}", "frameRange": "Frame Range [{start}, {end}]", "actionCount": "{count} actions", "empty": "No action data" }
+            },
+            "skill": {
+                "title": "Skill (V2)", "description": "Full SkillData entry and action-node debugger (in development)", "search": "Search SkillData (id/name)", "loading": "Loading SkillData...", "loadingDetail": "Loading skill details...", "select": "Select a skill", "noMatches": "No matches", "loadFailed": "Failed to load: {message}",
+                "list": { "count": "{count} entries" },
+                "labels": {
+                    "keys": { "skillId": "Skill ID", "level": "Level", "skillName": "Skill Name", "castType": "Cast Type", "skillSpecification": "Skill Specification", "durationFrame": "Duration Frames", "exclusiveFrame": "Exclusive Frames", "timelineActions": "Timeline Action Groups", "passiveEventActions": "Passive Event Action Groups", "actionGroupData": "Action Group Data", "conditionAction": "Condition Action", "succeedActions": "Success Branch", "failActions": "Failure Branch", "actionData": "Action List", "isEnable": "Enabled", "priorityLevel": "Priority", "priorityOffset": "Priority Offset", "serverActionIndex": "Server Action Index", "duration": "Duration", "startTime": "Start Time", "playbackSpeed": "Playback Speed", "blendDuration": "Blend Duration", "blendOut": "Blend Out", "exitToIdle": "Exit to Idle", "contextKey": "Context Key", "targetSettings": "Target Settings", "selectorData": "Selector", "finderData": "Finder", "validatorData": "Validator", "postProcessorData": "Post Processor", "rotateType": "Rotation Type", "compareType": "Compare Type", "checkType": "Check Type", "targetSource": "Target Source", "selectorOwner": "Selector Owner", "centerType": "Center Type", "startFrame": "Start Frame", "endFrame": "End Frame", "targetGroupKey": "Target Group Key", "checkTarget": "Check Target", "minNum": "Minimum Count", "abilityEvent": "Ability Event", "animName": "Animation Name", "cooldownTime": "Cooldown", "castDistance": "Cast Distance", "costData": "Cost Data", "costType": "Cost Type", "costValue": "Cost Value", "atbValueThreshold": "Threshold", "canMove": "Can Move While Casting", "canCastInAir": "Can Cast in Air", "passiveSkillType": "Passive Skill Type" },
+                    "values": { "active": "Active", "passive": "Passive", "characterNormalSkill": "Character Normal Skill", "default": "Default", "ultimateSp": "Ultimate Energy", "rotateToTarget": "Rotate to Target", "rotateToMoveDirection": "Rotate to Move Direction", "ge": "Greater than or equal", "le": "Less than or equal", "eq": "Equal", "hasAny": "Has Any Tag", "context": "Context", "source": "Caster", "owner": "Owner", "target": "Target", "actionSource": "Action Source", "contextTarget": "Context Target" }
+                },
+                "categories": { "anim": "Animation", "damage": "Damage/Hit", "buff": "Buff/Status", "target": "Targeting/Check", "move": "Movement/Rotation", "camera": "Camera/Time", "av": "Audio/Visual", "condition": "Condition/Branch", "spawn": "Projectile/Summon", "resource": "Resource/Value", "misc": "Other" },
+                "table": { "key": "Key", "value": "Value", "valueSummary": "Value Summary", "type": "Type", "field": "Field" },
+                "empty": { "noDisplayParams": "No displayable parameters", "noActionNodes": "No action nodes", "noNodes": "No nodes", "noCondition": "No condition", "timelineGraphUnavailable": "timelineActions is empty; unable to draw timeline", "selectTimelineGroup": "Click an action group to view details.", "timelineGroupUnavailable": "This action group is unavailable.", "timelineActions": "timelineActions is empty", "passiveEventActions": "passiveEventActions is empty", "passiveEventNoActions": "This event has no actions", "blackboard": "blackboard is empty", "noPassiveEvents": "No passive events", "timelineDetailInitial": "All timelineActions details are hidden by default. Click an action group in the timeline above to view it." },
+                "branches": { "conditionAction": "Condition node conditionAction", "succeedActions": "Success branch succeedActions", "failActions": "Failure branch failActions" },
+                "node": { "named": "Node {id}" },
+                "titles": { "parameterSummary": "Parameter Summary", "castRules": "Cast Rules", "cost": "Cost", "skillTags": "Skill Tags skillTags", "tagDuringAttach": "Tags During Attach tagDuringAttach", "dataMap": "SkillData Data Map", "actionTypeOverview": "Action Type Overview", "timelineHealth": "Timeline Health", "castData": "Cast Data castData", "blackboard": "Blackboard blackboard", "tags": "Tags", "passiveEventSummary": "Passive Event Summary", "otherTopLevelFields": "Other Top-Level Fields", "rawData": "Complete Raw Data", "overview": "Overview", "actionGroupView": "ActionGroupData Node Execution View", "timelineFlowGraph": "Timeline / Node Flow Graph (visual mode)", "timelineActionsDetail": "timelineActions (details appear after clicking an action group)", "passiveEventActions": "passiveEventActions (passive event triggers)" },
+                "timeline": { "nodeSummaryEmpty": "Nodes: none", "nodeSummaryMore": " ... ({count} total)", "nodeSummary": "Nodes: {summary}{more}", "groupShort": "Group {id}", "reversed": "Reversed", "frame": "Frame {id}", "axis": "Global frame range: {start} - {end} (about 5 groups shown by default; scroll to view all)", "group": "Time Group #{id}", "frameRange": "Frames {start} - {end}", "nodeCount": "Nodes {count}" },
+                "filter": { "title": "Filter action groups (by functional category, multi-select)" },
+                "buttons": { "showNodes": "Show Nodes", "hideNodes": "Hide Nodes", "expandAll": "Expand All", "restoreScrollView": "Restore Scroll View", "expandRawJson": "Expand Full JSON" },
+                "tooltip": { "invalidRangeNote": " | Error: end frame is earlier than start frame", "lineMain": "Start: {start} | End: {end} | Frames: {durationFrame} | Duration: {durationTime}{note}" },
+                "passive": { "triggerSequence": "Trigger Sequence {id} (nodes {count})", "event": "Event #{id}: {name}" },
+                "blackboard": { "dynamic": "Dynamic", "fixed": "Fixed" },
+                "summary": { "dynamicSuffix": " / dynamic", "size": "size({value})", "radius": "radius={value}", "height": "height={value}", "offset": "offset({value})", "position": "pos={value}", "direction": "dir={value}", "finder": "finder: {value}", "shape": "shape: {value}", "validators": "validators: {value}", "postProcessors": "post: {value}", "target": "target={value}", "cost": "cost={value}", "effect": "effect={value}", "sound": "sound={value}", "buff": "buff={value}", "scale": "scale={value}", "condition": "condition: {value}" },
+                "json": { "array": "Array({count})", "object": "Object({count})" },
+                "metrics": { "distanceCheck": "Distance Check", "customDistance": "Custom Distance", "castDistance": "Cast Distance", "heightDiffCheck": "Height Difference Check", "heightDiffLimit": "Height Difference Limit", "rotation": "Rotation", "angle": "Angle", "cooldown": "Cooldown", "startCdFrame": "Initial CD Frames", "maxCharge": "Max Charges", "iconBackground": "Icon Background", "attackRange": "Attack Range", "selectStrategy": "Selection Strategy", "smartTargetSelect": "Smart Targeting", "canDummyCast": "Can Empty Cast", "canMove": "Can Move", "canCastInAir": "Can Cast in Air", "rootMotionCliffCheck": "RootMotion Cliff Check", "returnToIdle": "Return to Idle", "blackboardItems": "Blackboard Items", "buffs": "Buffs", "toggleBuffs": "Toggle Buffs", "timelineGroups": "Time Groups", "reversedFrameGroups": "Reversed Frame Groups", "emptyActionGroups": "Empty Action Groups", "unsortedNeighborGroups": "Unsorted Neighbor Groups" },
+                "raw": { "note": "Used to audit omitted fields. Collapsed by default; expand to view the full SkillData JSON." }
+            },
+            "spawn": {
+                "title": "Spawner",
+                "description": "Browse SpawnerConfig",
+                "search": "Search groups (name/ID)",
+                "loading": "Loading spawner data...",
+                "loadingStageData": "Loading stage data...",
+                "select": "Select a group",
+                "loadFailed": "Failed to load: {message}",
+                "configId": "ConfigId: {id}",
+                "sections": {
+                    "globalSettings": "Global Settings",
+                    "waves": "Waves and Spawn Logic",
+                    "routes": "Route Data"
+                },
+                "modal": {
+                    "jsonTitle": "JSON Details"
+                },
+                "buttons": {
+                    "viewFullJson": "Full JSON",
+                    "viewRouteJson": "View Route JSON",
+                    "viewWaveJson": "View Wave JSON",
+                    "viewGroupJson": "View Group JSON",
+                    "viewActionJson": "View Enemy Parameter JSON",
+                    "viewEnemyRawJson": "View Raw Enemy Data",
+                    "viewSettingsJson": "View Global Settings JSON"
+                },
+                "settings": {
+                    "autoComplete": "Auto Complete: {value}",
+                    "forbidDrop": "Forbid Drops: {value}",
+                    "stopExploreMusic": "Stop Exploration Music: {value}",
+                    "enemyLevelUseLevelGrade": "Enemy Level Uses World Level Grade: {value}"
+                },
+                "route": {
+                    "title": "Route {id}",
+                    "fields": {
+                        "loopMode": "Loop Mode:",
+                        "snapMode": "Snap Mode:",
+                        "motionType": "Motion Type:",
+                        "bornOverrideSpeed": "Spawn Movement Speed:",
+                        "bornWaitDuration": "Spawn Wait Time:",
+                        "useWorldOffset": "Use World Offset:",
+                        "localSpace": "Local Space:",
+                        "pathPointCount": "Path Point Count:",
+                        "stopWalkInplace": "Stop Walk In Place:",
+                        "forbidNpcInteract": "Forbid NPC Interaction:"
+                    },
+                    "values": {
+                        "overrideEnabled": "Override Enabled",
+                        "overrideDisabled": "Not Overridden"
+                    }
+                },
+                "wave": {
+                    "title": "Wave {index}",
+                    "mode": "Mode: {mode}",
+                    "killCount": "Kills Required: {count}",
+                    "hidden": "Hidden Wave"
+                },
+                "group": {
+                    "title": "Group {id}",
+                    "mode": "Mode: {mode}",
+                    "killCount": "Kills Required: {count}"
+                },
+                "enemy": {
+                    "spawnTime": "{seconds}s",
+                    "spawnCount": "Count: {count}",
+                    "position": "({x}, {y}, {z})",
+                    "rotation": "{degrees}°",
+                    "buffParam": "{key}={value}",
+                    "fields": {
+                        "enemyId": "Enemy ID:",
+                        "level": "Level:",
+                        "position": "Position:",
+                        "rotation": "Rotation:",
+                        "aiConfig": "AI Config:",
+                        "preWarnTime": "Pre-warning Time:",
+                        "patrolGait": "Patrol Gait:",
+                        "buffs": "Buffs:"
+                    }
+                },
+                "mobile": {
+                    "selectGroup": "Select Group",
+                    "emptyGroups": "No groups"
+                },
+                "empty": {
+                    "noMatchingGroups": "No matching groups",
+                    "noStageData": "No stage data in this group",
+                    "noWaveData": "No wave data",
+                    "noValidData": "No valid data"
+                },
+                "json": {
+                    "serializeFailed": "Unable to serialize data",
+                    "commentTitle": "// {title}",
+                    "autoGeneratedTitle": "Auto generated via akedata.top",
+                    "rawTextTitle": "Raw Text"
+                },
+                "units": {
+                    "seconds": "{value}s"
+                },
+                "values": {
+                    "default": "Default",
+                    "notApplicable": "-"
+                }
+            }
+        }
+    }
+}
