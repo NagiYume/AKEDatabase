@@ -8,7 +8,7 @@
 
 AKEData 面向日常查询、攻略研究和游戏机制分析，当前公开模块以 v3 为主。v3 从完整 `TableCfg` 和 `public/Json` 动态建立实体关系，同时复用经过验证的 v2 页面控制器和样式。
 
-在线站点：[https://www.akedata.wiki](https://www.akedata.wiki)（原 `akedata.top` 已重定向至此）
+在线站点：[https://www.akedata.wiki](https://www.akedata.wiki)（原 `akedata.top` 已重定向至此） 
 
 ## 当前版本
 
