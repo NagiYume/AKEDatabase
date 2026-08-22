@@ -5832,6 +5832,373 @@ body { background-color: var(--ake-shell-page); color: var(--text-color); }
 .ake-ui-tree__item-subtitle { max-width: 86px; overflow: hidden; color: var(--desc-color); font-size: .6rem; text-overflow: ellipsis; white-space: nowrap; }
 .ake-ui-directory[data-ake-module="skill"] .ake-ui-tree { --ake-ui-tree-accent: var(--combatv3-accent); --ake-ui-tree-border: var(--combatv3-border); --ake-ui-tree-hover: var(--combatv3-surface-active); }
 .ake-ui-directory[data-ake-module="buff"] .ake-ui-tree { --ake-ui-tree-accent: var(--buffv3-accent); --ake-ui-tree-border: var(--buffv3-border); --ake-ui-tree-hover: var(--buffv3-surface-active); }
+.ake-ui-directory[data-ake-module="asset"] .ake-ui-directory__sidebar-header {
+    display: block;
+    padding: 13px 14px 11px;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-sidebar-heading {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-sidebar-heading h1 { margin: 0; }
+.ake-ui-directory[data-ake-module="asset"] .ake-ui-directory__sidebar-header .ake-ui-directory__meta {
+    max-width: 100%;
+    display: block;
+    padding: 4px 0 0;
+    overflow: hidden;
+    border: 0;
+    font: 500 .61rem/1.4 Consolas, monospace;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-directory-up > span {
+    display: block;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-directory-up:disabled {
+    opacity: .34;
+    cursor: default;
+    background: transparent;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-sidebar-heading .asset-directory-up {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-mobile-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.ake-ui-directory[data-ake-module="asset"] .ake-ui-directory__search > .ake-ui-icon-button[aria-current="true"] {
+    color: var(--text-color);
+    background: var(--ake-ui-surface-hover);
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-directory-tree { padding-inline: 10px; }
+.ake-ui-directory[data-ake-module="asset"] .asset-tree-row {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr);
+    align-items: center;
+    gap: 2px;
+    padding-inline-start: calc(var(--asset-tree-depth, 0) * 11px);
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-tree-toggle,
+.ake-ui-directory[data-ake-module="asset"] .asset-tree-toggle-spacer {
+    width: 20px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    color: var(--desc-color);
+    border: 0;
+    background: transparent;
+    box-sizing: border-box;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-tree-toggle { cursor: pointer; }
+.ake-ui-directory[data-ake-module="asset"] .asset-tree-toggle::before {
+    width: 6px;
+    height: 6px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    content: '';
+    transform: rotate(-45deg);
+    transition: transform .14s ease;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-tree-toggle[aria-expanded="true"]::before { transform: rotate(45deg); }
+.ake-ui-directory[data-ake-module="asset"] .asset-tree-toggle:hover { color: var(--text-color); }
+.ake-ui-directory[data-ake-module="asset"] .asset-tree-toggle:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--text-color) 58%, var(--border-color));
+    outline-offset: -2px;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-tree-link {
+    min-height: 34px;
+    padding: 5px 6px;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-tree-link .ake-ui-tree__item-subtitle {
+    max-width: 58px;
+    flex: 0 0 auto;
+    text-align: end;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-search-result {
+    min-height: 46px;
+    display: grid;
+    grid-template-columns: 31px minmax(0, 1fr);
+    justify-content: stretch;
+    padding: 6px 5px;
+    border-left: 0;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-search-result__kind {
+    min-width: 0;
+    padding: 3px 2px;
+    overflow: hidden;
+    color: var(--desc-color);
+    border: var(--ake-ui-border);
+    border-radius: var(--ake-ui-radius-sm);
+    background: var(--ake-ui-surface);
+    font: 600 .52rem/1.1 Consolas, monospace;
+    text-align: center;
+    text-overflow: ellipsis;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-search-result__copy {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-search-result .ake-ui-tree__item-subtitle {
+    max-width: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-load-more {
+    display: block;
+    margin: var(--ake-ui-space-4) auto 0;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-load-more[hidden] { display: none; }
+.ake-ui-directory[data-ake-module="asset"] .asset-browser__header {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: var(--ake-ui-border);
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-browser__breadcrumb {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 3px;
+    color: var(--desc-color);
+    font-size: .68rem;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-browser__crumb {
+    min-width: 0;
+    max-width: min(320px, 60vw);
+    padding: 2px 4px;
+    overflow: hidden;
+    color: inherit;
+    border: 0;
+    border-radius: var(--ake-ui-radius-sm);
+    background: transparent;
+    font: inherit;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-browser__crumb:hover { color: var(--text-color); background: var(--ake-ui-surface-hover); }
+.ake-ui-directory[data-ake-module="asset"] .asset-browser__crumb[aria-current="page"] { color: var(--text-color); font-weight: 700; }
+.ake-ui-directory[data-ake-module="asset"] .asset-browser__heading {
+    min-width: 0;
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 14px;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-browser__heading h2 {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+    font-size: 1.35rem;
+    line-height: 1.25;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-browser__heading p {
+    flex: 0 0 auto;
+    margin: 0;
+    color: var(--desc-color);
+    font-size: .68rem;
+    white-space: nowrap;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-browser__grid {
+    --ake-ui-card-grid-min: 330px;
+    align-items: start;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-folder-card {
+    min-height: 72px;
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    align-items: center;
+    gap: 11px;
+    padding: 11px 13px;
+    border-inline-start: var(--ake-ui-border);
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-folder-card__icon {
+    position: relative;
+    width: 34px;
+    height: 27px;
+    border: var(--ake-ui-border);
+    border-radius: 4px;
+    background: var(--ake-ui-surface-muted);
+    box-sizing: border-box;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-folder-card__icon::before {
+    position: absolute;
+    top: -6px;
+    left: 3px;
+    width: 15px;
+    height: 7px;
+    border: var(--ake-ui-border);
+    border-bottom: 0;
+    border-radius: 4px 4px 0 0;
+    background: var(--ake-ui-surface-muted);
+    content: '';
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-folder-card__copy { min-width: 0; display: grid; gap: 4px; }
+.ake-ui-directory[data-ake-module="asset"] .asset-folder-card__copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ake-ui-directory[data-ake-module="asset"] .asset-folder-card__copy small { color: var(--desc-color); font-size: .67rem; }
+.ake-ui-directory[data-ake-module="asset"] .ake-ui-card[data-card-kind="asset"] {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 146px;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-file-card {
+    min-height: 118px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 10px;
+    border-inline-start-width: 1px;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-file-card.has-preview {
+    min-height: 146px;
+    grid-template-columns: 108px minmax(0, 1fr);
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-file-card__preview {
+    --asset-preview-grid: color-mix(in srgb, var(--text-color) 7%, transparent);
+    width: 108px;
+    min-height: 124px;
+    display: grid;
+    place-items: center;
+    align-self: stretch;
+    overflow: hidden;
+    border: var(--ake-ui-border);
+    border-radius: var(--ake-ui-radius-sm);
+    background-color: var(--ake-ui-surface-muted);
+    background-image:
+        linear-gradient(45deg, var(--asset-preview-grid) 25%, transparent 25%, transparent 75%, var(--asset-preview-grid) 75%),
+        linear-gradient(45deg, var(--asset-preview-grid) 25%, transparent 25%, transparent 75%, var(--asset-preview-grid) 75%);
+    background-position: 0 0, 7px 7px;
+    background-size: 14px 14px;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-file-card__preview img {
+    width: 100%;
+    height: 100%;
+    max-height: 160px;
+    padding: 6px;
+    object-fit: contain;
+    box-sizing: border-box;
+    filter: drop-shadow(0 1px 1px color-mix(in srgb, var(--text-color) 18%, transparent));
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-file-card__body { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.ake-ui-directory[data-ake-module="asset"] .asset-file-card__heading { min-width: 0; display: flex; align-items: flex-start; gap: 7px; }
+.ake-ui-directory[data-ake-module="asset"] .asset-file-card__heading .ake-ui-card__title {
+    min-width: 0;
+    flex: 1;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: .84rem;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-file-card__kind {
+    max-width: 52px;
+    flex: 0 0 auto;
+    padding: 2px 5px;
+    overflow: hidden;
+    color: var(--desc-color);
+    border: var(--ake-ui-border);
+    border-radius: var(--ake-ui-radius-sm);
+    background: var(--ake-ui-surface-muted);
+    font: 700 .55rem/1.25 Consolas, monospace;
+    text-overflow: ellipsis;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-file-card .ake-ui-card__meta {
+    min-width: 0;
+    display: block;
+    margin: 0;
+    overflow: hidden;
+    color: var(--desc-color);
+    font: 500 .61rem/1.45 Consolas, monospace;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-file-card__path {
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    color: var(--desc-color);
+    font: 500 .61rem/1.45 Consolas, monospace;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-file-card .ake-ui-card__actions {
+    gap: 6px;
+    padding-top: 8px;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-file-action {
+    height: 30px;
+    padding: 0 10px;
+    border-radius: var(--ake-ui-radius-sm);
+    box-shadow: none;
+    font-size: .65rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-file-action--download {
+    color: var(--text-color);
+    border-color: color-mix(in srgb, var(--accent-color) 48%, var(--border-color));
+    background: color-mix(in srgb, var(--accent-color) 10%, var(--ake-ui-surface));
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-file-action--download:hover {
+    border-color: var(--accent-color);
+    background: color-mix(in srgb, var(--accent-color) 17%, var(--ake-ui-surface));
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-file-action--open {
+    color: var(--desc-color);
+    border-color: transparent;
+    background: var(--ake-ui-surface-muted);
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-file-action--open::after {
+    margin-inline-start: 4px;
+    content: '\2197';
+    font-size: .72rem;
+}
+.ake-ui-directory[data-ake-module="asset"] .asset-file-action--open:hover {
+    color: var(--text-color);
+    border-color: var(--border-color);
+    background: var(--ake-ui-surface-hover);
+}
+@media (max-width: 720px) {
+    .ake-ui-directory[data-ake-module="asset"] .asset-browser__heading { align-items: flex-start; flex-direction: column; gap: 5px; }
+    .ake-ui-directory[data-ake-module="asset"] .asset-browser__heading p { white-space: normal; }
+    .ake-ui-directory[data-ake-module="asset"] .asset-browser__grid { --ake-ui-card-grid-min: 100%; }
+    .ake-ui-directory[data-ake-module="asset"] .asset-file-card.has-preview { grid-template-columns: 84px minmax(0, 1fr); }
+    .ake-ui-directory[data-ake-module="asset"] .asset-file-card__preview { width: 84px; min-height: 112px; }
+}
+.ake-ui-directory[data-ake-module="asset"] .ake-ui-card[data-card-kind="asset"].is-selected {
+    border-color: var(--accent-color);
+    box-shadow: inset 0 0 0 1px var(--accent-color);
+}
+.ake-ui-directory[data-ake-module="asset"] .ake-ui-card[data-card-kind="asset"].is-selected::after {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    max-width: calc(100% - 12px);
+    padding: 2px 6px;
+    overflow: hidden;
+    color: #fff;
+    border-radius: var(--ake-ui-radius-sm);
+    background: var(--accent-color);
+    content: attr(data-selected-label);
+    font-size: .58rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 .ake-ui-directory__list { padding: 10px; }
 .ake-ui-directory__item {
     --ake-ui-nav-accent: var(--accent-color);
