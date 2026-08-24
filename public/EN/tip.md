@@ -2,6 +2,15 @@ AKEData has moved to www.akedata.wiki. The former domain, akedata.top, now redir
 
 # AKEData Version Changelog
 
+### v1.2.14
+
+#### Asset module improvements
+
+- Asset files now receive a “New” badge based on the highest valid game version in the unified asset index. Both new paths and overwritten existing paths in the current version are marked.
+- Added a synchronized “New only” filter for desktop and mobile, filtering file cards, directory branches, and search results together.
+- Added “Game icons” and “Game map” quick jumps on the root page and in both desktop and mobile asset directories.
+- Version detection uses only the game version before `@` in each `version` value. The `1.4.4` baseline is not marked as new, and Hotfix values do not create separate version groups.
+
 ### v1.2.13
 
 #### Unified asset index and Asset module

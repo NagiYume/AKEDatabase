@@ -3,6 +3,21 @@
 
     const MODULE_ID = 'asset';
     const ASSET_DATA_ORIGIN = 'https://data.akedata.wiki';
+    const NEW_CONTENT_BASELINE_VERSION = '1.4.4';
+    const QUICK_JUMPS = [
+        {
+            key: 'gameIcons',
+            label: 'quickJumps.gameIcons',
+            fallback: '游戏图标',
+            location: ['images', 'assets', 'beyond', 'dynamicassets', 'gameplay', 'ui', 'sprites']
+        },
+        {
+            key: 'gameMap',
+            label: 'quickJumps.gameMap',
+            fallback: '游戏地图',
+            location: ['images', 'assets', 'beyond', 'dynamicassets', 'gameplay', 'ui', 'textures', 'levelmap', 'levelmapchunks']
+        }
+    ];
     const SEARCH_DELAY = 160;
     const SEARCH_RESULT_LIMIT = 160;
     const RENDER_BATCH_SIZE = 72;
@@ -18,6 +33,7 @@
         home: document.getElementById('akeAssetHome'),
         up: document.getElementById('akeAssetUp'),
         search: document.getElementById('akeAssetSearch'),
+        newOnly: document.getElementById('akeAssetNewOnly'),
         directory: document.getElementById('akeAssetDirectory'),
         content: document.getElementById('akeAssetContent'),
         mobileButton: document.getElementById('akeAssetMobileButton'),
@@ -26,6 +42,7 @@
         mobileHome: document.getElementById('akeAssetMobileHome'),
         mobileUp: document.getElementById('akeAssetMobileUp'),
         mobileSearch: document.getElementById('akeAssetMobileSearch'),
+        mobileNewOnly: document.getElementById('akeAssetMobileNewOnly'),
         mobileDirectory: document.getElementById('akeAssetMobileDirectory')
     };
     const state = {
@@ -37,6 +54,7 @@
         expanded: new Set(['images', 'json']),
         location: [],
         query: '',
+        newOnly: false,
         selectedFileKey: '',
         searchTimer: 0,
         renderToken: 0,
@@ -69,6 +87,35 @@
 
     function normalizeSearch(value) {
         return String(value || '').normalize('NFKC').toLocaleLowerCase();
+    }
+
+    function parseGameVersion(value) {
+        const match = String(value ?? '').trim().match(/^(\d+)\.(\d+)\.(\d+)(?:@[^@]*)?$/);
+        if (!match) return null;
+        return {
+            parts: match.slice(1, 4).map(Number),
+            value: match.slice(1, 4).join('.')
+        };
+    }
+
+    function compareGameVersions(left, right) {
+        for (let index = 0; index < 3; index += 1) {
+            if (left.parts[index] !== right.parts[index]) return left.parts[index] - right.parts[index];
+        }
+        return 0;
+    }
+
+    function currentGameVersion(index) {
+        let highest = null;
+        for (const dataset of ['images', 'json']) {
+            const records = index.datasets?.[dataset]?.files || {};
+            for (const relative in records) {
+                if (!Object.prototype.hasOwnProperty.call(records, relative)) continue;
+                const version = parseGameVersion(records[relative]?.version);
+                if (version && (!highest || compareGameVersions(version, highest) > 0)) highest = version;
+            }
+        }
+        return highest;
     }
 
     function safeParts(path) {
@@ -122,24 +169,29 @@
             children: new Map(), files: [],
             totalFiles: 0, totalImages: 0, totalBytes: 0,
             directImages: 0, directBytes: 0,
+            totalNewFiles: 0, totalNewImages: 0, totalNewBytes: 0,
+            directNewFiles: 0, directNewImages: 0, directNewBytes: 0,
             sortedChildren: null, sortedItems: null
         };
     }
 
-    function makeFile(dataset, relative, record, parent) {
+    function makeFile(dataset, relative, record, parent, isNew) {
         const parts = safeParts(relative);
         const name = parts.at(-1);
         const path = `${datasetPath(dataset)}/${relative}`;
         return {
             type: 'file', dataset, relative, parent, name,
             searchKey: normalizeSearch(`${name} ${path}`), record,
-            image: dataset === 'images' && isImage(relative)
+            image: dataset === 'images' && isImage(relative), isNew
         };
     }
 
     async function makeTree(index) {
         const roots = new Map();
         const searchEntries = [];
+        const baseline = parseGameVersion(NEW_CONTENT_BASELINE_VERSION);
+        const latest = currentGameVersion(index);
+        const hasNewContent = Boolean(latest && baseline && compareGameVersions(latest, baseline) > 0);
         let processed = 0;
         for (const dataset of ['images', 'json']) {
             const datasetName = dataset === 'images' ? 'public / images' : 'public / Json';
@@ -166,16 +218,28 @@
                     ancestors.push(current);
                 });
 
-                const file = makeFile(dataset, relative, record, current);
+                const version = parseGameVersion(record?.version);
+                const isNew = hasNewContent && Boolean(version && latest && compareGameVersions(version, latest) === 0);
+                const file = makeFile(dataset, relative, record, current, isNew);
                 current.files.push(file);
                 current.directBytes += Number(record?.size || 0);
                 if (file.image) current.directImages += 1;
+                if (file.isNew) {
+                    current.directNewFiles += 1;
+                    current.directNewBytes += Number(record?.size || 0);
+                    if (file.image) current.directNewImages += 1;
+                }
                 searchEntries.push(file);
                 const size = Number(record?.size || 0);
                 ancestors.forEach(directory => {
                     directory.totalFiles += 1;
                     directory.totalBytes += size;
                     if (file.image) directory.totalImages += 1;
+                    if (file.isNew) {
+                        directory.totalNewFiles += 1;
+                        directory.totalNewBytes += size;
+                        if (file.image) directory.totalNewImages += 1;
+                    }
                 });
                 processed += 1;
                 if (processed % 2500 === 0) {
@@ -195,7 +259,10 @@
                 children: state.tree, files: [],
                 totalFiles: roots.reduce((sum, node) => sum + node.totalFiles, 0),
                 totalImages: roots.reduce((sum, node) => sum + node.totalImages, 0),
-                totalBytes: roots.reduce((sum, node) => sum + node.totalBytes, 0)
+                totalBytes: roots.reduce((sum, node) => sum + node.totalBytes, 0),
+                totalNewFiles: roots.reduce((sum, node) => sum + node.totalNewFiles, 0),
+                totalNewImages: roots.reduce((sum, node) => sum + node.totalNewImages, 0),
+                totalNewBytes: roots.reduce((sum, node) => sum + node.totalNewBytes, 0)
             };
         }
         let node = state.tree.get(state.location[0]);
@@ -213,7 +280,7 @@
             });
             node.sortedItems = [...folders, ...files];
         }
-        const items = node.sortedItems.slice();
+        const items = node.sortedItems.filter(item => !state.newOnly || (item.type === 'file' ? item.isNew : item.totalNewFiles > 0));
         if (state.selectedFileKey) {
             const selectedIndex = items.findIndex(item => item.type === 'file' && fileKey(item) === state.selectedFileKey);
             if (selectedIndex > 0) items.unshift(...items.splice(selectedIndex, 1));
@@ -222,11 +289,17 @@
     }
 
     function directoryLabel(node) {
-        const folders = node ? node.children.size : 0;
+        const folders = node ? visibleDirectories(node).length : 0;
         const isVirtualRoot = node && !node.dataset;
-        const files = isVirtualRoot ? node.totalFiles : (node?.files.length || 0);
-        const images = isVirtualRoot ? node.totalImages : (node?.directImages || 0);
-        const bytes = isVirtualRoot ? node.totalBytes : (node?.directBytes || 0);
+        const files = isVirtualRoot
+            ? (state.newOnly ? node.totalNewFiles : node.totalFiles)
+            : (state.newOnly ? (node?.directNewFiles || 0) : (node?.files.length || 0));
+        const images = isVirtualRoot
+            ? (state.newOnly ? node.totalNewImages : node.totalImages)
+            : (state.newOnly ? (node?.directNewImages || 0) : (node?.directImages || 0));
+        const bytes = isVirtualRoot
+            ? (state.newOnly ? node.totalNewBytes : node.totalBytes)
+            : (state.newOnly ? (node?.directNewBytes || 0) : (node?.directBytes || 0));
         return `${t('counts.folders', { count: folders }, `${folders} 个文件夹`)} · ${t('counts.files', { count: files }, `${files} 个文件`)} · ${t('counts.images', { count: images }, `${images} 张图片`)} · ${formatBytes(bytes)}`;
     }
 
@@ -235,9 +308,55 @@
         return [datasetPath(node.dataset), ...node.parts].join('/');
     }
 
+    function quickJumpPath(jump) {
+        return [datasetPath('images'), ...jump.location.slice(1)].join('/');
+    }
+
+    function quickJumpLabel(jump) {
+        return t(jump.label, null, jump.fallback);
+    }
+
+    function renderQuickJumps(target) {
+        const header = document.createElement('div');
+        header.className = 'ake-ui-tree__section-header';
+        const label = document.createElement('span');
+        label.textContent = t('quickJumps.title', null, '快速跳转');
+        const count = document.createElement('span');
+        count.textContent = String(QUICK_JUMPS.length);
+        header.append(label, count);
+        target.appendChild(header);
+
+        QUICK_JUMPS.forEach(jump => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'ake-ui-tree__item';
+            if (locationKey(state.location) === locationKey(jump.location)) {
+                button.classList.add('is-active');
+                button.setAttribute('aria-current', 'page');
+            }
+            const title = document.createElement('span');
+            title.className = 'ake-ui-tree__item-title';
+            title.textContent = quickJumpLabel(jump);
+            const path = document.createElement('span');
+            path.className = 'ake-ui-tree__item-subtitle';
+            path.textContent = quickJumpPath(jump);
+            button.append(title, path);
+            button.addEventListener('click', () => navigate(jump.location));
+            target.appendChild(button);
+        });
+    }
+
     function sortedDirectories(node) {
         if (!node.sortedChildren) node.sortedChildren = Array.from(node.children.values()).sort((a, b) => naturalCompare(a.name, b.name));
         return node.sortedChildren;
+    }
+
+    function visibleDirectories(node) {
+        return sortedDirectories(node).filter(directory => !state.newOnly || directory.totalNewFiles > 0);
+    }
+
+    function visibleFileCount(folder) {
+        return state.newOnly ? folder.totalNewFiles : folder.totalFiles;
     }
 
     function updateSidebarMeta() {
@@ -270,7 +389,8 @@
         row.className = 'asset-tree-row';
         row.style.setProperty('--asset-tree-depth', depth);
 
-        const hasChildren = node.children.size > 0;
+        const children = visibleDirectories(node);
+        const hasChildren = children.length > 0;
         const expanded = hasChildren && state.expanded.has(node.key);
         if (hasChildren) {
             const toggle = document.createElement('button');
@@ -303,7 +423,7 @@
         title.textContent = node.name;
         const count = document.createElement('span');
         count.className = 'ake-ui-tree__item-subtitle';
-        count.textContent = String(node.totalFiles);
+        count.textContent = String(visibleFileCount(node));
         link.append(title, count);
         link.addEventListener('click', () => navigate(node.location));
         row.appendChild(link);
@@ -312,10 +432,19 @@
         if (expanded) {
             const children = document.createElement('div');
             children.className = 'asset-tree-children';
-            sortedDirectories(node).forEach(child => appendTreeDirectory(children, child, depth + 1));
+            visibleDirectories(node).forEach(child => appendTreeDirectory(children, child, depth + 1));
             branch.appendChild(children);
         }
         target.appendChild(branch);
+    }
+
+    function makeNewBadge(compact = false) {
+        const badge = document.createElement('span');
+        badge.className = 'ake-ui-badge';
+        badge.dataset.tone = 'added';
+        if (compact) badge.dataset.density = 'compact';
+        badge.textContent = window.akeData?.t('versionDiff.added', null, '新增') || '新增';
+        return badge;
     }
 
     function renderSearchResults(target) {
@@ -353,6 +482,7 @@
             path.className = 'ake-ui-tree__item-subtitle';
             path.textContent = entryPath(entry);
             copy.append(title, path);
+            if (entry.type === 'file' && entry.isNew) copy.appendChild(makeNewBadge(true));
             button.append(kind, copy);
             button.addEventListener('click', () => {
                 if (entry.type === 'directory') navigate(entry.location);
@@ -373,10 +503,12 @@
         const label = document.createElement('span');
         label.textContent = t('directory.title', null, '资产目录');
         const count = document.createElement('span');
-        count.textContent = String(state.tree.size);
+        const roots = Array.from(state.tree.values()).filter(node => !state.newOnly || node.totalNewFiles > 0);
+        count.textContent = String(roots.length);
         header.append(label, count);
         target.appendChild(header);
-        state.tree.forEach(node => appendTreeDirectory(target, node, 0));
+        renderQuickJumps(target);
+        roots.forEach(node => appendTreeDirectory(target, node, 0));
     }
 
     function renderDirectoryLists() {
@@ -480,6 +612,7 @@
         kind.className = 'asset-file-card__kind';
         kind.textContent = extension;
         headingRow.append(heading, kind);
+        if (file.isNew) headingRow.appendChild(makeNewBadge(true));
         const meta = document.createElement('p');
         meta.className = 'ake-ui-card__meta';
         meta.textContent = `${formatBytes(file.record?.size)} · MD5 ${file.record?.md5 || '—'}`;
@@ -508,7 +641,8 @@
         button.type = 'button';
         button.className = 'ake-ui-card is-interactive asset-folder-card';
         button.dataset.cardKind = 'asset-folder';
-        button.innerHTML = `<span class="asset-folder-card__icon" aria-hidden="true"></span><span class="asset-folder-card__copy"><strong>${escapeHtml(folder.name)}</strong><small>${escapeHtml(t('folder', { count: folder.totalFiles }, `文件夹 · ${folder.totalFiles} 项`))}</small></span>`;
+        const fileCount = visibleFileCount(folder);
+        button.innerHTML = `<span class="asset-folder-card__icon" aria-hidden="true"></span><span class="asset-folder-card__copy"><strong>${escapeHtml(folder.name)}</strong><small>${escapeHtml(t('folder', { count: fileCount }, `文件夹 · ${fileCount} 项`))}</small></span>`;
         button.addEventListener('click', () => navigate(folder.location));
         return button;
     }
@@ -546,11 +680,29 @@
         header.appendChild(heading);
         elements.content.appendChild(header);
 
+        if (!state.location.length) {
+            const quickGrid = document.createElement('div');
+            quickGrid.className = 'ake-ui-card-grid asset-browser__grid';
+            quickGrid.dataset.cardKind = 'asset-quick-jumps';
+            QUICK_JUMPS.forEach(jump => {
+                const card = document.createElement('button');
+                card.type = 'button';
+                card.className = 'ake-ui-card is-interactive asset-folder-card';
+                card.dataset.cardKind = 'asset-quick-jump';
+                card.innerHTML = `<span class="asset-folder-card__icon" aria-hidden="true"></span><span class="asset-folder-card__copy"><strong>${escapeHtml(quickJumpLabel(jump))}</strong><small>${escapeHtml(quickJumpPath(jump))}</small></span>`;
+                card.addEventListener('click', () => navigate(jump.location));
+                quickGrid.appendChild(card);
+            });
+            elements.content.appendChild(quickGrid);
+        }
+
         const items = directItems(node);
         if (!items.length) {
             const empty = document.createElement('div');
             empty.className = 'ake-ui-state';
-            empty.textContent = t('empty.directory', null, '空目录');
+            empty.textContent = state.newOnly
+                ? t('empty.newOnly', null, '当前目录没有本版本新增内容')
+                : t('empty.directory', null, '空目录');
             elements.content.appendChild(empty);
             return;
         }
@@ -598,6 +750,26 @@
         elements.mobileSearch.value = '';
     }
 
+    function updateNewOnlyControls() {
+        [elements.newOnly, elements.mobileNewOnly].forEach(button => {
+            if (!button) return;
+            button.classList.toggle('is-active', state.newOnly);
+            button.setAttribute('aria-pressed', String(state.newOnly));
+        });
+    }
+
+    function setNewOnly(value) {
+        state.newOnly = Boolean(value);
+        window.clearTimeout(state.searchTimer);
+        state.searchTimer = 0;
+        updateNewOnlyControls();
+        if (state.query) performSearch();
+        else {
+            renderDirectoryLists();
+            renderContent();
+        }
+    }
+
     function expandAncestors(location) {
         for (let index = 1; index < location.length; index += 1) {
             state.expanded.add(locationKey(location.slice(0, index)));
@@ -621,6 +793,7 @@
         let limited = false;
         if (tokens.length) {
             for (const entry of state.searchEntries) {
+                if (state.newOnly && (entry.type === 'file' ? !entry.isNew : entry.totalNewFiles === 0)) continue;
                 if (!tokens.every(token => entry.searchKey.includes(token))) continue;
                 if (matches.length >= SEARCH_RESULT_LIMIT) {
                     limited = true;
@@ -673,6 +846,7 @@
             state.index = index;
             state.tree = built.roots;
             state.searchEntries = built.searchEntries;
+            updateNewOnlyControls();
             renderDirectoryLists();
             renderContent();
         } catch (error) {
@@ -687,6 +861,8 @@
     elements.mobileUp.addEventListener('click', navigateUp, listenerOptions);
     elements.search.addEventListener('input', onSearch, listenerOptions);
     elements.mobileSearch.addEventListener('input', onSearch, listenerOptions);
+    elements.newOnly.addEventListener('click', () => setNewOnly(!state.newOnly), listenerOptions);
+    elements.mobileNewOnly.addEventListener('click', () => setNewOnly(!state.newOnly), listenerOptions);
     elements.mobileButton.addEventListener('click', openMobile, listenerOptions);
     elements.mobileClose.addEventListener('click', closeMobile, listenerOptions);
     elements.mobileOverlay.addEventListener('click', event => {
