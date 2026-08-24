@@ -1,17 +1,18 @@
 <div class="ake-ui-directory" id="akeAssetModule" data-ake-module="asset">
     <aside class="ake-ui-directory__sidebar" id="akeAssetSidebar" data-i18n-aria-label="modules.asset.directory.title" aria-label="资产目录">
         <header class="ake-ui-directory__sidebar-header">
-            <div>
+            <div class="asset-sidebar-heading">
                 <h1 data-i18n="modules.asset.title">资产</h1>
-                <div class="ake-ui-directory__meta" id="akeAssetSidebarMeta" aria-live="polite" data-i18n="modules.asset.loading.index">正在读取统一索引</div>
+                <button class="ake-ui-icon-button asset-directory-up" id="akeAssetUp" type="button" data-i18n-aria-label="modules.asset.parent" data-i18n-title="modules.asset.parent" aria-label="返回上级" title="返回上级"><span aria-hidden="true">←</span></button>
             </div>
-            <button class="ake-ui-icon-button" id="akeAssetHome" type="button" data-i18n-aria-label="modules.asset.root" data-i18n-title="modules.asset.root" aria-label="根目录" title="根目录">⌂</button>
+            <div class="ake-ui-directory__meta" id="akeAssetSidebarMeta" aria-live="polite" data-i18n="modules.asset.loading.index">正在读取统一索引</div>
         </header>
-        <label class="ake-ui-directory__search" for="akeAssetSearch">
-            <span class="ake-ui-directory__search-icon" aria-hidden="true"></span>
+        <div class="ake-ui-directory__search ake-module-search-row">
+            <button class="ake-ui-icon-button ake-module-home" id="akeAssetHome" type="button" data-i18n-aria-label="modules.asset.root" data-i18n-title="modules.asset.root" aria-label="根目录" title="根目录"><span class="ake-module-home__icon" aria-hidden="true">⌂</span></button>
             <input id="akeAssetSearch" type="search" autocomplete="off" spellcheck="false" data-i18n-placeholder="modules.asset.search" data-i18n-aria-label="modules.asset.search" placeholder="搜索文件名或完整路径" aria-label="搜索文件名或完整路径">
-        </label>
-        <nav class="ake-ui-directory__list" id="akeAssetDirectory" data-i18n-aria-label="modules.asset.directory.title" aria-label="资产目录"></nav>
+            <button class="ake-ui-filter__button" id="akeAssetNewOnly" type="button" data-i18n="modules.asset.filters.newOnly" aria-pressed="false">仅看新增</button>
+        </div>
+        <nav class="ake-ui-tree asset-directory-tree" id="akeAssetDirectory" data-i18n-aria-label="modules.asset.directory.title" aria-label="资产目录"></nav>
     </aside>
     <main class="ake-ui-directory__content" id="akeAssetContent" tabindex="-1">
         <div class="ake-ui-state" data-state="loading" data-layout="page" role="status">
@@ -23,13 +24,17 @@
         <section class="ake-ui-directory__mobile-panel" id="akeAssetMobilePanel" role="dialog" aria-modal="true" aria-labelledby="akeAssetMobileTitle">
             <header class="ake-ui-directory__mobile-header">
                 <strong id="akeAssetMobileTitle" data-i18n="modules.asset.directory.title">资产目录</strong>
-                <button class="ake-ui-icon-button" id="akeAssetMobileClose" type="button" data-i18n-aria-label="modules.asset.mobile.close" data-i18n-title="modules.asset.mobile.close" aria-label="关闭" title="关闭">&times;</button>
+                <div class="asset-mobile-header-actions">
+                    <button class="ake-ui-icon-button asset-directory-up" id="akeAssetMobileUp" type="button" data-i18n-aria-label="modules.asset.parent" data-i18n-title="modules.asset.parent" aria-label="返回上级" title="返回上级"><span aria-hidden="true">←</span></button>
+                    <button class="ake-ui-icon-button" id="akeAssetMobileClose" type="button" data-i18n-aria-label="modules.asset.mobile.close" data-i18n-title="modules.asset.mobile.close" aria-label="关闭" title="关闭">&times;</button>
+                </div>
             </header>
-            <label class="ake-ui-directory__search" for="akeAssetMobileSearch">
-                <span class="ake-ui-directory__search-icon" aria-hidden="true"></span>
-                <input id="akeAssetMobileSearch" type="search" autocomplete="off" data-i18n-placeholder="modules.asset.search" placeholder="搜索文件名或完整路径">
-            </label>
-            <nav class="ake-ui-directory__mobile-list" id="akeAssetMobileDirectory"></nav>
+            <div class="ake-ui-directory__search ake-module-search-row">
+                <button class="ake-ui-icon-button ake-module-home" id="akeAssetMobileHome" type="button" data-i18n-aria-label="modules.asset.root" data-i18n-title="modules.asset.root" aria-label="根目录" title="根目录"><span class="ake-module-home__icon" aria-hidden="true">⌂</span></button>
+                <input id="akeAssetMobileSearch" type="search" autocomplete="off" spellcheck="false" data-i18n-placeholder="modules.asset.search" data-i18n-aria-label="modules.asset.search" placeholder="搜索文件名或完整路径" aria-label="搜索文件名或完整路径">
+                <button class="ake-ui-filter__button" id="akeAssetMobileNewOnly" type="button" data-i18n="modules.asset.filters.newOnly" aria-pressed="false">仅看新增</button>
+            </div>
+            <nav class="ake-ui-tree asset-directory-tree" id="akeAssetMobileDirectory" data-i18n-aria-label="modules.asset.directory.title" aria-label="资产目录"></nav>
         </section>
     </div>
 </div>
