@@ -1,0 +1,110 @@
+<section class="ake-ui-tool" data-ake-view="icon-generator" data-misc-module="character_skill_popup_generator" aria-labelledby="miscSkillPopupGeneratorTitle">
+    <header class="misc-icon-generator__header">
+        <h2 id="miscSkillPopupGeneratorTitle" data-i18n="modules.misc.characterSkillPopupGenerator.title">角色技能弹窗生成器</h2>
+        <span id="miscSkillPopupGeneratorStatus" class="misc-icon-generator__status" role="status" aria-live="polite"></span>
+    </header>
+
+    <div class="misc-icon-generator__workspace">
+        <div class="misc-icon-generator__controls">
+            <section class="misc-icon-generator__control-section" aria-labelledby="miscSkillPopupCharacterLabel">
+                <div class="misc-icon-generator__section-heading">
+                    <h3 id="miscSkillPopupCharacterLabel" data-i18n="modules.misc.characterSkillPopupGenerator.character">角色</h3>
+                    <span id="miscSkillPopupCharacterCount" aria-hidden="true"></span>
+                </div>
+                <label class="misc-icon-generator__search">
+                    <input id="miscSkillPopupCharacterSearch" type="search" autocomplete="off"
+                        data-i18n-placeholder="modules.misc.characterSkillPopupGenerator.searchPlaceholder"
+                        data-i18n-aria-label="modules.misc.characterSkillPopupGenerator.searchCharacter"
+                        aria-label="搜索角色"
+                        placeholder="搜索角色">
+                </label>
+                <div id="miscSkillPopupCharacterList" class="misc-icon-generator__character-list" role="listbox"></div>
+            </section>
+
+            <section class="misc-icon-generator__control-section" aria-labelledby="miscSkillPopupSkillLabel">
+                <h3 id="miscSkillPopupSkillLabel" data-i18n="modules.misc.characterSkillPopupGenerator.skill">技能</h3>
+                <div id="miscSkillPopupSkillList" class="misc-icon-generator__skill-list" role="radiogroup"></div>
+            </section>
+
+            <section class="misc-icon-generator__control-section" aria-labelledby="miscSkillPopupLevelLabel">
+                <h3 id="miscSkillPopupLevelLabel" data-i18n="modules.misc.characterSkillPopupGenerator.level">技能等级</h3>
+                <select id="miscSkillPopupLevel" class="ake-ui-control ake-ui-control--select" aria-label="技能等级"></select>
+            </section>
+
+            <section id="miscSkillPopupLizhiyanConditions" class="misc-icon-generator__control-section" aria-labelledby="miscSkillPopupLizhiyanConditionsLabel" hidden>
+                <h3 id="miscSkillPopupLizhiyanConditionsLabel">诀分支条件</h3>
+                <div class="ake-ui-form-row">
+                    <label for="miscSkillPopupLizhiyanWill">意志值</label>
+                    <input id="miscSkillPopupLizhiyanWill" class="ake-ui-control" type="number" min="0" step="1" value="500">
+                </div>
+                <div class="ake-ui-form-row">
+                    <label for="miscSkillPopupLizhiyanWisd">智识值</label>
+                    <input id="miscSkillPopupLizhiyanWisd" class="ake-ui-control" type="number" min="0" step="1" value="500">
+                </div>
+            </section>
+
+            <section class="misc-icon-generator__control-section" aria-labelledby="miscSkillPopupOptionsLabel">
+                <h3 id="miscSkillPopupOptionsLabel">显示选项</h3>
+                <div class="misc-icon-generator__toggles">
+                    <label class="misc-icon-generator__toggle">
+                        <input id="miscSkillPopupBackgroundToggle" type="checkbox">
+                        <span>显示角色立绘背景</span>
+                    </label>
+                    <label class="misc-icon-generator__toggle">
+                        <input id="miscSkillPopupEditorToggle" type="checkbox">
+                        <span>启用自主编辑</span>
+                    </label>
+                </div>
+            </section>
+
+            <section id="miscSkillPopupEditor" class="misc-icon-generator__control-section" aria-labelledby="miscSkillPopupEditorLabel" hidden>
+                <h3 id="miscSkillPopupEditorLabel">自主编辑</h3>
+                <p id="miscSkillPopupEditorWarning" class="misc-icon-generator__status" data-state="error" role="alert" hidden
+                    >您正在修改游戏内原始文本，网站不对导出后信息真实性负责</p>
+                <div class="ake-ui-form-row">
+                    <label for="miscSkillPopupEditorName">技能名称</label>
+                    <input id="miscSkillPopupEditorName" class="ake-ui-control" type="text" maxlength="80">
+                </div>
+                <div class="ake-ui-form-row">
+                    <label>背景图片</label>
+                    <div>
+                        <button id="miscSkillPopupEditorChooseBackground" class="ake-ui-button ake-ui-button--secondary" type="button">选择背景图片</button>
+                        <input id="miscSkillPopupEditorBackground" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+                        <button id="miscSkillPopupEditorClearBackground" class="ake-ui-button ake-ui-button--secondary" type="button">清除自定义背景</button>
+                    </div>
+                </div>
+                <div class="ake-ui-form-row">
+                    <label for="miscSkillPopupEditorStyle">描述样式</label>
+                    <select id="miscSkillPopupEditorStyle" class="ake-ui-control ake-ui-control--select"></select>
+                </div>
+                <div class="ake-ui-form-row">
+                    <label for="miscSkillPopupEditorDescription">技能描述</label>
+                    <textarea id="miscSkillPopupEditorDescription" class="ake-ui-control" style="height:220px;min-height:220px;resize:vertical;" rows="10" maxlength="12000"></textarea>
+                </div>
+                <div>
+                    <span>附加信息</span>
+                    <div id="miscSkillPopupEditorExtras"></div>
+                    <button id="miscSkillPopupEditorAddExtra" class="ake-ui-button ake-ui-button--secondary" type="button">添加附加信息</button>
+                </div>
+            </section>
+        </div>
+
+        <section class="misc-icon-generator__preview" aria-labelledby="miscSkillPopupPreviewLabel">
+            <div class="misc-icon-generator__preview-heading">
+                <div>
+                    <span id="miscSkillPopupPreviewLabel" data-i18n="modules.misc.characterSkillPopupGenerator.preview">预览</span>
+                    <strong id="miscSkillPopupSelection"></strong>
+                </div>
+                <button id="miscSkillPopupDownload" class="misc-icon-generator__download" type="button" disabled>
+                    <span aria-hidden="true">&#x2193;</span>
+                    <span data-i18n="modules.misc.characterSkillPopupGenerator.downloadPng">下载 PNG</span>
+                </button>
+            </div>
+            <div class="misc-icon-generator__canvas-stage">
+                <canvas id="miscSkillPopupCanvas" width="960" height="640" role="img"></canvas>
+            </div>
+        </section>
+    </div>
+</section>
+<script src="/plugin/js/ake-watermark.js"></script>
+<script src="/plugin/js/misc-character-skill-popup-generator.js"></script>

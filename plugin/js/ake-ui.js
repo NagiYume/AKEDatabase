@@ -169,6 +169,34 @@
         return entries;
     }
 
+    function renderSelectOptionContent(target, option) {
+        if (!target) return;
+        target.replaceChildren();
+        if (!option) return;
+
+        const data = option.dataset || {};
+        const image = data.akeUiRichImage || '';
+        if (image) {
+            const icon = element('img', 'ake-ui-select__option-icon');
+            icon.src = image;
+            icon.alt = '';
+            const scale = Number(data.akeUiRichScale) || 1;
+            const size = Math.max(16, Math.min(32, Math.round(22 * scale)));
+            icon.width = size;
+            icon.height = size;
+            icon.style.width = `${size}px`;
+            icon.style.height = `${size}px`;
+            icon.setAttribute('aria-hidden', 'true');
+            target.appendChild(icon);
+        }
+
+        const text = element('span', 'ake-ui-select__option-text', option.textContent?.trim() || '');
+        if (data.akeUiRichColor) text.style.color = data.akeUiRichColor;
+        if (data.akeUiRichBold === 'true') text.style.fontWeight = '700';
+        if (data.akeUiRichUnderline === 'true') text.style.textDecoration = 'underline';
+        target.appendChild(text);
+    }
+
     function enhanceSelect(select) {
         if (!(select instanceof HTMLSelectElement)) return null;
         if (selectInstances.has(select)) return selectInstances.get(select);
@@ -252,7 +280,7 @@
 
         function sync() {
             const selected = select.selectedOptions[0];
-            trigger.querySelector('.ake-ui-select__value').textContent = selected?.textContent?.trim() || '';
+            renderSelectOptionContent(trigger.querySelector('.ake-ui-select__value'), selected);
             trigger.disabled = select.disabled;
             shell.classList.toggle('is-disabled', select.disabled);
             instance.items.forEach(item => {
@@ -272,13 +300,14 @@
                     return;
                 }
 
-                const item = element('button', 'ake-ui-select__option', entry.option.textContent);
+                const item = element('button', 'ake-ui-select__option');
                 item.type = 'button';
                 item.id = `${menu.id}-option-${instance.items.length}`;
                 item.dataset.value = entry.option.value;
                 item.setAttribute('role', 'option');
                 item.setAttribute('aria-disabled', String(entry.option.disabled));
                 item.disabled = entry.option.disabled;
+                renderSelectOptionContent(item, entry.option);
                 item.addEventListener('click', () => {
                     if (entry.option.disabled) return;
                     select.value = entry.option.value;

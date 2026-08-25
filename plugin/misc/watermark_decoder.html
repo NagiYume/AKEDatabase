@@ -1,0 +1,40 @@
+<section class="ake-ui-page" data-ake-view="watermark-decoder" data-misc-module="watermark_decoder" aria-labelledby="miscWatermarkDecoderTitle">
+    <header class="ake-ui-page__header">
+        <div>
+            <div class="ake-ui-page__eyebrow" data-i18n="modules.misc.watermarkDecoder.eyebrow">频域水印</div>
+            <h2 id="miscWatermarkDecoderTitle" data-i18n="modules.misc.watermarkDecoder.title">图片水印解析器</h2>
+            <p class="ake-ui-page__summary" data-i18n="modules.misc.watermarkDecoder.summary">读取角色技能弹窗图片中的隐蔽定位水印。</p>
+        </div>
+        <div class="ake-ui-page__status" id="miscWatermarkDecoderStatus" role="status" aria-live="polite"></div>
+    </header>
+
+    <section class="ake-ui-section" aria-labelledby="miscWatermarkDecoderInputTitle">
+        <div class="ake-ui-section__header">
+            <h3 id="miscWatermarkDecoderInputTitle" data-i18n="modules.misc.watermarkDecoder.inputTitle">选择图片</h3>
+        </div>
+        <div class="ake-ui-toolbar">
+            <div>
+                <span data-i18n="modules.misc.watermarkDecoder.file">PNG 文件</span>
+                <input id="miscWatermarkDecoderFile" type="file" accept="image/png,image/*" hidden>
+                <button id="miscWatermarkDecoderChooseFile" class="ake-ui-button ake-ui-button--secondary" type="button"
+                    data-i18n="modules.misc.watermarkDecoder.inputTitle">选择图片</button>
+            </div>
+            <span aria-label="Ctrl+V">Ctrl+V</span>
+            <button id="miscWatermarkDecoderDecode" class="ake-ui-button ake-ui-button--primary" type="button" disabled
+                data-i18n="modules.misc.watermarkDecoder.decode">解析水印</button>
+        </div>
+    </section>
+
+    <section id="miscWatermarkDecoderResult" class="ake-ui-section" aria-labelledby="miscWatermarkDecoderResultTitle" hidden>
+        <div class="ake-ui-section__header">
+            <h3 id="miscWatermarkDecoderResultTitle" data-i18n="modules.misc.watermarkDecoder.resultTitle">解析结果</h3>
+        </div>
+        <dl id="miscWatermarkDecoderFields" class="ake-ui-detail-facts"></dl>
+    </section>
+
+    <section id="miscWatermarkDecoderEmpty" class="ake-ui-state" data-state="empty" role="status">
+        <b class="ake-ui-state__title" data-i18n="modules.misc.watermarkDecoder.empty">请选择包含水印的 PNG 图片。</b>
+    </section>
+</section>
+<script src="/plugin/js/ake-watermark.js"></script>
+<script src="/plugin/js/misc-watermark-decoder.js"></script>
