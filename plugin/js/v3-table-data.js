@@ -206,6 +206,19 @@
         });
     }
 
+    function characterGiftRewardIds(charId) {
+        const operatorId = String(charId || '').replace(/^chr_\d+_/, '');
+        if (!operatorId) return [];
+        return [1, 2, 3].map(stage => `reward_gift_${operatorId}_${stage}`);
+    }
+
+    function characterSupplementSignature(charId, rewards, weaponRecommendations) {
+        return {
+            gifts: pick(rewards, characterGiftRewardIds(charId)),
+            weaponRecommendations: weaponRecommendations?.[charId] || {}
+        };
+    }
+
     function manifestId(module, row) {
         const fields = {
             character: 'charId', weapon: 'weaponId', enemy: 'templateId', equip: 'suitID', item: 'itemId',
@@ -357,7 +370,10 @@
     }
 
     async function characterManifest(version) {
-        const [chars, growth, maps] = await Promise.all([table('CharacterTable', version), table('CharGrowthTable', version), loadMaps()]);
+        const [chars, growth, maps, rewards, weaponRecommendations] = await Promise.all([
+            table('CharacterTable', version), table('CharGrowthTable', version), loadMaps(), table('RewardTable', version),
+            table('CharWpnRecommendTable', version)
+        ]);
         const rows = Object.entries(chars).map(([charId, row], index) => {
             const grow = growth[charId] || {};
             return {
@@ -370,17 +386,22 @@
                 weaponTypeId: grow.weaponType,
                 mainAttrType: row.mainAttrType, charBattleTag: grow.charBattleTag || [],
                 icon: icon('character', charId), contentFile: `/__v3/character/${charId}.json`,
-                sourceOrder: index, hidden: false, __diffSignature: diffSignature([row, grow])
+                sourceOrder: index, hidden: false,
+                __diffSignature: diffSignature([row, grow, characterSupplementSignature(
+                    charId, rewards, weaponRecommendations
+                )])
             };
         });
         return assignPriority(rows.sort(byRarityThenId));
     }
 
     async function characterDetail(id, version) {
-        const [chars, growth, potentials, talentEffects, skills, shipChars, shipSkills, items, professions] = await Promise.all([
+        const [chars, growth, potentials, talentEffects, skills, shipChars, shipSkills, items, professions, rewards,
+            weaponRecommendations] = await Promise.all([
             table('CharacterTable', version), table('CharGrowthTable', version), table('CharacterPotentialTable', version),
             table('PotentialTalentEffectTable', version), table('SkillPatchTable', version), table('SpaceshipCharSkillTable', version),
-            table('SpaceshipSkillTable', version), table('ItemTable', version), table('CharProfessionTable', version)
+            table('SpaceshipSkillTable', version), table('ItemTable', version), table('CharProfessionTable', version),
+            table('RewardTable', version), table('CharWpnRecommendTable', version)
         ]);
         const char = chars[id] || {};
         const grow = growth[id] || {};
@@ -399,12 +420,23 @@
         Object.values(grow.talentNodeMap || {}).forEach(n => (n.requiredItem || []).forEach(item => itemIds.add(item.id)));
         (potential.potentialUnlockBundle || []).forEach(p => (p.itemIds || []).forEach(itemId => itemIds.add(itemId)));
         (grow.skillLevelUp || []).forEach(level => (level.itemBundle || []).forEach(item => itemIds.add(item.id)));
+        const giftRewardIds = characterGiftRewardIds(id);
+        const giftRewards = pick(rewards, giftRewardIds);
+        Object.values(giftRewards).forEach(reward => {
+            [...(reward.itemBundles || []), ...(reward.probItemBundles || [])].forEach(bundle => {
+                if (bundle?.id) itemIds.add(bundle.id);
+            });
+        });
+        Object.values(weaponRecommendations[id] || {}).forEach(ids => {
+            (Array.isArray(ids) ? ids : []).forEach(itemId => itemIds.add(itemId));
+        });
         return {
             charId: id, charactertable: char, chargrowthtable: grow, characterpotentialtable: potential,
             potentialtalenteffecttable: pick(talentEffects, talentIds.concat(potentialIds)),
             skillpatchtable: pick(skills, Array.from(skillIds)), spaceshipcharskilltable: shipRow,
             spaceshipskilltable: pick(shipSkills, shipIds), itemtable: items[id] || {}, costitemtable: pick(items, Array.from(itemIds)),
-            charprofessiontable: professions[char.profession] || {}
+            charprofessiontable: professions[char.profession] || {}, giftrewardtable: giftRewards,
+            charwpnrecommendtable: weaponRecommendations[id] || {}
         };
     }
 
