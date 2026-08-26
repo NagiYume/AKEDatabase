@@ -2,6 +2,23 @@ AKEData has moved to www.akedata.wiki. The former domain, akedata.top, now redir
 
 # AKEData Version Changelog
 
+### v1.2.15
+
+#### Character icons and skill popups
+
+- The Character Icon Generator now includes a `1024 × 1024` preset and custom width and height controls. With aspect-ratio locking enabled, the other dimension follows automatically; non-square canvases keep the original composition proportional and centered.
+- The Skill with Attributes layout now selects background assets from the skill type and damage attribute, with independent toggles for the skill, background base, skill-type background, attribute color, character icon, rings, and decoration layers.
+- Added a Character Skill Popup Generator with game-style rich text, link icons, skill parameters, branch skills, ultimate costs and cooldowns, plus leveled character talent and attribute nodes.
+- Skill popups support editing original text and background images. While editing is enabled, preview and exported images receive a hidden locator watermark, and a separate Image Watermark Decoder is available.
+- Watermark embedding and decoding now prioritize the image center, use stronger frequency-domain quantization, and retain a full-image fallback scan. The decoder accepts both selected files and pasted images.
+
+#### Asset module
+
+- Asset versions now parse both the game version and the Hotfix suffix after `@`. New-content detection uses the highest complete asset version instead of ignoring Hotfix differences.
+- Added localized aliases for game Sprite directories. The asset directory, tree, quick jumps, and folder cards now show easier-to-recognize asset categories.
+- New-content badges are shown at both folder and file level, and new items are prioritized in directories, search results, and file lists while preserving the selected file within its priority group.
+- Quick jumps and the asset directory can now be collapsed independently on desktop and mobile, with consistent grouping on root and directory pages.
+
 ### v1.2.14
 
 #### Asset module improvements

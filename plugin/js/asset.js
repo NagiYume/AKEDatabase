@@ -3,7 +3,50 @@
 
     const MODULE_ID = 'asset';
     const ASSET_DATA_ORIGIN = 'https://data.akedata.wiki';
-    const NEW_CONTENT_BASELINE_VERSION = '1.4.4';
+    const SPRITES_ROOT = ['images', 'assets', 'beyond', 'dynamicassets', 'gameplay', 'ui', 'sprites'];
+    const SPRITE_FOLDER_MAPPINGS = [
+        ['activity', 'folderAliases.activity', '活动'],
+        ['bufficon', 'folderAliases.bufficon', 'Buff图标'],
+        ['blueprint', 'folderAliases.blueprint', '蓝图'],
+        ['characterportrait', 'folderAliases.characterportrait', '角色立绘'],
+        ['charbattleicon', 'folderAliases.charbattleicon', '角色战时图标'],
+        ['chargacha', 'folderAliases.chargacha', '角色寻访图标'],
+        ['charhorheadicon', 'folderAliases.charhorheadicon', '角色横屏头图'],
+        ['charicon', 'folderAliases.charicon', '角色头像（竖）'],
+        ['charinfo', 'folderAliases.charinfo', '角色界面背景图'],
+        ['charremoteicon700', 'folderAliases.charremoteicon700', '角色Baker图'],
+        ['cinematic', 'folderAliases.cinematic', '剧情（神秘大字）'],
+        ['factory', 'folderAliases.factory', '集成工业'],
+        ['friendlistbg', 'folderAliases.friendlistbg', '名片背景（好友页）'],
+        ['gachashadow', 'folderAliases.gachashadow', '角色卡池剪影'],
+        ['guide', 'folderAliases.guide', '教程'],
+        ['headframeicon', 'folderAliases.headframeicon', '头像框'],
+        ['headlabelicon', 'folderAliases.headlabelicon', '地图特殊标记'],
+        ['itemicon', 'folderAliases.itemicon', '物品图标'],
+        ['itemiconbig', 'folderAliases.itemiconbig', '物品图标（大）'],
+        ['levelmap', 'folderAliases.levelmap', '地图图片'],
+        ['loading', 'folderAliases.loading', '加载图片'],
+        ['mail', 'folderAliases.mail', '邮件'],
+        ['map', 'folderAliases.map', '地图标记'],
+        ['medalicon', 'folderAliases.medalicon', '蚀刻章'],
+        ['monstericon', 'folderAliases.monstericon', '怪物'],
+        ['playeravatar', 'folderAliases.playeravatar', '头像'],
+        ['seasontower', 'folderAliases.seasontower', '战争回响'],
+        ['shop', 'folderAliases.shop', '商店'],
+        ['snapshot', 'folderAliases.snapshot', '相机'],
+        ['spaceship', 'folderAliases.spaceship', '帝江号'],
+        ['walleticon', 'folderAliases.walleticon', '货币'],
+        ['attributeicon', 'folderAliases.attributeicon', '属性图标'],
+        ['charroundicon', 'folderAliases.charroundicon', '角色图标（圆）'],
+        ['charremoteicon', 'folderAliases.charremoteicon', '角色图标（方）'],
+        ['charprofessionicon', 'folderAliases.charprofessionicon', '角色职业图标'],
+        ['contingencycontract', 'folderAliases.contingencycontract', '危机合约'],
+        ['medaliconbig', 'folderAliases.medaliconbig', '蚀刻章（大）'],
+        ['termicon', 'folderAliases.termicon', '特殊名词图标'],
+        ['prts', 'folderAliases.prts', '档案库']
+    ].map(([key, label, fallback]) => ({
+        key, label, fallback, location: [...SPRITES_ROOT, key]
+    }));
     const QUICK_JUMPS = [
         {
             key: 'gameIcons',
@@ -18,6 +61,7 @@
             location: ['images', 'assets', 'beyond', 'dynamicassets', 'gameplay', 'ui', 'textures', 'levelmap', 'levelmapchunks']
         }
     ];
+    const FOLDER_ALIASES = new Map(SPRITE_FOLDER_MAPPINGS.map(mapping => [mapping.location.join('/'), mapping]));
     const SEARCH_DELAY = 160;
     const SEARCH_RESULT_LIMIT = 160;
     const RENDER_BATCH_SIZE = 72;
@@ -56,6 +100,7 @@
         query: '',
         newOnly: false,
         selectedFileKey: '',
+        collapsedSidebarSections: new Set(),
         searchTimer: 0,
         renderToken: 0,
         renderObserver: null,
@@ -89,30 +134,39 @@
         return String(value || '').normalize('NFKC').toLocaleLowerCase();
     }
 
-    function parseGameVersion(value) {
-        const match = String(value ?? '').trim().match(/^(\d+)\.(\d+)\.(\d+)(?:@[^@]*)?$/);
+    function parseAssetVersion(value) {
+        const match = String(value ?? '').trim().match(/^(\d+)\.(\d+)\.(\d+)@(\d+(?:-\d+)*)$/);
         if (!match) return null;
         return {
-            parts: match.slice(1, 4).map(Number),
-            value: match.slice(1, 4).join('.')
+            gameParts: match.slice(1, 4).map(Number),
+            hotfixParts: match[4].split('-').map(Number),
+            value: `${match.slice(1, 4).join('.')}@${match[4]}`
         };
     }
 
-    function compareGameVersions(left, right) {
-        for (let index = 0; index < 3; index += 1) {
-            if (left.parts[index] !== right.parts[index]) return left.parts[index] - right.parts[index];
+    function compareVersionParts(left, right) {
+        const length = Math.max(left.parts.length, right.parts.length);
+        for (let index = 0; index < length; index += 1) {
+            const leftPart = left.parts[index] || 0;
+            const rightPart = right.parts[index] || 0;
+            if (leftPart !== rightPart) return leftPart - rightPart;
         }
         return 0;
     }
 
-    function currentGameVersion(index) {
+    function compareAssetVersions(left, right) {
+        const gameComparison = compareVersionParts({ parts: left.gameParts }, { parts: right.gameParts });
+        return gameComparison || compareVersionParts({ parts: left.hotfixParts }, { parts: right.hotfixParts });
+    }
+
+    function currentAssetVersion(index) {
         let highest = null;
         for (const dataset of ['images', 'json']) {
             const records = index.datasets?.[dataset]?.files || {};
             for (const relative in records) {
                 if (!Object.prototype.hasOwnProperty.call(records, relative)) continue;
-                const version = parseGameVersion(records[relative]?.version);
-                if (version && (!highest || compareGameVersions(version, highest) > 0)) highest = version;
+                const version = parseAssetVersion(records[relative]?.version);
+                if (version && (!highest || compareAssetVersions(version, highest) > 0)) highest = version;
             }
         }
         return highest;
@@ -189,9 +243,7 @@
     async function makeTree(index) {
         const roots = new Map();
         const searchEntries = [];
-        const baseline = parseGameVersion(NEW_CONTENT_BASELINE_VERSION);
-        const latest = currentGameVersion(index);
-        const hasNewContent = Boolean(latest && baseline && compareGameVersions(latest, baseline) > 0);
+        const latestAssetVersion = currentAssetVersion(index);
         let processed = 0;
         for (const dataset of ['images', 'json']) {
             const datasetName = dataset === 'images' ? 'public / images' : 'public / Json';
@@ -218,8 +270,8 @@
                     ancestors.push(current);
                 });
 
-                const version = parseGameVersion(record?.version);
-                const isNew = hasNewContent && Boolean(version && latest && compareGameVersions(version, latest) === 0);
+                const version = parseAssetVersion(record?.version);
+                const isNew = Boolean(version && latestAssetVersion && compareAssetVersions(version, latestAssetVersion) === 0);
                 const file = makeFile(dataset, relative, record, current, isNew);
                 current.files.push(file);
                 current.directBytes += Number(record?.size || 0);
@@ -270,20 +322,32 @@
         return node || null;
     }
 
+    function assetItemPriority(item) {
+        if (item.type === 'directory') return item.totalNewFiles > 0 ? 0 : 1;
+        return item.isNew ? 2 : 3;
+    }
+
+    function compareAssetItems(left, right) {
+        const priorityDifference = assetItemPriority(left) - assetItemPriority(right);
+        if (priorityDifference) return priorityDifference;
+        if (left.type === 'file' && right.type === 'file' && left.image !== right.image) return left.image ? -1 : 1;
+        return naturalCompare(left.name, right.name);
+    }
+
     function directItems(node) {
         if (!node) return [];
         if (!node.sortedItems) {
-            const folders = Array.from(node.children.values()).sort((a, b) => naturalCompare(a.name, b.name));
-            const files = node.files.slice().sort((a, b) => {
-                if (a.image !== b.image) return a.image ? -1 : 1;
-                return naturalCompare(a.name, b.name);
-            });
-            node.sortedItems = [...folders, ...files];
+            node.sortedItems = [...node.children.values(), ...node.files].sort(compareAssetItems);
         }
         const items = node.sortedItems.filter(item => !state.newOnly || (item.type === 'file' ? item.isNew : item.totalNewFiles > 0));
         if (state.selectedFileKey) {
             const selectedIndex = items.findIndex(item => item.type === 'file' && fileKey(item) === state.selectedFileKey);
-            if (selectedIndex > 0) items.unshift(...items.splice(selectedIndex, 1));
+            if (selectedIndex > 0) {
+                const selected = items.splice(selectedIndex, 1)[0];
+                const selectedPriority = assetItemPriority(selected);
+                const insertIndex = items.findIndex(item => assetItemPriority(item) >= selectedPriority);
+                items.splice(insertIndex < 0 ? items.length : insertIndex, 0, selected);
+            }
         }
         return items;
     }
@@ -316,16 +380,22 @@
         return t(jump.label, null, jump.fallback);
     }
 
-    function renderQuickJumps(target) {
-        const header = document.createElement('div');
-        header.className = 'ake-ui-tree__section-header';
-        const label = document.createElement('span');
-        label.textContent = t('quickJumps.title', null, '快速跳转');
-        const count = document.createElement('span');
-        count.textContent = String(QUICK_JUMPS.length);
-        header.append(label, count);
-        target.appendChild(header);
+    function folderAlias(location) {
+        const mapping = FOLDER_ALIASES.get(location.join('/'));
+        return mapping ? quickJumpLabel(mapping) : '';
+    }
 
+    function appendFolderName(target, name, location) {
+        target.appendChild(document.createTextNode(name));
+        const alias = folderAlias(location);
+        if (!alias) return;
+        target.appendChild(document.createTextNode(' '));
+        const label = document.createElement('small');
+        label.textContent = alias;
+        target.appendChild(label);
+    }
+
+    function renderQuickJumps(target) {
         QUICK_JUMPS.forEach(jump => {
             const button = document.createElement('button');
             button.type = 'button';
@@ -346,8 +416,40 @@
         });
     }
 
+    function renderSidebarSection(target, key, labelText, count, renderContent) {
+        const section = document.createElement('div');
+        section.className = 'ake-ui-tree__group';
+        if (!state.collapsedSidebarSections.has(key)) section.classList.add('is-open');
+
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'ake-ui-tree__group-toggle';
+        toggle.setAttribute('aria-expanded', String(section.classList.contains('is-open')));
+
+        const label = document.createElement('span');
+        label.className = 'ake-ui-tree__group-label';
+        const labelTextNode = document.createElement('span');
+        labelTextNode.textContent = labelText;
+        label.appendChild(labelTextNode);
+        const countNode = document.createElement('span');
+        countNode.className = 'ake-ui-tree__group-count';
+        countNode.textContent = String(count);
+        toggle.append(label, countNode);
+
+        const content = document.createElement('div');
+        content.className = 'ake-ui-tree__children';
+        toggle.addEventListener('click', () => {
+            if (state.collapsedSidebarSections.has(key)) state.collapsedSidebarSections.delete(key);
+            else state.collapsedSidebarSections.add(key);
+            renderDirectoryLists();
+        });
+        section.append(toggle, content);
+        target.appendChild(section);
+        renderContent(content);
+    }
+
     function sortedDirectories(node) {
-        if (!node.sortedChildren) node.sortedChildren = Array.from(node.children.values()).sort((a, b) => naturalCompare(a.name, b.name));
+        if (!node.sortedChildren) node.sortedChildren = Array.from(node.children.values()).sort(compareAssetItems);
         return node.sortedChildren;
     }
 
@@ -357,6 +459,14 @@
 
     function visibleFileCount(folder) {
         return state.newOnly ? folder.totalNewFiles : folder.totalFiles;
+    }
+
+    function folderSummary(folder) {
+        const fileCount = visibleFileCount(folder);
+        const folderLabel = t('folder', { count: fileCount }, `文件夹 · ${fileCount} 项`);
+        if (!folder.totalNewFiles) return folderLabel;
+        const newLabel = t('counts.newFiles', { count: folder.totalNewFiles }, `新增${folder.totalNewFiles}`);
+        return `${folderLabel} · ${newLabel}`;
     }
 
     function updateSidebarMeta() {
@@ -420,7 +530,7 @@
         }
         const title = document.createElement('span');
         title.className = 'ake-ui-tree__item-title';
-        title.textContent = node.name;
+        appendFolderName(title, node.name, node.location);
         const count = document.createElement('span');
         count.className = 'ake-ui-tree__item-subtitle';
         count.textContent = String(visibleFileCount(node));
@@ -498,17 +608,21 @@
             renderSearchResults(target);
             return;
         }
-        const header = document.createElement('div');
-        header.className = 'ake-ui-tree__section-header';
-        const label = document.createElement('span');
-        label.textContent = t('directory.title', null, '资产目录');
-        const count = document.createElement('span');
         const roots = Array.from(state.tree.values()).filter(node => !state.newOnly || node.totalNewFiles > 0);
-        count.textContent = String(roots.length);
-        header.append(label, count);
-        target.appendChild(header);
-        renderQuickJumps(target);
-        roots.forEach(node => appendTreeDirectory(target, node, 0));
+        renderSidebarSection(
+            target,
+            'quickJumps',
+            t('quickJumps.title', null, '快速跳转'),
+            QUICK_JUMPS.length,
+            renderQuickJumps
+        );
+        renderSidebarSection(
+            target,
+            'directory',
+            t('directory.title', null, '资产目录'),
+            roots.length,
+            content => roots.forEach(node => appendTreeDirectory(content, node, 0))
+        );
     }
 
     function renderDirectoryLists() {
@@ -641,8 +755,22 @@
         button.type = 'button';
         button.className = 'ake-ui-card is-interactive asset-folder-card';
         button.dataset.cardKind = 'asset-folder';
-        const fileCount = visibleFileCount(folder);
-        button.innerHTML = `<span class="asset-folder-card__icon" aria-hidden="true"></span><span class="asset-folder-card__copy"><strong>${escapeHtml(folder.name)}</strong><small>${escapeHtml(t('folder', { count: fileCount }, `文件夹 · ${fileCount} 项`))}</small></span>`;
+        const icon = document.createElement('span');
+        icon.className = 'asset-folder-card__icon';
+        icon.setAttribute('aria-hidden', 'true');
+        const copy = document.createElement('span');
+        copy.className = 'asset-folder-card__copy';
+        const name = document.createElement('strong');
+        appendFolderName(name, folder.name, folder.location);
+        const summary = document.createElement('small');
+        summary.textContent = folderSummary(folder);
+        copy.append(name, summary);
+        button.append(icon, copy);
+        if (folder.totalNewFiles > 0) {
+            const badge = makeNewBadge(true);
+            badge.classList.add('ake-ui-badge--corner');
+            button.appendChild(badge);
+        }
         button.addEventListener('click', () => navigate(folder.location));
         return button;
     }
@@ -681,8 +809,16 @@
         elements.content.appendChild(header);
 
         if (!state.location.length) {
+            const quickSection = document.createElement('section');
+            quickSection.className = 'ake-ui-section';
+            const quickHeader = document.createElement('header');
+            quickHeader.className = 'ake-ui-section__header';
+            const quickTitle = document.createElement('h3');
+            quickTitle.className = 'ake-ui-section__title';
+            quickTitle.textContent = t('quickJumps.title', null, '快速跳转');
+            quickHeader.appendChild(quickTitle);
             const quickGrid = document.createElement('div');
-            quickGrid.className = 'ake-ui-card-grid asset-browser__grid';
+            quickGrid.className = 'ake-ui-card-grid';
             quickGrid.dataset.cardKind = 'asset-quick-jumps';
             QUICK_JUMPS.forEach(jump => {
                 const card = document.createElement('button');
@@ -693,7 +829,23 @@
                 card.addEventListener('click', () => navigate(jump.location));
                 quickGrid.appendChild(card);
             });
-            elements.content.appendChild(quickGrid);
+            quickSection.append(quickHeader, quickGrid);
+            elements.content.appendChild(quickSection);
+        }
+
+        let contentTarget = elements.content;
+        if (!state.location.length) {
+            const directorySection = document.createElement('section');
+            directorySection.className = 'ake-ui-section';
+            const directoryHeader = document.createElement('header');
+            directoryHeader.className = 'ake-ui-section__header';
+            const directoryTitle = document.createElement('h3');
+            directoryTitle.className = 'ake-ui-section__title';
+            directoryTitle.textContent = t('directory.title', null, '资产目录');
+            directoryHeader.appendChild(directoryTitle);
+            directorySection.appendChild(directoryHeader);
+            elements.content.appendChild(directorySection);
+            contentTarget = directorySection;
         }
 
         const items = directItems(node);
@@ -703,7 +855,7 @@
             empty.textContent = state.newOnly
                 ? t('empty.newOnly', null, '当前目录没有本版本新增内容')
                 : t('empty.directory', null, '空目录');
-            elements.content.appendChild(empty);
+            contentTarget.appendChild(empty);
             return;
         }
 
@@ -730,7 +882,7 @@
         };
 
         more.addEventListener('click', appendBatch);
-        elements.content.append(grid, more);
+        contentTarget.append(grid, more);
         appendBatch();
         if (!more.hidden && 'IntersectionObserver' in window) {
             state.renderObserver = new IntersectionObserver(entries => {

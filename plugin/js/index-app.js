@@ -1340,26 +1340,21 @@
                                                     const hyperDef = hyperlinkCfg?.[tagName];
                                                     if (hyperDef) {
                                                         const styleid = hyperDef.styleid;
-                                                        if (styleid && textstyleCfg?.[styleid]) {
-                                                            const styleDef = textstyleCfg[styleid];
-                                                            const color = styleDef.color?.[1] ?? styleDef.color?.[0] ?? null;
-                                                            const image = styleDef.image?.[1] ?? styleDef.image?.[0] ?? null;
-                                                            const scale = styleDef.scale?.[1] ?? styleDef.scale?.[0] ?? 1;
-                                                            const mark = styleDef.mark?.[1] ?? styleDef.mark?.[0] ?? null;
-                                                            const textStyle = `${color ? `color: ${color};` : ''}${mark ? `background-color: ${mark};` : ''}`;
-                                                            if (image) {
-                                                                tagResult = `<span class="textstyle-icon-text">
-                                                                    <img src="${resolveRichTextImageUrl(image)}" style="transform: scale(${scale});" alt="">
-                                                                    <span class="tag-hyperlink" data-tag-id="${tagName}" style="${textStyle}">${renderedInner}</span>
-                                                                </span>`;
-                                                            } else if (textStyle) {
-                                                                tagResult = `<span class="tag-hyperlink" data-tag-id="${tagName}" style="${textStyle}">${renderedInner}</span>`;
-                                                            } else {
-                                                                tagResult = `<span class="tag-hyperlink" data-tag-id="${tagName}">${renderedInner}</span>`;
-                                                            }
-                                                        } else {
-                                                            tagResult = `<span class="tag-hyperlink" data-tag-id="${tagName}">${renderedInner}</span>`;
-                                                        }
+                                                        const styleDef = styleid ? textstyleCfg?.[styleid] : null;
+                                                        const color = styleDef?.color?.[1] ?? styleDef?.color?.[0] ?? null;
+                                                        const styleImage = styleDef?.image?.[1] ?? styleDef?.image?.[0] ?? null;
+                                                        const styleScale = styleDef?.scale?.[1] ?? styleDef?.scale?.[0] ?? 1;
+                                                        const mark = styleDef?.mark?.[1] ?? styleDef?.mark?.[0] ?? null;
+                                                        const textStyle = `${color ? `color: ${color};` : ''}${mark ? `background-color: ${mark};` : ''}`;
+                                                        const image = hyperDef.iconPath || styleImage;
+                                                        const scale = hyperDef.iconPath ? 1.25 : styleScale;
+                                                        const iconHtml = image
+                                                            ? `<img src="${resolveRichTextImageUrl(image)}" style="transform: scale(${scale}); width: auto; height: 1em; display: inline-block; vertical-align: middle; margin-right: 0.15em;" alt="">`
+                                                            : '';
+                                                        const linkHtml = `<span class="tag-hyperlink" data-tag-id="${tagName}"${textStyle ? ` style="${textStyle}"` : ''}>${renderedInner}</span>`;
+                                                        tagResult = iconHtml
+                                                            ? `<span class="textstyle-icon-text">${iconHtml}${linkHtml}</span>`
+                                                            : linkHtml;
                                                     } else {
                                                         tagResult = renderedInner;
                                                     }

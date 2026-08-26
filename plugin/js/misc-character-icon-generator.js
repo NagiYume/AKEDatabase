@@ -3,9 +3,24 @@
 
     const MODULE_ID = 'character_icon_generator';
     const IMAGE_ROOT = '/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites';
+    const SKILL_ICON_ROOT = `${IMAGE_ROOT}/skillicon`;
+    const SKILL_DATA_ROOT = '/public/Json/SkillData';
     const UI_ASSET_ROOT = '/public/misc';
     const SKILL_TYPES = [0, 1, 2, 3];
-    const VALID_OUTPUT_SIZES = new Set([192, 256, 384, 512]);
+    const VALID_OUTPUT_SIZES = new Set([192, 256, 384, 512, 1024]);
+    const MIN_OUTPUT_DIMENSION = 64;
+    const MAX_OUTPUT_DIMENSION = 2048;
+    const SKILL_ATTRIBUTES_LAYOUT = 'skill-attributes';
+    const SKILL_ATTRIBUTE_LAYERS = Object.freeze([
+        'skill',
+        'backgroundBase',
+        'skillLine',
+        'skillColor',
+        'character',
+        'portraitRing',
+        'skillRing',
+        'decoration'
+    ]);
     const SUPER_SAMPLE = 4;
     const NATIVE_FIRST_HINT_SCALE = 1.365;
     const NATIVE_PORTRAIT_MASK_DIAMETER = 93 * 0.7326;
@@ -18,10 +33,59 @@
     const NATIVE_DECORATION_OFFSET = [-1.575, 78.1375];
     const SMALL_UI_SCALE = 54 / NATIVE_PORTRAIT_RING_DIAMETER;
     const SKILL_INNER_FILL = '#171a1e';
+    const SKILL_DEFAULT_COLOR = 'rgb(95, 95, 95)';
+    const SKILL_DAMAGE_COLORS = Object.freeze({
+        2: 'rgb(255, 98, 61)',
+        3: 'rgb(255, 192, 0)',
+        4: 'rgb(33, 198, 208)',
+        6: 'rgb(171, 191, 0)'
+    });
+    const DAMAGE_TYPE_IDS = Object.freeze({
+        Physical: 0,
+        Real: 1,
+        Fire: 2,
+        Pulse: 3,
+        Cryst: 4,
+        Crystal: 4,
+        LifeDrain: 5,
+        Lifedrain: 5,
+        Natural: 6,
+        Ether: 7
+    });
+    const SKILL_TYPE_LINE_INDEX = Object.freeze({
+        Attack: 1,
+        BreakingAttack: 2,
+        NormalAttack: 1,
+        NormalSkill: 3,
+        AttachSkill: 4,
+        Dodge: 6,
+        ComboSkill: 7,
+        UltimateSkill: 8
+    });
+    const SKILL_GROUP_BACKGROUND = Object.freeze({
+        0: { lineIndex: 1, colorIndex: 1 },
+        1: { lineIndex: 3, colorIndex: 1 },
+        2: { lineIndex: 8, colorIndex: 2 },
+        3: { lineIndex: 7, colorIndex: 1 }
+    });
+    const SKILL_LINE_DIMENSIONS = Object.freeze({
+        1: [128, 128],
+        2: [128, 128],
+        3: [128, 128],
+        4: [88, 56],
+        5: [96, 100],
+        6: [100, 100],
+        7: [128, 128],
+        8: [128, 128]
+    });
     const UI_ASSETS = {
         decoration: { path: `${UI_ASSET_ROOT}/icon_combos_01.png`, width: 64, height: 64 },
         portraitRing: { path: `${UI_ASSET_ROOT}/deco_combo_skill_progress.png`, width: 136, height: 136 },
-        skillRing: { path: `${UI_ASSET_ROOT}/bg_combo_skill_icon.png`, width: 60, height: 60 }
+        skillRing: { path: `${UI_ASSET_ROOT}/bg_combo_skill_icon.png`, width: 60, height: 60 },
+        skillColor: {
+            1: { path: `${SKILL_ICON_ROOT}/decal_skillcolorNew_01.png`, width: 84, height: 84 },
+            2: { path: `${SKILL_ICON_ROOT}/decal_skillcolorNew_02.png`, width: 84, height: 84 }
+        }
     };
 
     window.AKEMisc.register(MODULE_ID, async function (context) {
@@ -34,19 +98,30 @@
         const skillList = root.querySelector('#miscIconSkillList');
         const layoutOptions = root.querySelector('#miscIconLayoutOptions');
         const sizeOptions = root.querySelector('#miscIconSizeOptions');
+        const customSizeOptions = root.querySelector('#miscIconCustomSizeOptions');
+        const customWidthInput = root.querySelector('#miscIconCustomWidth');
+        const customHeightInput = root.querySelector('#miscIconCustomHeight');
+        const customLockRatioInput = root.querySelector('#miscIconCustomLockRatio');
         const skillBackgroundOptions = root.querySelector('#miscIconSkillBackgroundOptions');
+        const skillLayerOptions = root.querySelector('#miscIconSkillLayerOptions');
+        const skillLayerInputs = [...(skillLayerOptions?.querySelectorAll('input[data-skill-layer]') || [])];
         const transparentInput = root.querySelector('#miscIconTransparent');
         const selectionLabel = root.querySelector('#miscIconSelection');
         const status = root.querySelector('#miscIconGeneratorStatus');
         const downloadButton = root.querySelector('#miscIconDownload');
         const imagePromises = new Map();
+        const skillDataPromises = new Map();
         const loadedImages = new Set();
         const downloadUrls = new Set();
         let characters = [];
         let selectedCharacterId = '';
         let selectedSkillType = 0;
         let layout = 'character';
+        const enabledSkillLayers = new Set(SKILL_ATTRIBUTE_LAYERS);
         let outputSize = 256;
+        let sizeMode = 'preset';
+        let customDimensions = { width: 1024, height: 1024 };
+        let customAspectRatio = 1;
         let renderGeneration = 0;
         let renderReady = false;
         let downloading = false;
@@ -64,12 +139,56 @@
             status.dataset.state = state || '';
         }
 
+        function dataResourceUrl(path) {
+            return window.akeDataSource?.resolveUrl?.(path) || path;
+        }
+
         function avatarPath(characterId) {
-            return `${IMAGE_ROOT}/charroundicon/icon_round_${characterId}.png`;
+            return dataResourceUrl(`${IMAGE_ROOT}/charroundicon/icon_round_${characterId}.png`);
         }
 
         function skillPath(iconId) {
-            return `${IMAGE_ROOT}/skillicon/${iconId}.png`;
+            return dataResourceUrl(`${SKILL_ICON_ROOT}/${iconId}.png`);
+        }
+
+        function skillLineAsset(index) {
+            const dimensions = SKILL_LINE_DIMENSIONS[index];
+            if (!dimensions) return null;
+            return {
+                path: dataResourceUrl(`${SKILL_ICON_ROOT}/decal_skillline_0${index}.png`),
+                width: dimensions[0],
+                height: dimensions[1]
+            };
+        }
+
+        function damageTypeId(value) {
+            if (Number.isInteger(value)) return value;
+            const numeric = Number(value);
+            if (Number.isInteger(numeric)) return numeric;
+            return DAMAGE_TYPE_IDS[String(value || '')] ?? 0;
+        }
+
+        function skillLineIndex(group, skillData) {
+            const rawType = skillData?.skillType;
+            if (typeof rawType === 'string' && SKILL_TYPE_LINE_INDEX[rawType]) {
+                return SKILL_TYPE_LINE_INDEX[rawType];
+            }
+            const numericType = Number(rawType);
+            if (Number.isInteger(numericType) && SKILL_LINE_DIMENSIONS[numericType + 1]) {
+                return numericType + 1;
+            }
+            return group?.skillLineIndex || SKILL_GROUP_BACKGROUND[group?.type]?.lineIndex || 1;
+        }
+
+        function skillBackgroundSpec(group, skillData) {
+            const fallback = SKILL_GROUP_BACKGROUND[group?.type] || SKILL_GROUP_BACKGROUND[0];
+            const lineIndex = skillLineIndex(group, skillData);
+            const colorIndex = Number(group?.skillColorIndex) || fallback.colorIndex;
+            return {
+                line: skillLineAsset(lineIndex) || skillLineAsset(fallback.lineIndex),
+                color: UI_ASSETS.skillColor[colorIndex] || UI_ASSETS.skillColor[fallback.colorIndex],
+                colorValue: SKILL_DAMAGE_COLORS[damageTypeId(group?.damageType ?? skillData?.iconBgType)] || SKILL_DEFAULT_COLOR
+            };
         }
 
         function skillTypeLabel(type) {
@@ -104,6 +223,45 @@
                 button.classList.toggle('is-active', active);
                 button.setAttribute('aria-checked', String(active));
             });
+        }
+
+        function normalizeOutputDimension(value, fallback) {
+            const numeric = Number(value);
+            if (!Number.isFinite(numeric)) return fallback;
+            return Math.max(MIN_OUTPUT_DIMENSION, Math.min(MAX_OUTPUT_DIMENSION, Math.round(numeric)));
+        }
+
+        function getOutputDimensions() {
+            if (sizeMode === 'custom') return { ...customDimensions };
+            return { width: outputSize, height: outputSize };
+        }
+
+        function updateCustomSizeControls() {
+            if (!customSizeOptions) return;
+            customSizeOptions.hidden = sizeMode !== 'custom';
+            if (customWidthInput) customWidthInput.value = String(customDimensions.width);
+            if (customHeightInput) customHeightInput.value = String(customDimensions.height);
+        }
+
+        function updateCustomDimensions(changedDimension) {
+            const previousWidth = customDimensions.width;
+            const previousHeight = customDimensions.height;
+            const previousRatio = previousWidth / Math.max(1, previousHeight);
+            let width = normalizeOutputDimension(customWidthInput?.value, previousWidth);
+            let height = normalizeOutputDimension(customHeightInput?.value, previousHeight);
+            if (customLockRatioInput?.checked) {
+                customAspectRatio = previousRatio > 0 ? previousRatio : 1;
+                if (changedDimension === 'width') {
+                    height = normalizeOutputDimension(width / customAspectRatio, previousHeight);
+                } else if (changedDimension === 'height') {
+                    width = normalizeOutputDimension(height * customAspectRatio, previousWidth);
+                }
+            }
+            customDimensions = { width, height };
+            sizeMode = 'custom';
+            updateSegmentedControl(sizeOptions, 'size', 'custom');
+            updateCustomSizeControls();
+            void renderPreview();
         }
 
         function createCharacterButton(character) {
@@ -177,7 +335,16 @@
         }
 
         function updateSkillBackgroundControl() {
-            skillBackgroundOptions.hidden = layout !== 'skill';
+            skillBackgroundOptions.hidden = layout === 'character';
+            skillLayerOptions.hidden = layout !== SKILL_ATTRIBUTES_LAYOUT;
+        }
+
+        function isSkillAttributesLayout() {
+            return layout === SKILL_ATTRIBUTES_LAYOUT;
+        }
+
+        function isSkillAttributeLayerEnabled(layer) {
+            return !isSkillAttributesLayout() || enabledSkillLayers.has(layer);
         }
 
         async function decodeBlob(blob) {
@@ -215,6 +382,27 @@
             return imagePromises.get(url);
         }
 
+        function loadSkillData(skillId) {
+            const id = String(skillId || '').trim();
+            if (!id) return Promise.resolve(null);
+            if (!skillDataPromises.has(id)) {
+                const promise = (async () => {
+                    const response = await (window.akeFetch || fetch)(
+                        dataResourceUrl(`${SKILL_DATA_ROOT}/${encodeURIComponent(id)}.json`),
+                        { signal: context.signal, akeProgress: false }
+                    );
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.json();
+                })().catch(error => {
+                    skillDataPromises.delete(id);
+                    console.warn('角色技能 SkillData 加载失败', id, error);
+                    return null;
+                });
+                skillDataPromises.set(id, promise);
+            }
+            return skillDataPromises.get(id);
+        }
+
         async function loadUiAsset(spec) {
             const image = await loadImage(spec.path);
             const dimensions = imageDimensions(image);
@@ -222,6 +410,16 @@
                 throw new Error(`Invalid UI asset dimensions: ${spec.path}`);
             }
             return image;
+        }
+
+        async function loadOptionalUiAsset(spec) {
+            if (!spec) return null;
+            try {
+                return await loadUiAsset(spec);
+            } catch (error) {
+                console.warn('角色图标背景素材加载失败', spec.path, error);
+                return null;
+            }
         }
 
         function roundLikePython(value) {
@@ -242,11 +440,15 @@
         }
 
         function layoutForOutput() {
-            const large = outputSize === 256 || outputSize === 512;
-            const outputScale = outputSize > 256 ? 2 : 1;
+            const outputDimensions = getOutputDimensions();
+            const designSize = Math.min(outputDimensions.width, outputDimensions.height);
+            const large = outputSize === 256
+                || outputSize >= 512
+                || (sizeMode === 'custom' && designSize >= 512);
             const contentScale = large ? NATIVE_FIRST_HINT_SCALE : 1;
             const mainCenter = large ? [128, 156] : [96, 117];
             const baseCanvas = large ? [256, 256] : [192, 192];
+            const outputScale = designSize / baseCanvas[0];
             const scale = SMALL_UI_SCALE * contentScale;
             const skillCenter = [
                 mainCenter[0] + NATIVE_SKILL_OFFSET[0] * scale,
@@ -259,6 +461,7 @@
             return {
                 outputScale,
                 canvas: baseCanvas.map(value => value * outputScale),
+                targetCanvas: [outputDimensions.width, outputDimensions.height],
                 portraitBox: centeredBox(mainCenter, NATIVE_PORTRAIT_RING_DIAMETER * scale),
                 portraitMaskBox: centeredBox(mainCenter, NATIVE_PORTRAIT_MASK_DIAMETER * scale),
                 portraitTextureBox: centeredBox(mainCenter, NATIVE_PORTRAIT_TEXTURE_DIAMETER * scale),
@@ -319,7 +522,34 @@
             ctx.fill();
         }
 
-        function drawComposite(portrait, skill, uiAssets) {
+        function drawTintedImage(ctx, image, box, scale, color) {
+            if (!image) return;
+            const [left, top, right, bottom] = scaleBox(box, scale);
+            const width = right - left;
+            const height = bottom - top;
+            ctx.save();
+            ctx.drawImage(image, left, top, width, height);
+            ctx.globalCompositeOperation = 'source-atop';
+            ctx.fillStyle = color;
+            ctx.fillRect(left, top, width, height);
+            ctx.restore();
+        }
+
+        function drawSkillBackground(ctx, assets, box, scale, transparent, layers) {
+            const showBase = !layers || layers.has('backgroundBase');
+            const showLine = !layers || layers.has('skillLine');
+            const showColor = !layers || layers.has('skillColor');
+            const line = showLine ? assets?.line : null;
+            const color = showColor ? assets?.color : null;
+            if (!line && !color) {
+                if (showBase && !transparent) drawCircleFill(ctx, box, scale);
+                return;
+            }
+            if (line) drawCentered(ctx, line, box, scale);
+            if (color) drawTintedImage(ctx, color, box, scale, assets.colorValue);
+        }
+
+        function drawComposite(portrait, skill, skillBackground, uiAssets) {
             const layoutData = layoutForOutput();
             const workingScale = SUPER_SAMPLE * layoutData.outputScale;
             const working = document.createElement('canvas');
@@ -331,22 +561,51 @@
             ctx.imageSmoothingQuality = 'high';
             ctx.clearRect(0, 0, working.width, working.height);
 
-            if (layoutData.decorationBox) drawCentered(ctx, uiAssets.decoration, layoutData.decorationBox, workingScale);
-            const mainSource = layout === 'skill' ? skill : portrait;
-            const badgeSource = layout === 'skill' ? portrait : skill;
-            if (layout === 'skill' && !transparentInput.checked) drawCircleFill(ctx, layoutData.portraitMaskBox, workingScale);
-            drawMaskedCircle(ctx, mainSource, layoutData.portraitTextureBox, layoutData.portraitMaskBox, workingScale);
-            drawCentered(ctx, uiAssets.portraitRing, layoutData.portraitBox, workingScale);
-            drawCentered(ctx, uiAssets.skillRing, layoutData.skillBox, workingScale);
-            drawMaskedCircle(ctx, badgeSource, layoutData.skillIconBox, layoutData.skillIconBox, workingScale);
+            const attributesLayout = isSkillAttributesLayout();
+            const drawLayer = layer => isSkillAttributeLayerEnabled(layer);
+            if (layoutData.decorationBox && drawLayer('decoration')) {
+                drawCentered(ctx, uiAssets.decoration, layoutData.decorationBox, workingScale);
+            }
+            const mainSource = layout === 'character' ? portrait : skill;
+            const badgeSource = layout === 'character' ? skill : portrait;
+            if (layout === 'skill' && !transparentInput.checked) {
+                drawCircleFill(ctx, layoutData.portraitMaskBox, workingScale);
+            } else if (attributesLayout) {
+                drawSkillBackground(
+                    ctx,
+                    skillBackground,
+                    layoutData.portraitBox,
+                    workingScale,
+                    transparentInput.checked,
+                    enabledSkillLayers
+                );
+            }
+            if (drawLayer('skill')) {
+                drawMaskedCircle(ctx, mainSource, layoutData.portraitTextureBox, layoutData.portraitMaskBox, workingScale);
+            }
+            if (drawLayer('portraitRing')) {
+                drawCentered(ctx, uiAssets.portraitRing, layoutData.portraitBox, workingScale);
+            }
+            if (drawLayer('skillRing')) {
+                drawCentered(ctx, uiAssets.skillRing, layoutData.skillBox, workingScale);
+            }
+            if (drawLayer('character')) {
+                drawMaskedCircle(ctx, badgeSource, layoutData.skillIconBox, layoutData.skillIconBox, workingScale);
+            }
 
-            canvas.width = layoutData.canvas[0];
-            canvas.height = layoutData.canvas[1];
+            canvas.width = layoutData.targetCanvas[0];
+            canvas.height = layoutData.targetCanvas[1];
             canvasContext.setTransform(1, 0, 0, 1, 0, 0);
             canvasContext.clearRect(0, 0, canvas.width, canvas.height);
             canvasContext.imageSmoothingEnabled = true;
             canvasContext.imageSmoothingQuality = 'high';
-            canvasContext.drawImage(working, 0, 0, canvas.width, canvas.height);
+            canvasContext.drawImage(
+                working,
+                (canvas.width - layoutData.canvas[0]) / 2,
+                (canvas.height - layoutData.canvas[1]) / 2,
+                layoutData.canvas[0],
+                layoutData.canvas[1]
+            );
             working.width = 0;
             working.height = 0;
         }
@@ -364,15 +623,29 @@
             }
             setStatus('rendering', '正在生成', 'loading');
             try {
-                const [portrait, skill, decoration, portraitRing, skillRing] = await Promise.all([
-                    loadImage(avatarPath(character.id)),
-                    loadImage(skillPath(group.icon)),
-                    loadUiAsset(UI_ASSETS.decoration),
-                    loadUiAsset(UI_ASSETS.portraitRing),
-                    loadUiAsset(UI_ASSETS.skillRing)
+                const attributesLayout = isSkillAttributesLayout();
+                const skillData = attributesLayout ? await loadSkillData(group.skillId) : null;
+                const backgroundSpec = attributesLayout ? skillBackgroundSpec(group, skillData) : null;
+                const layerEnabled = layer => isSkillAttributeLayerEnabled(layer);
+                const [portrait, skill, decoration, portraitRing, skillRing, skillLine, skillColor] = await Promise.all([
+                    layerEnabled('character') ? loadImage(avatarPath(character.id)) : Promise.resolve(null),
+                    layerEnabled('skill') ? loadImage(skillPath(group.icon)) : Promise.resolve(null),
+                    layerEnabled('decoration') ? loadUiAsset(UI_ASSETS.decoration) : Promise.resolve(null),
+                    layerEnabled('portraitRing') ? loadUiAsset(UI_ASSETS.portraitRing) : Promise.resolve(null),
+                    layerEnabled('skillRing') ? loadUiAsset(UI_ASSETS.skillRing) : Promise.resolve(null),
+                    attributesLayout && layerEnabled('skillLine')
+                        ? loadOptionalUiAsset(backgroundSpec.line)
+                        : Promise.resolve(null),
+                    attributesLayout && layerEnabled('skillColor')
+                        ? loadOptionalUiAsset(backgroundSpec.color)
+                        : Promise.resolve(null)
                 ]);
                 if (disposed || context.signal.aborted || generation !== renderGeneration) return;
-                drawComposite(portrait, skill, { decoration, portraitRing, skillRing });
+                drawComposite(portrait, skill, {
+                    line: skillLine,
+                    color: skillColor,
+                    colorValue: backgroundSpec?.colorValue || SKILL_DEFAULT_COLOR
+                }, { decoration, portraitRing, skillRing });
                 renderReady = true;
                 downloadButton.disabled = false;
                 setStatus('ready', '已就绪', 'ready');
@@ -419,7 +692,8 @@
             const group = selectedSkill();
             if (!character || !group) return;
             const exportLayout = layout;
-            const exportSize = outputSize;
+            const exportDimensions = getOutputDimensions();
+            const exportSize = `${exportDimensions.width}x${exportDimensions.height}`;
             const exportSkillType = selectedSkillType;
             const exportCanvas = document.createElement('canvas');
             exportCanvas.width = canvas.width;
@@ -436,9 +710,11 @@
                 const url = URL.createObjectURL(blob);
                 downloadUrls.add(url);
                 const anchor = document.createElement('a');
-                const layoutName = exportLayout === 'skill'
-                    ? t('skillFocus', null, '技能主图')
-                    : t('characterFocus', null, '角色主图');
+                const layoutName = exportLayout === 'character'
+                    ? t('characterFocus', null, '角色主图')
+                    : exportLayout === 'skill'
+                        ? t('skillFocus', null, '技能主图')
+                        : t('skillAttributesFocus', null, '技能带属性');
                 anchor.download = `${safeFilename(`${character.name}-${skillTypeLabel(exportSkillType)}-${layoutName}-${exportSize}`)}.png`;
                 anchor.href = url;
                 anchor.rel = 'noopener';
@@ -469,12 +745,16 @@
             setStatus('renderFailed', '图标生成失败', 'error');
             return {};
         }
+        skillLayerInputs.forEach(input => {
+            input.checked = true;
+        });
 
         try {
             setStatus('rendering', '正在生成', 'loading');
-            const [characterTable, growthTable] = await Promise.all([
+            const [characterTable, growthTable, skillPatchTable] = await Promise.all([
                 context.table('CharacterTable'),
-                context.table('CharGrowthTable')
+                context.table('CharGrowthTable'),
+                context.table('SkillPatchTable')
             ]);
             if (context.signal.aborted) return {};
             characters = Object.entries(characterTable || {})
@@ -484,9 +764,19 @@
                     Object.values(growthTable?.[id]?.skillGroupMap || {}).forEach(group => {
                         const type = Number(group.skillGroupType);
                         if (!SKILL_TYPES.includes(type) || !group.icon) return;
+                        const firstSkillId = Array.isArray(group.skillIdList) ? group.skillIdList[0] : '';
+                        const patchBundle = skillPatchTable?.[firstSkillId]?.SkillPatchDataBundle;
+                        const patch = Array.isArray(patchBundle)
+                            ? patchBundle.find(entry => Number(entry?.level) === 1) || patchBundle[0]
+                            : patchBundle;
+                        const background = SKILL_GROUP_BACKGROUND[type] || SKILL_GROUP_BACKGROUND[0];
                         groups.set(type, {
                             type,
-                            icon: String(group.icon),
+                            skillId: firstSkillId,
+                            icon: String(patch?.iconId || group.icon),
+                            damageType: patch?.iconBgType == null ? null : damageTypeId(patch.iconBgType),
+                            skillLineIndex: background.lineIndex,
+                            skillColorIndex: background.colorIndex,
                             name: localizedText(group.name, skillTypeLabel(type))
                         });
                     });
@@ -514,6 +804,7 @@
             renderSkillList();
             updateSegmentedControl(layoutOptions, 'layout', layout);
             updateSegmentedControl(sizeOptions, 'size', outputSize);
+            updateCustomSizeControls();
             updateSelectionLabel();
             updateSkillBackgroundControl();
 
@@ -528,7 +819,7 @@
             });
             context.on(layoutOptions, 'click', event => {
                 const button = event.target.closest('[data-layout]');
-                if (!button || !['character', 'skill'].includes(button.dataset.layout)) return;
+                if (!button || !['character', 'skill', SKILL_ATTRIBUTES_LAYOUT].includes(button.dataset.layout)) return;
                 layout = button.dataset.layout;
                 updateSegmentedControl(layoutOptions, 'layout', layout);
                 updateSkillBackgroundControl();
@@ -536,11 +827,40 @@
             });
             context.on(sizeOptions, 'click', event => {
                 const button = event.target.closest('[data-size]');
+                if (button?.dataset.size === 'custom') {
+                    sizeMode = 'custom';
+                    updateSegmentedControl(sizeOptions, 'size', 'custom');
+                    updateCustomSizeControls();
+                    void renderPreview();
+                    return;
+                }
                 const size = Number(button?.dataset.size);
                 if (!VALID_OUTPUT_SIZES.has(size)) return;
+                sizeMode = 'preset';
                 outputSize = size;
                 updateSegmentedControl(sizeOptions, 'size', outputSize);
+                updateCustomSizeControls();
                 void renderPreview();
+            });
+            context.on(customSizeOptions, 'change', event => {
+                const input = event.target;
+                if (input === customWidthInput) updateCustomDimensions('width');
+                else if (input === customHeightInput) updateCustomDimensions('height');
+                else if (input === customLockRatioInput) {
+                    if (input.checked) customAspectRatio = customDimensions.width / Math.max(1, customDimensions.height);
+                    sizeMode = 'custom';
+                    updateSegmentedControl(sizeOptions, 'size', 'custom');
+                    updateCustomSizeControls();
+                    void renderPreview();
+                }
+            });
+            context.on(skillLayerOptions, 'change', event => {
+                const input = event.target.closest('input[data-skill-layer]');
+                const layer = input?.dataset.skillLayer;
+                if (!input || !SKILL_ATTRIBUTE_LAYERS.includes(layer)) return;
+                if (input.checked) enabledSkillLayers.add(layer);
+                else enabledSkillLayers.delete(layer);
+                if (isSkillAttributesLayout()) void renderPreview();
             });
             context.on(transparentInput, 'change', () => void renderPreview());
             context.on(downloadButton, 'click', () => void downloadPng());
@@ -565,6 +885,7 @@
                 loadedImages.forEach(image => image.close?.());
                 loadedImages.clear();
                 imagePromises.clear();
+                skillDataPromises.clear();
                 if (canvas) {
                     canvas.width = 0;
                     canvas.height = 0;
