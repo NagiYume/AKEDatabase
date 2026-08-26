@@ -33,6 +33,7 @@
         const CHARACTER_WEAPON_ICON_BASE = '/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/wiki/groupicon/';
         const CHARACTER_PORTRAIT_BASE = '/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/charicon/';
         const CHARACTER_SKILL_ICON_BASE = '/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/skillicon/';
+        const ITEM_ICON_BASE = '/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/';
         const CHAR_TYPE_ICON_MAP = {
             Physical: 'physical', Fire: 'fire', Pulse: 'pulse', Cryst: 'cold', Natural: 'nature'
         };
@@ -718,6 +719,8 @@
                 skills: [],
                 skill: {},
                 spaceshipSkills: [],
+                giftStages: [],
+                weaponRecommendations: { skillAdaptation: [], attributeAdaptation: [] },
                 profileRecord: [],
                 profileVoice: []
             };
@@ -1120,6 +1123,26 @@
             });
             legacy.spaceshipSkills = Object.values(groupedSkills);
 
+            const giftStageDefinitions = [
+                { suffix: '_1', label: t('gifts.stage0') },
+                { suffix: '_2', label: t('gifts.stage100') },
+                { suffix: '_3', label: t('gifts.stage200') }
+            ];
+            legacy.giftStages = giftStageDefinitions.map(stage => {
+                const rewardId = Object.keys(rawData.giftrewardtable || {}).find(id => id.endsWith(stage.suffix));
+                const reward = rewardId ? rawData.giftrewardtable[rewardId] : null;
+                if (!reward) return null;
+                const fixedItems = (reward.itemBundles || []).map(item => ({ ...item, isPossible: false }));
+                const possibleItems = (reward.probItemBundles || []).map(item => ({ ...item, isPossible: true }));
+                return { label: stage.label, items: [...fixedItems, ...possibleItems] };
+            }).filter(stage => stage?.items?.length);
+
+            const weaponRecommendation = rawData.charwpnrecommendtable || {};
+            legacy.weaponRecommendations = {
+                skillAdaptation: (weaponRecommendation.weaponIds1 || []).map(id => ({ id })),
+                attributeAdaptation: (weaponRecommendation.weaponIds2 || []).map(id => ({ id }))
+            };
+
             legacy.profileRecord = (rawData.charactertable?.profileRecord || []).map(rec => ({
                 title: rec.recordTitle?.text || '',
                 desc: rec.recordDesc?.text || ''
@@ -1331,11 +1354,21 @@
         function materialItem(item, itemInfoMap) {
             const info = itemInfoMap?.[item.id] || {};
             return {
-                icon: `/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/${info.iconId || item.id}.png`,
+                icon: `${ITEM_ICON_BASE}${info.iconId || item.id}.png`,
                 name: info.name || item.id,
-                count: item.count,
+                count: Number(item.count) > 0 ? item.count : undefined,
                 description: info.description
             };
+        }
+
+        function itemCardHtml(item, itemInfoMap, subtitle = '') {
+            const displayItem = materialItem(item, itemInfoMap);
+            const count = Number(item.count) > 0 ? `×${item.count}` : '';
+            const cardSubtitle = [subtitle, count].filter(Boolean).join(' · ');
+            return window.AKEUI.card({
+                media: { src: displayItem.icon, alt: displayItem.name },
+                header: { title: displayItem.name, subtitle: cardSubtitle }
+            }).outerHTML;
         }
 
         function materialPopover(options, itemInfoMap) {
@@ -1406,6 +1439,8 @@
                     <a href="#character-growth">${t('sections.attributeGrowth')}</a>
                     <a href="#character-progression">${t('sections.potentials')}</a>
                     <a href="#character-skills">${t('sections.skills')}</a>
+                    <a href="#character-gifts">${t('sections.gifts')}</a>
+                    <a href="#character-weapon-recommendations">${t('sections.weaponRecommendations')}</a>
                     <a href="#character-archive">${t('sections.profile')}</a>
                 </nav>
             `;
@@ -1691,6 +1726,44 @@
                     </div>
                 </div>
             `).join('') : `<p>${t('none')}</p>`;
+
+            const giftSectionHtml = data.giftStages?.length ? `
+                <div class="ake-ui-section" id="character-gifts">
+                    <div class="ake-ui-section__header"><h3 class="ake-ui-section__title">${t('sections.gifts')}</h3></div>
+                    ${data.giftStages.map(stage => `
+                        <div class="ake-ui-section__header"><h4 class="ake-ui-section__title">${stage.label}</h4></div>
+                        <div class="ake-ui-card-grid" data-size="regular">
+                            ${stage.items.map(item => itemCardHtml(
+                                item, itemInfoMap, item.isPossible ? t('gifts.possibleItems') : t('gifts.returnItems')
+                            )).join('')}
+                        </div>
+                    `).join('')}
+                </div>
+            ` : '';
+
+            const weaponRecommendationsHtml = `
+                <div class="ake-ui-section" id="character-weapon-recommendations">
+                    <div class="ake-ui-section__header"><h3 class="ake-ui-section__title">${t('sections.weaponRecommendations')}</h3></div>
+                    <div class="ake-ui-card-grid" data-size="regular">
+                        <div class="ake-ui-card" data-card-kind="character-weapon-recommendation" data-density="regular">
+                            <div class="ake-ui-card__header"><div class="ake-ui-card__title">${t('weaponRecommendations.skillAdaptation')}</div></div>
+                            <div class="ake-ui-card__body">
+                                ${data.weaponRecommendations?.skillAdaptation?.length
+                                    ? `<div class="ake-ui-card-grid" data-size="regular">${data.weaponRecommendations.skillAdaptation.map(item => itemCardHtml(item, itemInfoMap)).join('')}</div>`
+                                    : `<p>${t('none')}</p>`}
+                            </div>
+                        </div>
+                        <div class="ake-ui-card" data-card-kind="character-attribute-recommendation" data-density="regular">
+                            <div class="ake-ui-card__header"><div class="ake-ui-card__title">${t('weaponRecommendations.attributeAdaptation')}</div></div>
+                            <div class="ake-ui-card__body">
+                                ${data.weaponRecommendations?.attributeAdaptation?.length
+                                    ? `<div class="ake-ui-card-grid" data-size="regular">${data.weaponRecommendations.attributeAdaptation.map(item => itemCardHtml(item, itemInfoMap)).join('')}</div>`
+                                    : `<p>${t('none')}</p>`}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
             const globalSkillToggle = skillLevelsToShow ? window.AKEUI.disclosureButton({
                 className: 'global-skill-toggle-btn',
                 expanded: globalSkillExpand,
@@ -1724,6 +1797,8 @@
                     <div class="ake-ui-section__header"><h3 class="ake-ui-section__title">${t('sections.logisticsSkills')}</h3></div>
                     <div class="ake-ui-card-grid" data-size="regular">${spaceshipHtml}</div>
                 </div>
+                ${giftSectionHtml}
+                ${weaponRecommendationsHtml}
                 <div class="character-archive-stack" id="character-archive">
                     ${potentialPicsHtml}
                     <div class="ake-ui-section collapsible-section">
