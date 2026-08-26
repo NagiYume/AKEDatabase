@@ -7,7 +7,9 @@
     const SKILL_DATA_ROOT = '/public/Json/SkillData';
     const UI_ASSET_ROOT = '/public/misc';
     const SKILL_TYPES = [0, 1, 2, 3];
-    const VALID_OUTPUT_SIZES = new Set([192, 256, 384, 512]);
+    const VALID_OUTPUT_SIZES = new Set([192, 256, 384, 512, 1024]);
+    const MIN_OUTPUT_DIMENSION = 64;
+    const MAX_OUTPUT_DIMENSION = 2048;
     const SKILL_ATTRIBUTES_LAYOUT = 'skill-attributes';
     const SKILL_ATTRIBUTE_LAYERS = Object.freeze([
         'skill',
@@ -96,6 +98,10 @@
         const skillList = root.querySelector('#miscIconSkillList');
         const layoutOptions = root.querySelector('#miscIconLayoutOptions');
         const sizeOptions = root.querySelector('#miscIconSizeOptions');
+        const customSizeOptions = root.querySelector('#miscIconCustomSizeOptions');
+        const customWidthInput = root.querySelector('#miscIconCustomWidth');
+        const customHeightInput = root.querySelector('#miscIconCustomHeight');
+        const customLockRatioInput = root.querySelector('#miscIconCustomLockRatio');
         const skillBackgroundOptions = root.querySelector('#miscIconSkillBackgroundOptions');
         const skillLayerOptions = root.querySelector('#miscIconSkillLayerOptions');
         const skillLayerInputs = [...(skillLayerOptions?.querySelectorAll('input[data-skill-layer]') || [])];
@@ -113,6 +119,9 @@
         let layout = 'character';
         const enabledSkillLayers = new Set(SKILL_ATTRIBUTE_LAYERS);
         let outputSize = 256;
+        let sizeMode = 'preset';
+        let customDimensions = { width: 1024, height: 1024 };
+        let customAspectRatio = 1;
         let renderGeneration = 0;
         let renderReady = false;
         let downloading = false;
@@ -214,6 +223,45 @@
                 button.classList.toggle('is-active', active);
                 button.setAttribute('aria-checked', String(active));
             });
+        }
+
+        function normalizeOutputDimension(value, fallback) {
+            const numeric = Number(value);
+            if (!Number.isFinite(numeric)) return fallback;
+            return Math.max(MIN_OUTPUT_DIMENSION, Math.min(MAX_OUTPUT_DIMENSION, Math.round(numeric)));
+        }
+
+        function getOutputDimensions() {
+            if (sizeMode === 'custom') return { ...customDimensions };
+            return { width: outputSize, height: outputSize };
+        }
+
+        function updateCustomSizeControls() {
+            if (!customSizeOptions) return;
+            customSizeOptions.hidden = sizeMode !== 'custom';
+            if (customWidthInput) customWidthInput.value = String(customDimensions.width);
+            if (customHeightInput) customHeightInput.value = String(customDimensions.height);
+        }
+
+        function updateCustomDimensions(changedDimension) {
+            const previousWidth = customDimensions.width;
+            const previousHeight = customDimensions.height;
+            const previousRatio = previousWidth / Math.max(1, previousHeight);
+            let width = normalizeOutputDimension(customWidthInput?.value, previousWidth);
+            let height = normalizeOutputDimension(customHeightInput?.value, previousHeight);
+            if (customLockRatioInput?.checked) {
+                customAspectRatio = previousRatio > 0 ? previousRatio : 1;
+                if (changedDimension === 'width') {
+                    height = normalizeOutputDimension(width / customAspectRatio, previousHeight);
+                } else if (changedDimension === 'height') {
+                    width = normalizeOutputDimension(height * customAspectRatio, previousWidth);
+                }
+            }
+            customDimensions = { width, height };
+            sizeMode = 'custom';
+            updateSegmentedControl(sizeOptions, 'size', 'custom');
+            updateCustomSizeControls();
+            void renderPreview();
         }
 
         function createCharacterButton(character) {
@@ -392,11 +440,15 @@
         }
 
         function layoutForOutput() {
-            const large = outputSize === 256 || outputSize === 512;
-            const outputScale = outputSize > 256 ? 2 : 1;
+            const outputDimensions = getOutputDimensions();
+            const designSize = Math.min(outputDimensions.width, outputDimensions.height);
+            const large = outputSize === 256
+                || outputSize >= 512
+                || (sizeMode === 'custom' && designSize >= 512);
             const contentScale = large ? NATIVE_FIRST_HINT_SCALE : 1;
             const mainCenter = large ? [128, 156] : [96, 117];
             const baseCanvas = large ? [256, 256] : [192, 192];
+            const outputScale = designSize / baseCanvas[0];
             const scale = SMALL_UI_SCALE * contentScale;
             const skillCenter = [
                 mainCenter[0] + NATIVE_SKILL_OFFSET[0] * scale,
@@ -409,6 +461,7 @@
             return {
                 outputScale,
                 canvas: baseCanvas.map(value => value * outputScale),
+                targetCanvas: [outputDimensions.width, outputDimensions.height],
                 portraitBox: centeredBox(mainCenter, NATIVE_PORTRAIT_RING_DIAMETER * scale),
                 portraitMaskBox: centeredBox(mainCenter, NATIVE_PORTRAIT_MASK_DIAMETER * scale),
                 portraitTextureBox: centeredBox(mainCenter, NATIVE_PORTRAIT_TEXTURE_DIAMETER * scale),
@@ -540,13 +593,19 @@
                 drawMaskedCircle(ctx, badgeSource, layoutData.skillIconBox, layoutData.skillIconBox, workingScale);
             }
 
-            canvas.width = layoutData.canvas[0];
-            canvas.height = layoutData.canvas[1];
+            canvas.width = layoutData.targetCanvas[0];
+            canvas.height = layoutData.targetCanvas[1];
             canvasContext.setTransform(1, 0, 0, 1, 0, 0);
             canvasContext.clearRect(0, 0, canvas.width, canvas.height);
             canvasContext.imageSmoothingEnabled = true;
             canvasContext.imageSmoothingQuality = 'high';
-            canvasContext.drawImage(working, 0, 0, canvas.width, canvas.height);
+            canvasContext.drawImage(
+                working,
+                (canvas.width - layoutData.canvas[0]) / 2,
+                (canvas.height - layoutData.canvas[1]) / 2,
+                layoutData.canvas[0],
+                layoutData.canvas[1]
+            );
             working.width = 0;
             working.height = 0;
         }
@@ -633,7 +692,8 @@
             const group = selectedSkill();
             if (!character || !group) return;
             const exportLayout = layout;
-            const exportSize = outputSize;
+            const exportDimensions = getOutputDimensions();
+            const exportSize = `${exportDimensions.width}x${exportDimensions.height}`;
             const exportSkillType = selectedSkillType;
             const exportCanvas = document.createElement('canvas');
             exportCanvas.width = canvas.width;
@@ -744,6 +804,7 @@
             renderSkillList();
             updateSegmentedControl(layoutOptions, 'layout', layout);
             updateSegmentedControl(sizeOptions, 'size', outputSize);
+            updateCustomSizeControls();
             updateSelectionLabel();
             updateSkillBackgroundControl();
 
@@ -766,11 +827,32 @@
             });
             context.on(sizeOptions, 'click', event => {
                 const button = event.target.closest('[data-size]');
+                if (button?.dataset.size === 'custom') {
+                    sizeMode = 'custom';
+                    updateSegmentedControl(sizeOptions, 'size', 'custom');
+                    updateCustomSizeControls();
+                    void renderPreview();
+                    return;
+                }
                 const size = Number(button?.dataset.size);
                 if (!VALID_OUTPUT_SIZES.has(size)) return;
+                sizeMode = 'preset';
                 outputSize = size;
                 updateSegmentedControl(sizeOptions, 'size', outputSize);
+                updateCustomSizeControls();
                 void renderPreview();
+            });
+            context.on(customSizeOptions, 'change', event => {
+                const input = event.target;
+                if (input === customWidthInput) updateCustomDimensions('width');
+                else if (input === customHeightInput) updateCustomDimensions('height');
+                else if (input === customLockRatioInput) {
+                    if (input.checked) customAspectRatio = customDimensions.width / Math.max(1, customDimensions.height);
+                    sizeMode = 'custom';
+                    updateSegmentedControl(sizeOptions, 'size', 'custom');
+                    updateCustomSizeControls();
+                    void renderPreview();
+                }
             });
             context.on(skillLayerOptions, 'change', event => {
                 const input = event.target.closest('input[data-skill-layer]');

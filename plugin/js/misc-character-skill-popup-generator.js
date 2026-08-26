@@ -9,6 +9,7 @@
     const CONTENT_WIDTH = 664;
     const BACKGROUND_EXTENSION = 25;
     const OUTPUT_WIDTH = 714;
+    const OUTPUT_SCALE = 2;
     const PADDING = Object.freeze({ left: 20, right: 20, top: 30, bottom: 28 });
     const TITLE_HEIGHT = 90;
     const DESCRIPTION_WIDTH = 622;
@@ -1366,12 +1367,14 @@
         }
 
         function drawPopup(background, ui, documentValue, richTextImages) {
+            const ctx = canvasContext;
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
             const description = String(documentValue?.description || '');
             const extras = (Array.isArray(documentValue?.extraInfos) ? documentValue.extraInfos : [])
                 .map(item => ({ name: String(item?.title || ''), value: String(item?.value || '') }))
                 .filter(item => item.name || item.value);
             const descriptionRuns = richTextRuns(description);
-            const layout = layoutRichText(canvasContext, descriptionRuns, DESCRIPTION_WIDTH, richTextImages);
+            const layout = layoutRichText(ctx, descriptionRuns, DESCRIPTION_WIDTH, richTextImages);
             const descriptionHeight = Math.min(
                 DESCRIPTION_MAX_HEIGHT,
                 layout.height > 0 ? Math.max(DESCRIPTION_LINE_HEIGHT, Math.ceil(layout.height)) : 0
@@ -1380,21 +1383,21 @@
             const exportHeight = contentHeight + BACKGROUND_EXTENSION * 2;
             const offsetX = BACKGROUND_EXTENSION;
             const offsetY = BACKGROUND_EXTENSION;
-            const ctx = canvasContext;
-            canvas.width = OUTPUT_WIDTH;
-            canvas.height = exportHeight;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            canvas.width = OUTPUT_WIDTH * OUTPUT_SCALE;
+            canvas.height = exportHeight * OUTPUT_SCALE;
+            ctx.setTransform(OUTPUT_SCALE, 0, 0, OUTPUT_SCALE, 0, 0);
+            ctx.clearRect(0, 0, OUTPUT_WIDTH, exportHeight);
 
-            const panelRect = { x: 0, y: 0, width: canvas.width, height: canvas.height };
+            const panelRect = { x: 0, y: 0, width: OUTPUT_WIDTH, height: exportHeight };
             if (background && ui.blurMask) drawMaskedBlur(ctx, background, ui.blurMask, panelRect);
             if (ui.overlayMask) {
                 drawTintedNineSlice(ctx, ui.overlayMask, panelRect, UI_SOURCE_RECTS.overlayMask, UI_SLICE_BORDERS.overlayMask, 'rgba(23, 23, 23, 0.80)');
             } else {
                 ctx.save();
-                roundedRect(ctx, 0, 0, canvas.width, canvas.height, 9);
+                roundedRect(ctx, 0, 0, OUTPUT_WIDTH, exportHeight, 9);
                 ctx.clip();
                 ctx.fillStyle = 'rgba(23, 23, 23, 0.80)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillRect(0, 0, OUTPUT_WIDTH, exportHeight);
                 ctx.restore();
             }
 
@@ -1514,7 +1517,7 @@
                 const richTextImages = await loadRichTextImages(renderDocument.description);
                 if (disposed || context.signal.aborted || generation !== renderGeneration) return;
                 drawPopup(background, ui, renderDocument, richTextImages);
-                applyCanvasWatermark(character, group, patch, renderDocument);
+                await applyCanvasWatermark(character, group, patch, renderDocument);
                 renderReady = true;
                 downloadButton.disabled = false;
                 setStatus('ready', '已就绪', 'ready');
@@ -1628,15 +1631,18 @@
             };
         }
 
-        function applyCanvasWatermark(character, group, patch, renderDocument) {
+        async function applyCanvasWatermark(character, group, patch, renderDocument) {
             if (!editorEnabled) return;
             if (!window.AKEWatermark) throw new Error('频域水印模块未加载');
+            const metadata = buildWatermarkMetadata(character, group, patch, renderDocument);
             const imageData = canvasContext.getImageData(0, 0, canvas.width, canvas.height);
-            const result = window.AKEWatermark.embed(
-                imageData,
-                buildWatermarkMetadata(character, group, patch, renderDocument)
-            );
-            if (!result.ok) throw new Error(`频域水印写入失败：${result.reason}`);
+            const result = await window.AKEWatermark.embedAsync(imageData, metadata);
+            if (!result.ok) {
+                const capacity = result.reason === 'tile-capacity' && result.required && result.available
+                    ? `（需要 ${result.required}，可用 ${result.available}）`
+                    : '';
+                throw new Error(`频域水印写入失败：${result.reason}${capacity}`);
+            }
             canvasContext.putImageData(result.imageData, 0, 0);
         }
 

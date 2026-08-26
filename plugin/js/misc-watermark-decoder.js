@@ -112,7 +112,9 @@
                     const context2d = canvas.getContext('2d', { willReadFrequently: true });
                     if (!context2d || !canvas.width || !canvas.height) throw new Error(t('imageFailed', null, '图片读取失败'));
                     context2d.drawImage(image, 0, 0);
-                    const decoded = window.AKEWatermark.decode(context2d.getImageData(0, 0, canvas.width, canvas.height));
+                    const decoded = await window.AKEWatermark.decodeAsync(
+                        context2d.getImageData(0, 0, canvas.width, canvas.height)
+                    );
                     if (!decoded.ok) throw new Error(t('notFound', null, '未找到可识别的频域水印'));
                     renderMetadata(decoded.metadata);
                     setStatus(t('success', null, '解析完成'), 'ready');
