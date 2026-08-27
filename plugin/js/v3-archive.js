@@ -32,14 +32,17 @@
     root.dataset.moduleTitle = t('title', null, '档案库');
 
     const SPRITE_ROOT = '/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/';
-    const PAGE_ORDER = Object.freeze(['document', 'multi_media', 'text']);
+    const MAP_TEXT_CATEGORY_ID = 'map_text';
+    const MAP_TEXT_INITIAL_GAME_VERSION = '1.4.4';
+    const PAGE_ORDER = Object.freeze(['document', 'multi_media', 'text', 'map_text']);
     const CATEGORY_PAGE = Object.freeze({
         document: 'document',
         report: 'document',
         media: 'multi_media',
         paper: 'text',
         digital: 'text',
-        collection: 'text'
+        collection: 'text',
+        map_text: 'map_text'
     });
     const TABLE_NAMES = Object.freeze([
         'PrtsPage',
@@ -49,7 +52,8 @@
         'RichContentTable',
         'RadioTable',
         'ReadingPopUpTable',
-        'ReadingPopUpIconTable'
+        'ReadingPopUpIconTable',
+        'DialogTextTable'
     ]);
 
     const state = {
@@ -71,6 +75,7 @@
         activeGroupId: '',
         activeItemId: '',
         gender: 'f',
+        collapsedDirectoryCategories: new Set(),
         mobileReturnFocus: null,
         loadToken: 0,
         disposed: false
@@ -88,6 +93,57 @@
 
     function gameText(ref, fallback) {
         return window.AKEV3.text(ref, fallback || '');
+    }
+
+    function showTechnicalIds() {
+        return window.akeData?.getConfig?.().showHidden === true;
+    }
+
+    function displayEntityText(ref, technicalValues, fallback) {
+        const value = gameText(ref);
+        const technical = (technicalValues || []).map(item => String(item || '')).filter(Boolean);
+        if (value && (showTechnicalIds() || !technical.includes(value))) return value;
+        if (showTechnicalIds()) return value || technical[0] || fallback || '';
+        return fallback || '';
+    }
+
+    function groupDisplayName(group) {
+        return displayEntityText(
+            group?.name,
+            group?.categoryId === MAP_TEXT_CATEGORY_ID
+                ? [group?.dialogId, group?.firstLvId]
+                : [group?.firstLvId],
+            t('empty.untitledGroup', null, '未命名档案')
+        );
+    }
+
+    function itemDisplayName(item, fallback) {
+        return displayEntityText(
+            item?.name,
+            item?.type === 'map_text'
+                ? [item?.contentId, item?.id]
+                : [item?.id, item?.contentId],
+            fallback || t('empty.untitledEntry', null, '未命名条目')
+        );
+    }
+
+    function pageDisplayName(page) {
+        return displayEntityText(page?.name, [page?.pageType], t('title', null, '档案库'));
+    }
+
+    function categoryDisplayName(category) {
+        return displayEntityText(category?.name, [category?.categoryId], t('details.category', null, '分类'));
+    }
+
+    function groupSecondary(group, page, item) {
+        if (group?.categoryId === MAP_TEXT_CATEGORY_ID && !showTechnicalIds()) {
+            return categoryDisplayName(categoryForGroup(group));
+        }
+        return displayEntityText(
+            group?.subName,
+            [group?.firstLvId, group?.levelDataPath, group?.levelDataType],
+            ''
+        ) || displayEntityText(item?.desc, [item?.id, item?.contentId], '') || pageDisplayName(page);
     }
 
     function gameHtml(value) {
@@ -150,6 +206,24 @@
         return safeOrder(a?.order) - safeOrder(b?.order)
             || gameText(a?.name, '').localeCompare(gameText(b?.name, ''), undefined, { numeric: true })
             || String(a?.[idField] || '').localeCompare(String(b?.[idField] || ''), 'en');
+    }
+
+    function compareGameVersions(a, b) {
+        const parts = value => {
+            const gameVersion = String(value || '').split('@')[0];
+            return /^\d+(?:\.\d+)*$/.test(gameVersion)
+                ? gameVersion.split('.').map(part => Number(part))
+                : null;
+        };
+        const left = parts(a);
+        const right = parts(b);
+        if (!left || !right) return 0;
+        const length = Math.max(left.length, right.length);
+        for (let index = 0; index < length; index += 1) {
+            const difference = (left[index] || 0) - (right[index] || 0);
+            if (difference) return difference;
+        }
+        return 0;
     }
 
     function tableEntityIds(table, idField) {
@@ -242,8 +316,8 @@
             : '';
     }
 
-    function comparisonLabel() {
-        return String(state.comparisonVersion || '').split('@')[0];
+    function comparisonLabel(value = state.comparisonVersion) {
+        return String(value || '').split('@')[0];
     }
 
     function popupForItem(item) {
@@ -260,7 +334,104 @@
         return assetUrl('readingpoplogo', icon);
     }
 
+    function dialogLineIndex(dialogTable) {
+        const result = new Map();
+        Object.entries(dialogTable || {}).forEach(([rowId, row]) => {
+            const match = String(rowId).match(/^(dlg_.+)_(\d+)$/);
+            if (!match) return;
+            if (!result.has(match[1])) result.set(match[1], []);
+            result.get(match[1]).push({ ...row, rowId, rowNumber: Number(match[2]) });
+        });
+        result.forEach(lines => lines.sort((a, b) => a.rowNumber - b.rowNumber
+            || String(a.rowId).localeCompare(String(b.rowId), 'en')));
+        return result;
+    }
+
+    function mapTextRecords(dialogTable, assetIndex) {
+        const dialogLinesById = dialogLineIndex(dialogTable);
+        const files = assetIndex?.datasets?.json?.files;
+        if (!files || typeof files !== 'object') {
+            throw new Error(t('mapText.indexUnavailable', null, '资产索引中缺少 Json 数据集'));
+        }
+        const levelDataFiles = Object.entries(files)
+            .filter(([path]) => path.startsWith('LevelData/') && path.toLocaleLowerCase().endsWith('.json'))
+            .sort(([a], [b]) => a.localeCompare(b, 'en'));
+        const incomplete = levelDataFiles.filter(([, record]) => !Array.isArray(record?.meta?.narrativeDialogIds));
+        if (incomplete.length) {
+            throw new Error(tr(
+                'mapText.incompleteIndex',
+                { count: incomplete.length },
+                `${incomplete.length} 个 LevelData 尚未完成地图文本索引`
+            ));
+        }
+
+        const groups = {};
+        const items = {};
+        const addedGroupIds = [];
+        const addedItemIds = [];
+        let groupOrder = 0;
+        levelDataFiles.forEach(([path, record]) => {
+            const dialogIds = record.meta.narrativeDialogIds;
+            if (!dialogIds.length) return;
+            const filename = path.split('/').pop().replace(/\.json$/i, '');
+            const gameVersion = comparisonLabel(record.version);
+            const isAdded = compareGameVersions(gameVersion, MAP_TEXT_INITIAL_GAME_VERSION) > 0;
+            dialogIds.forEach(dialogId => {
+                const groupId = `map_text:${path}:${dialogId}`;
+                const itemId = `${groupId}:entry`;
+                const firstLine = dialogLinesById.get(dialogId)?.[0];
+                const preview = gamePlainText(gameText(firstLine?.dialogText));
+                groups[groupId] = {
+                    firstLvId: groupId,
+                    categoryId: MAP_TEXT_CATEGORY_ID,
+                    name: preview,
+                    subName: filename,
+                    icon: 'prts_centralAchive_basic',
+                    order: groupOrder++,
+                    levelDataPath: path,
+                    levelDataType: filename,
+                    dialogId,
+                    jsonGameVersion: gameVersion
+                };
+                items[itemId] = {
+                    id: itemId,
+                    firstLvId: groupId,
+                    contentId: dialogId,
+                    type: 'map_text',
+                    name: preview,
+                    desc: dialogId,
+                    levelDataPath: path,
+                    levelDataType: filename,
+                    jsonGameVersion: gameVersion,
+                    order: 0
+                };
+                if (isAdded) {
+                    addedGroupIds.push(groupId);
+                    addedItemIds.push(itemId);
+                }
+            });
+        });
+        return {
+            page: {
+                pageType: 'map_text',
+                name: t('mapText.category', null, '地图文本'),
+                icon: 'icon/prts_centralAchive_basic'
+            },
+            category: {
+                categoryId: MAP_TEXT_CATEGORY_ID,
+                name: t('mapText.category', null, '地图文本'),
+                order: Number.MAX_SAFE_INTEGER
+            },
+            groups,
+            items,
+            addedGroupIds,
+            addedItemIds,
+            dialogLinesById
+        };
+    }
+
     function buildIndexes() {
+        const includeTechnicalIds = showTechnicalIds();
         state.groupMap.clear();
         state.itemMap.clear();
         state.itemsByGroup.clear();
@@ -294,49 +465,69 @@
             const category = categoryForGroup(group);
             const page = pageForCategory(group.categoryId);
             const ownParts = [
+                groupDisplayName(group),
+                groupSecondary(group, page),
+                categoryDisplayName(category),
+                pageDisplayName(page)
+            ];
+            if (includeTechnicalIds) ownParts.push(
                 group.firstLvId,
                 group.icon,
-                gameText(group.name),
-                gameText(group.subName),
                 category?.categoryId,
-                gameText(category?.name),
                 page?.pageType,
-                gameText(page?.name)
-            ];
+                group.levelDataPath,
+                group.levelDataType,
+                group.dialogId,
+                group.jsonGameVersion
+            );
             state.groupSearch.set(String(group.firstLvId), normalizeSearch(ownParts.join(' ')));
             itemRowsForGroup(group.firstLvId).forEach(item => {
                 const rich = state.tables.richContent?.[item.contentId] || null;
                 const radio = state.tables.radio?.[item.contentId] || null;
                 const popup = popupForItem(item);
                 const parts = [
-                    item.id,
-                    item.contentId,
-                    item.type,
-                    gameText(item.name),
-                    gameText(item.desc),
+                    itemDisplayName(item),
+                    displayEntityText(item.desc, [item.id, item.contentId], ''),
                     gameText(rich?.title),
                     gameText(popup?.title)
                 ];
+                if (includeTechnicalIds) parts.push(item.id, item.contentId, item.type);
                 (rich?.contentList || []).forEach(entry => parts.push(gameText(entry?.content)));
                 (radio?.radioSingleDataList || []).forEach(line => {
-                    parts.push(line.actorNameId, gameText(line.actorName), gameText(line.infoActorName), gameText(line.radioText));
+                    parts.push(gameText(line.actorName), gameText(line.infoActorName), gameText(line.radioText));
+                    if (includeTechnicalIds) parts.push(line.actorNameId);
                 });
+                if (item.type === 'map_text') {
+                    (state.tables.dialogLinesById.get(String(item.contentId || '')) || []).forEach(line => {
+                        parts.push(
+                            gameText(line.actorName),
+                            gameText(line.dialogText),
+                            gameText(line.hint)
+                        );
+                        if (includeTechnicalIds) parts.push(line.rowId, line.actorNameId);
+                    });
+                    if (includeTechnicalIds) parts.push(item.levelDataPath, item.levelDataType, item.jsonGameVersion);
+                }
                 state.itemSearch.set(String(item.id), normalizeSearch(parts.join(' ')));
             });
         });
     }
 
-    function prepareTables(raw) {
+    function prepareTables(raw, assetIndex) {
+        const mapText = mapTextRecords(raw.DialogTextTable || {}, assetIndex);
         state.tables = {
-            pages: raw.PrtsPage || {},
-            categories: raw.PrtsCategory || {},
-            groups: raw.PrtsFirstLv || {},
-            items: raw.PrtsAllItem || {},
+            pages: { ...(raw.PrtsPage || {}), [MAP_TEXT_CATEGORY_ID]: mapText.page },
+            categories: { ...(raw.PrtsCategory || {}), [MAP_TEXT_CATEGORY_ID]: mapText.category },
+            groups: { ...(raw.PrtsFirstLv || {}), ...mapText.groups },
+            items: { ...(raw.PrtsAllItem || {}), ...mapText.items },
             richContent: raw.RichContentTable || {},
             radio: raw.RadioTable || {},
             popups: raw.ReadingPopUpTable || {},
-            popupIcons: raw.ReadingPopUpIconTable || {}
+            popupIcons: raw.ReadingPopUpIconTable || {},
+            dialogLinesById: mapText.dialogLinesById
         };
+        mapText.addedGroupIds.forEach(id => state.addedGroupIds.add(id));
+        mapText.addedItemIds.forEach(id => state.addedItemIds.add(id));
         const pageValues = Object.values(state.tables.pages);
         state.pages = PAGE_ORDER.map(type => pageValues.find(page => page.pageType === type)).filter(Boolean);
         pageValues.forEach(page => {
@@ -402,11 +593,11 @@
 
     function createArchiveGroupItem(record, page) {
         const group = record.group;
-        const secondary = gameText(group.subName) || gameText(page?.name, page?.pageType || '');
+        const secondary = groupSecondary(group, page, record.items[0]);
         const changeInfo = groupVersionInfo(group.firstLvId);
         return window.AKEUI.directoryItem({
             layout: 'entity',
-            title: directoryRichText(gameHtml(gameText(group.name, group.firstLvId))),
+            title: directoryRichText(gameHtml(groupDisplayName(group))),
             subtitle: directoryRichText(gameHtml(secondary)),
             icon: { src: groupIcon(group), alt: '' },
             count: record.items.length,
@@ -421,18 +612,38 @@
         });
     }
 
-    function createArchiveDirectorySection(heading, count) {
+    function createArchiveDirectorySection(heading, count, categoryId) {
         const section = document.createElement('section');
-        section.className = 'akearchive-directory-section';
-        if (heading) {
-            const title = document.createElement('div');
-            title.className = 'akearchive-directory-heading';
-            title.append(directoryRichText(heading), window.AKEUI.element('span', '', count));
-            section.appendChild(title);
+        if (!heading) {
+            section.className = 'akearchive-directory-section';
+            const list = document.createElement('div');
+            list.className = 'akearchive-directory-list';
+            section.appendChild(list);
+            return { section, list };
         }
+
+        const key = String(categoryId || 'unknown');
+        const expanded = !state.collapsedDirectoryCategories.has(key);
+        section.className = `ake-ui-tree__group${expanded ? ' is-open' : ''}`;
+
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'ake-ui-tree__group-toggle';
+        toggle.dataset.akearchiveAction = 'toggle-category';
+        toggle.dataset.categoryId = key;
+        toggle.setAttribute('aria-expanded', String(expanded));
+
+        const label = document.createElement('span');
+        label.className = 'ake-ui-tree__group-label';
+        label.appendChild(directoryRichText(heading));
+        const countNode = document.createElement('span');
+        countNode.className = 'ake-ui-tree__group-count';
+        countNode.textContent = String(count);
+        toggle.append(label, countNode);
+
         const list = document.createElement('div');
-        list.className = 'akearchive-directory-list';
-        section.appendChild(list);
+        list.className = 'ake-ui-tree__children';
+        section.append(toggle, list);
         return { section, list };
     }
 
@@ -457,8 +668,9 @@
             const page = pageForCategory(category.categoryId);
             const entryCount = groupEntryCount(rows);
             const result = createArchiveDirectorySection(
-                gameHtml(gameText(category.name, category.categoryId)),
-                entryCount
+                gameHtml(categoryDisplayName(category)),
+                entryCount,
+                category.categoryId
             );
             result.list.append(...rows.map(record => createArchiveGroupItem(record, page)));
             fragment.appendChild(result.section);
@@ -492,7 +704,7 @@
             return `<button type="button" class="ake-ui-tabs__button${active ? ' is-active' : ''}" aria-pressed="${active}"
                 data-akearchive-action="filter-page" data-page-type="${escapeHtml(type)}">
                 ${imageTag(pageIcon(page), '', '', ' aria-hidden="true"')}
-                <span><strong>${gameHtml(gameText(page.name, type))}</strong><small>${escapeHtml(tr('counts.entries', { count }, `${count} 条记录`))}</small></span>
+                <span><strong>${gameHtml(pageDisplayName(page))}</strong><small>${escapeHtml(tr('counts.entries', { count }, `${count} 条记录`))}</small></span>
             </button>`;
         }).join('')}</div>`;
     }
@@ -500,18 +712,26 @@
     function renderOverviewCard(record) {
         const group = record.group;
         const category = categoryForGroup(group);
-        const subtitle = gameText(group.subName) || gameText(record.items[0]?.desc) || group.firstLvId;
+        const subtitle = groupSecondary(group, pageForCategory(group.categoryId), record.items[0]);
         const icon = groupIconTag(group, '', '');
         const changeInfo = groupVersionInfo(group.firstLvId);
         return `<button type="button" class="ake-ui-card is-interactive has-media" data-ake-component="card" data-density="compact" data-card-kind="archive" data-category="${escapeHtml(group.categoryId)}"
             data-akearchive-action="open-group" data-group-id="${escapeHtml(group.firstLvId)}">
             <span class="ake-ui-card__media">${icon}</span>
             <span class="ake-ui-card__content">
-                <strong class="ake-ui-card__title">${gameHtml(gameText(group.name, group.firstLvId))}</strong>
+                <strong class="ake-ui-card__title">${gameHtml(groupDisplayName(group))}</strong>
                 <small class="ake-ui-card__subtitle">${gameHtml(subtitle)}</small>
-                <span class="ake-ui-card__meta">${groupChangeTag(changeInfo)}<span class="ake-ui-badge">${gameHtml(gameText(category?.name, group.categoryId))}</span><span class="ake-ui-badge">${escapeHtml(tr('counts.entries', { count: record.items.length }, `${record.items.length} 条记录`))}</span></span>
+                <span class="ake-ui-card__meta">${groupChangeTag(changeInfo)}<span class="ake-ui-badge">${gameHtml(categoryDisplayName(category))}</span><span class="ake-ui-badge">${escapeHtml(tr('counts.entries', { count: record.items.length }, `${record.items.length} 条记录`))}</span></span>
             </span>
         </button>`;
+    }
+
+    function renderChangeSection(records, version) {
+        if (!records.length || !version) return '';
+        return `<section class="ake-ui-section" data-tone="added">
+            <header class="ake-ui-section__header"><h2 class="ake-ui-section__title">${escapeHtml(tr('changes.group', { version }, `版本差异 · 相比 ${version}`))}</h2><span class="ake-ui-section__meta">${escapeHtml(tr('counts.groups', { count: records.length }, `${records.length} 组档案`))}</span></header>
+            <div class="ake-ui-card-grid" data-size="regular">${records.map(renderOverviewCard).join('')}</div>
+        </section>`;
     }
 
     function renderOverview() {
@@ -522,18 +742,18 @@
         const addedRecords = records.filter(record => groupVersionInfo(record.group.firstLvId).hasAddition)
             .sort((a, b) => groupChangeRank(a.group.firstLvId) - groupChangeRank(b.group.firstLvId));
         const regularRecords = records.filter(record => !groupVersionInfo(record.group.firstLvId).hasAddition);
-        const changeSection = state.comparisonVersion && addedRecords.length
-            ? `<section class="ake-ui-section" data-tone="added">
-                <header class="ake-ui-section__header"><h2 class="ake-ui-section__title">${escapeHtml(tr('changes.group', { version: comparisonLabel() }, `版本差异 · 相比 ${comparisonLabel()}`))}</h2><span class="ake-ui-section__meta">${escapeHtml(tr('counts.groups', { count: addedRecords.length }, `${addedRecords.length} 组档案`))}</span></header>
-                <div class="ake-ui-card-grid" data-size="regular">${addedRecords.map(renderOverviewCard).join('')}</div>
-            </section>`
-            : '';
+        const mapTextAddedRecords = addedRecords.filter(record => record.group.categoryId === MAP_TEXT_CATEGORY_ID);
+        const archiveAddedRecords = addedRecords.filter(record => record.group.categoryId !== MAP_TEXT_CATEGORY_ID);
+        const changeSections = [
+            renderChangeSection(archiveAddedRecords, comparisonLabel()),
+            renderChangeSection(mapTextAddedRecords, MAP_TEXT_INITIAL_GAME_VERSION)
+        ].join('');
         const sections = state.categories.map(category => {
             const rows = regularRecords.filter(record => record.group.categoryId === category.categoryId);
             if (!rows.length) return '';
             const entryCount = groupEntryCount(rows);
             return `<section class="ake-ui-section">
-                <header class="ake-ui-section__header"><h2 class="ake-ui-section__title">${gameHtml(gameText(category.name, category.categoryId))}</h2><span class="ake-ui-section__meta">${escapeHtml(tr('counts.entries', { count: entryCount }, `${entryCount} 条记录`))}</span></header>
+                <header class="ake-ui-section__header"><h2 class="ake-ui-section__title">${gameHtml(categoryDisplayName(category))}</h2><span class="ake-ui-section__meta">${escapeHtml(tr('counts.entries', { count: entryCount }, `${entryCount} 条记录`))}</span></header>
                 <div class="ake-ui-card-grid" data-size="regular">${rows.map(renderOverviewCard).join('')}</div>
             </section>`;
         }).join('');
@@ -548,7 +768,7 @@
                 </div>
             </header>
             ${renderPageTabs(allRecords)}
-            ${changeSection}${sections || (changeSection ? '' : noResults)}
+            ${changeSections}${sections || (changeSections ? '' : noResults)}
         </section>`;
     }
 
@@ -621,13 +841,14 @@
 
     function renderDocument(item, popup) {
         const rich = state.tables.richContent?.[item.contentId] || null;
-        const title = gameText(rich?.title) || gameText(popup?.title) || gameText(item.name, item.id);
+        const itemName = itemDisplayName(item);
+        const title = gameText(rich?.title) || gameText(popup?.title) || itemName;
         const logo = popupLogo(popup);
         const body = (rich?.contentList || []).map(entry => renderRichValue(gameText(entry?.content))).join('');
         return `${richContentHasGenderImage(rich) ? renderGenderControl() : ''}
             <article class="akearchive-document">
                 <header class="ake-ui-section__header">
-                    <div>${logo ? imageTag(logo, 'akearchive-popup-logo', '', ' aria-hidden="true"') : ''}<h2 class="ake-ui-section__title">${gameHtml(title)}</h2><p class="ake-ui-section__meta">${gameHtml(gameText(item.name, item.id))}</p></div>
+                    <div>${logo ? imageTag(logo, 'akearchive-popup-logo', '', ' aria-hidden="true"') : ''}<h2 class="ake-ui-section__title">${gameHtml(title)}</h2><p class="ake-ui-section__meta">${gameHtml(itemName)}</p></div>
                 </header>
                 ${body || `<p class="akearchive-paragraph">${escapeHtml(t('empty.content', null, '该档案暂无正文内容'))}</p>`}
             </article>`;
@@ -638,7 +859,8 @@
         const lines = [...(radio?.radioSingleDataList || [])].sort((a, b) => safeOrder(a.index) - safeOrder(b.index));
         const logo = popupLogo(popup);
         const lineHtml = lines.map(line => {
-            const speaker = gameText(line.actorName) || gameText(line.infoActorName) || line.actorNameId || '';
+            const speaker = gameText(line.actorName) || gameText(line.infoActorName)
+                || (showTechnicalIds() ? line.actorNameId : '') || '';
             const voiceButton = voiceButtonHtml(line.audioOverride);
             return `<div class="akearchive-line${speaker ? '' : ' akearchive-line--anonymous'}">
                 ${speaker ? `<div class="akearchive-line-speaker">${voiceButton}${gameHtml(speaker)}</div>` : ''}
@@ -647,10 +869,33 @@
         }).join('');
         return `<section class="akearchive-transcript ake-ui-section">
             <header class="ake-ui-section__header">
-                <div>${logo ? imageTag(logo, 'akearchive-popup-logo', '', ' aria-hidden="true"') : ''}<h2 class="ake-ui-section__title">${gameHtml(gameText(popup?.title) || gameText(item.name, item.id))}</h2></div>
+                <div>${logo ? imageTag(logo, 'akearchive-popup-logo', '', ' aria-hidden="true"') : ''}<h2 class="ake-ui-section__title">${gameHtml(gameText(popup?.title) || itemDisplayName(item))}</h2></div>
                 <span class="ake-ui-section__meta">${escapeHtml(tr('counts.entries', { count: lines.length }, `${lines.length} 条记录`))}</span>
             </header>
             <div class="akearchive-transcript-list">${lineHtml || `<div class="ake-ui-state" data-state="empty"><div><p>${escapeHtml(t('empty.transcript', null, '该档案暂无字幕'))}</p></div></div>`}</div>
+        </section>`;
+    }
+
+    function renderMapText(item) {
+        const lines = state.tables.dialogLinesById.get(String(item.contentId || '')) || [];
+        const lineHtml = lines.map(line => {
+            const speaker = gameText(line.actorName) || (showTechnicalIds() ? line.actorNameId : '') || '';
+            const voiceButton = voiceButtonHtml(line.audioOverride);
+            return `<div class="akearchive-line${speaker ? '' : ' akearchive-line--anonymous'}">
+                ${speaker ? `<div class="akearchive-line-speaker">${voiceButton}${gameHtml(speaker)}</div>` : ''}
+                <div class="akearchive-line-text">${speaker ? '' : voiceButton}${gameHtml(gameText(line.dialogText))}</div>
+            </div>`;
+        }).join('');
+        const title = showTechnicalIds() ? item.contentId : itemDisplayName(item);
+        const sourceMeta = showTechnicalIds()
+            ? `<p class="ake-ui-section__meta">${escapeHtml(item.levelDataPath)}</p>`
+            : '';
+        return `<section class="akearchive-transcript ake-ui-section">
+            <header class="ake-ui-section__header">
+                <div><h2 class="ake-ui-section__title">${gameHtml(title)}</h2>${sourceMeta}</div>
+                <span class="ake-ui-section__meta">${escapeHtml(tr('counts.entries', { count: lines.length }, `${lines.length} 条记录`))}</span>
+            </header>
+            <div class="akearchive-transcript-list">${lineHtml || `<div class="ake-ui-state" data-state="empty"><div><p>${escapeHtml(t('mapText.missingDialog', null, 'DialogTextTable 中未找到对应文本'))}</p></div></div>`}</div>
         </section>`;
     }
 
@@ -660,7 +905,7 @@
         return `<div class="ake-ui-tabs" data-variant="underline" role="group" aria-label="${escapeHtml(t('details.entry', null, '条目'))}">${items.map((item, index) => {
             const active = item.id === activeItem.id;
             return `<button type="button" class="ake-ui-tabs__button${active ? ' is-active' : ''}" aria-pressed="${active}"
-                data-akearchive-action="select-entry" data-entry-id="${escapeHtml(item.id)}">${gameHtml(gameText(item.name, `${t('details.entry', null, '条目')} ${index + 1}`))}${itemChangeTag(item)}</button>`;
+                data-akearchive-action="select-entry" data-entry-id="${escapeHtml(item.id)}">${gameHtml(itemDisplayName(item, `${t('details.entry', null, '条目')} ${index + 1}`))}${itemChangeTag(item)}</button>`;
         }).join('')}</div>`;
     }
 
@@ -671,18 +916,17 @@
         const category = categoryForGroup(group);
         const page = pageForCategory(group.categoryId);
         const popup = popupForItem(item);
-        const groupName = gameText(group.name, group.firstLvId);
-        const description = gameText(group.subName) || gameText(item.desc) || gameText(item.name, item.id);
+        const groupName = groupDisplayName(group);
+        const description = groupSecondary(group, page, item);
         const icon = groupIconTag(group, gamePlainText(groupName), '');
         const detailIsAdded = state.addedGroupIds.has(String(group.firstLvId))
             || state.addedItemIds.has(String(item.id));
         const detailHeader = window.AKEUI.detailHeader({
             icon: window.AKEUI.fragment(icon),
             beforeTitle: window.AKEUI.fragment(`<div class="ake-ui-detail-meta">
-                <span>${gameHtml(gameText(page?.name, page?.pageType || ''))}</span>
-                <span>${escapeHtml(t('details.category', null, '分类'))}: ${gameHtml(gameText(category?.name, group.categoryId))}</span>
-                <span>${escapeHtml(t('details.archiveId', null, '档案组 ID'))}: ${escapeHtml(group.firstLvId)}</span>
-                <span>${escapeHtml(t('details.entryId', null, '条目 ID'))}: ${escapeHtml(item.id)}</span>
+                <span>${gameHtml(pageDisplayName(page))}</span>
+                <span>${escapeHtml(t('details.category', null, '分类'))}: ${gameHtml(categoryDisplayName(category))}</span>
+                ${showTechnicalIds() ? `<span>${escapeHtml(t('details.archiveId', null, '档案组 ID'))}: ${escapeHtml(group.firstLvId)}</span><span>${escapeHtml(t('details.entryId', null, '条目 ID'))}: ${escapeHtml(item.id)}</span>` : ''}
                 ${detailIsAdded ? addedTag(t('changes.added', null, '新增')) : ''}
             </div>`),
             title: window.AKEUI.fragment(gameHtml(groupName)),
@@ -691,20 +935,20 @@
         elements.content.innerHTML = `<article class="ake-ui-detail" data-detail-kind="archive">
             ${detailHeader?.outerHTML || ''}
             ${renderEntryTabs(group, item)}
-            ${item.type === 'multi_media' ? renderTranscript(item, popup) : renderDocument(item, popup)}
+            ${item.type === 'map_text' ? renderMapText(item) : item.type === 'multi_media' ? renderTranscript(item, popup) : renderDocument(item, popup)}
         </article>`;
     }
 
     function renderEmptyGroup(group) {
         window.AKEVoicePlayer?.stop();
         const category = categoryForGroup(group);
-        const groupName = gameText(group.name, group.firstLvId);
+        const groupName = groupDisplayName(group);
         const groupIsAdded = state.addedGroupIds.has(String(group.firstLvId));
         const detailHeader = window.AKEUI.detailHeader({
             icon: window.AKEUI.fragment(groupIconTag(group, gamePlainText(groupName), '')),
-            beforeTitle: window.AKEUI.fragment(`<div class="ake-ui-detail-meta"><span>${gameHtml(gameText(category?.name, group.categoryId))}</span><span>${escapeHtml(group.firstLvId)}</span>${groupIsAdded ? addedTag(t('changes.added', null, '新增')) : ''}</div>`),
+            beforeTitle: window.AKEUI.fragment(`<div class="ake-ui-detail-meta"><span>${gameHtml(categoryDisplayName(category))}</span>${showTechnicalIds() ? `<span>${escapeHtml(group.firstLvId)}</span>` : ''}${groupIsAdded ? addedTag(t('changes.added', null, '新增')) : ''}</div>`),
             title: window.AKEUI.fragment(gameHtml(groupName)),
-            subtitle: window.AKEUI.fragment(gameHtml(gameText(group.subName)))
+            subtitle: window.AKEUI.fragment(gameHtml(groupSecondary(group, pageForCategory(group.categoryId))))
         });
         elements.content.innerHTML = `<article class="ake-ui-detail" data-detail-kind="archive">
             ${detailHeader?.outerHTML || ''}
@@ -724,15 +968,41 @@
 
     function openMobileDirectory() {
         state.mobileReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : elements.mobileButton;
+        if (expandDirectoryCategoryForGroup(state.activeGroupId)) renderDirectories();
         elements.mobileOverlay?.classList.add('is-open');
         elements.mobileOverlay?.setAttribute('aria-hidden', 'false');
         elements.mobileButton?.setAttribute('aria-expanded', 'true');
-        window.setTimeout(() => elements.mobileSearch?.focus?.(), 0);
+        window.setTimeout(() => {
+            elements.mobileSearch?.focus?.();
+            scrollDirectoryGroupIntoView(elements.mobileDirectory, state.activeGroupId, 'auto');
+        }, 0);
     }
 
     function focusContent() {
         elements.content.scrollTop = 0;
         elements.content.focus?.({ preventScroll: true });
+    }
+
+    function expandDirectoryCategoryForGroup(groupId) {
+        const group = state.groupMap.get(String(groupId || ''));
+        const categoryId = String(group?.categoryId || '');
+        if (!categoryId || !state.collapsedDirectoryCategories.has(categoryId)) return false;
+        state.collapsedDirectoryCategories.delete(categoryId);
+        return true;
+    }
+
+    function scrollDirectoryGroupIntoView(node, groupId, behavior) {
+        if (!node || !groupId) return;
+        const targetId = String(groupId);
+        const target = Array.from(node.querySelectorAll('[data-akearchive-action="open-group"]'))
+            .find(item => item.dataset.groupId === targetId);
+        target?.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior: behavior || 'smooth' });
+    }
+
+    function scheduleDirectoryGroupScroll(node, groupId, behavior) {
+        window.requestAnimationFrame(() => {
+            if (!state.disposed) scrollDirectoryGroupIntoView(node, groupId, behavior);
+        });
     }
 
     function showOverview(options) {
@@ -753,7 +1023,9 @@
         state.activeItemId = String(item.id);
         state.activeGroupId = String(item.firstLvId || '');
         state.activePageType = '';
+        expandDirectoryCategoryForGroup(state.activeGroupId);
         renderDirectories();
+        scheduleDirectoryGroupScroll(elements.directory, state.activeGroupId, 'smooth');
         renderDetail(item);
         closeMobileDirectory({ restoreFocus: false });
         if (options?.updateUrl !== false) window.__akeRouter?.updateUrl?.(MODULE_ID, state.activeGroupId);
@@ -769,7 +1041,9 @@
         if (queryItem || items[0]) return selectItem((queryItem || items[0]).id, options);
         state.activeGroupId = String(group.firstLvId);
         state.activeItemId = '';
+        expandDirectoryCategoryForGroup(state.activeGroupId);
         renderDirectories();
+        scheduleDirectoryGroupScroll(elements.directory, state.activeGroupId, 'smooth');
         renderEmptyGroup(group);
         closeMobileDirectory({ restoreFocus: false });
         if (options?.updateUrl !== false) window.__akeRouter?.updateUrl?.(MODULE_ID, state.activeGroupId);
@@ -780,8 +1054,17 @@
     function onDirectoryClick(event) {
         const target = event.target.closest('[data-akearchive-action]');
         if (!target) return;
-        if (target.dataset.akearchiveAction === 'open-group') openGroup(target.dataset.groupId, { updateUrl: true });
-        if (target.dataset.akearchiveAction === 'show-overview') showOverview({ updateUrl: true, focusContent: true, restoreFocus: false });
+        const action = target.dataset.akearchiveAction;
+        if (action === 'toggle-category') {
+            const categoryId = String(target.dataset.categoryId || '');
+            if (!categoryId) return;
+            if (state.collapsedDirectoryCategories.has(categoryId)) state.collapsedDirectoryCategories.delete(categoryId);
+            else state.collapsedDirectoryCategories.add(categoryId);
+            renderDirectories();
+            return;
+        }
+        if (action === 'open-group') openGroup(target.dataset.groupId, { updateUrl: true });
+        if (action === 'show-overview') showOverview({ updateUrl: true, focusContent: true, restoreFocus: false });
     }
 
     function onContentClick(event) {
@@ -825,6 +1108,24 @@
     function onModuleDeactivate(event) {
         if (!event.detail?.moduleId || event.detail.moduleId === MODULE_ID) window.AKEVoicePlayer?.stop();
         if (event.detail?.moduleId === MODULE_ID) closeMobileDirectory({ restoreFocus: false });
+    }
+
+    function onGlobalConfigChanged(event) {
+        const nextShowHidden = event.detail?.showHidden ?? event.detail?.config?.showHidden;
+        if (typeof nextShowHidden !== 'boolean' || !state.tables) return;
+        buildIndexes();
+        renderDirectories();
+        const item = state.itemMap.get(state.activeItemId);
+        if (item) {
+            renderDetail(item);
+            return;
+        }
+        const group = state.groupMap.get(state.activeGroupId);
+        if (group) {
+            renderEmptyGroup(group);
+            return;
+        }
+        renderOverview();
     }
 
     function onViewportChange(event) {
@@ -895,14 +1196,18 @@
                         return null;
                     })
                 : Promise.resolve(null);
-            const [loaded, baselineRaw] = await Promise.all([
+            if (!window.akeAssetIndex?.ready) {
+                throw new Error(t('mapText.indexUnavailable', null, '统一资产索引服务不可用'));
+            }
+            const [loaded, baselineRaw, assetIndex] = await Promise.all([
                 Promise.all(TABLE_NAMES.map(name => window.AKEV3.table(name))),
-                baselinePromise
+                baselinePromise,
+                window.akeAssetIndex.ready
             ]);
             if (state.disposed || token !== state.loadToken) return;
             const raw = Object.fromEntries(TABLE_NAMES.map((name, index) => [name, loaded[index]]));
             prepareVersionChanges(raw, baselineRaw, comparison);
-            prepareTables(raw);
+            prepareTables(raw, assetIndex);
             renderDirectories();
             if (pendingDeepId) {
                 const selected = openGroup(pendingDeepId, { updateUrl: false, focusContent: false });
@@ -932,6 +1237,7 @@
     elements.mobileOverlay?.addEventListener('click', onOverlayClick);
     document.addEventListener('keydown', onKeyDown);
     window.addEventListener('ake:module-deactivate', onModuleDeactivate);
+    window.addEventListener('globalConfigChanged', onGlobalConfigChanged);
     const mobileViewport = window.matchMedia('(max-width: 999px)');
     mobileViewport.addEventListener?.('change', onViewportChange);
 
@@ -952,6 +1258,7 @@
             elements.mobileOverlay?.removeEventListener('click', onOverlayClick);
             document.removeEventListener('keydown', onKeyDown);
             window.removeEventListener('ake:module-deactivate', onModuleDeactivate);
+            window.removeEventListener('globalConfigChanged', onGlobalConfigChanged);
             mobileViewport.removeEventListener?.('change', onViewportChange);
         },
         showOverview: () => showOverview({ updateUrl: true, focusContent: true }),
