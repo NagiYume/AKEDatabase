@@ -35,7 +35,6 @@
     const MAP_TEXT_CATEGORY_ID = 'map_text';
     const READING_LIST_CATEGORY_ID = 'reading_list';
     const READING_LIST_ICON = 'prts_centralAchive_new.png';
-    const READING_LIST_UNNAMED_GROUP_ID = `${READING_LIST_CATEGORY_ID}:unnamed`;
     const MAP_TEXT_INITIAL_GAME_VERSION = '1.4.4';
     const PAGE_ORDER = Object.freeze(['document', 'multi_media', 'text', 'reading_list', 'map_text']);
     const CATEGORY_PAGE = Object.freeze({
@@ -114,7 +113,11 @@
 
     function groupDisplayName(group) {
         if (group?.categoryId === READING_LIST_CATEGORY_ID) {
-            return String(group?.name || '').trim() || t('empty.untitledGroup', null, '未命名档案');
+            return displayEntityText(
+                group?.name,
+                [group?.contentId, group?.readingUniqId, group?.firstLvId],
+                t('empty.untitledGroup', null, '未命名档案')
+            );
         }
         return displayEntityText(
             group?.name,
@@ -145,8 +148,10 @@
 
     function groupSecondary(group, page, item) {
         if (group?.categoryId === READING_LIST_CATEGORY_ID) {
-            const readingCategory = state.tables?.categories?.[group.readingCategoryId];
-            return categoryDisplayName(readingCategory);
+            const subtitle = gameText(group?.subName)
+                || t('readingList.category', null, '任务文本');
+            if (showTechnicalIds() && group?.readingSourceId) return `${subtitle} · ${group.readingSourceId}`;
+            return subtitle;
         }
         if (group?.categoryId === MAP_TEXT_CATEGORY_ID && !showTechnicalIds()) {
             return categoryDisplayName(categoryForGroup(group));
@@ -341,6 +346,12 @@
         return String(item?.overrideRadioId || popup?.overrideRadioId || '').trim();
     }
 
+    function radioForItem(item) {
+        const contentId = String(item?.contentId || '');
+        const radioId = String(item?.radioId || (contentId.startsWith('radio_') ? contentId : '')).trim();
+        return radioId ? state.tables?.radio?.[radioId] || null : null;
+    }
+
     function contentDisplayTitle(ref, item, fallback) {
         return displayEntityText(
             ref,
@@ -455,73 +466,131 @@
         };
     }
 
-    function supplementalReadingRecords(raw) {
+    function indexedReadingReferences(assetIndex) {
+        const byContentId = new Map();
+        const byUniqId = new Map();
+        const files = assetIndex?.datasets?.json?.files || {};
+        Object.entries(files)
+            .filter(([path]) => path.startsWith('LevelScriptData/') && path.toLocaleLowerCase().endsWith('.json'))
+            .sort(([a], [b]) => a.localeCompare(b, 'en'))
+            .forEach(([path, record]) => {
+                const meta = record?.meta || {};
+                (Array.isArray(meta.narrativeReadingContentIds) ? meta.narrativeReadingContentIds : []).forEach(contentId => {
+                    const key = String(contentId || '');
+                    if (!/^(?:text|radio)_/.test(key)) return;
+                    if (!byContentId.has(key)) byContentId.set(key, []);
+                    byContentId.get(key).push(path);
+                });
+                (Array.isArray(meta.narrativeReadingUniqIds) ? meta.narrativeReadingUniqIds : []).forEach(uniqId => {
+                    const key = String(uniqId || '');
+                    if (!key) return;
+                    if (!byUniqId.has(key)) byUniqId.set(key, []);
+                    byUniqId.get(key).push(path);
+                });
+            });
+        return { byContentId, byUniqId };
+    }
+
+    function supplementalReadingRecords(raw, assetIndex) {
         const linkedContentIds = new Set(Object.values(raw.PrtsAllItem || {})
             .map(item => String(item?.contentId || ''))
             .filter(Boolean));
-        const contentIds = new Set([
-            ...Object.keys(raw.RichContentTable || {}),
-            ...Object.keys(raw.RadioTable || {}),
-            ...Object.values(raw.ReadingPopUpTable || {})
-                .map(popup => String(popup?.contentId || ''))
-                .filter(Boolean)
-        ]);
+        const linkedItemIds = new Set(Object.values(raw.PrtsAllItem || {})
+            .map(item => String(item?.id || ''))
+            .filter(Boolean));
+        const popupByContent = new Map();
+        Object.values(raw.ReadingPopUpTable || {}).forEach(popup => {
+            const contentId = String(popup?.contentId || '');
+            if (contentId && !popupByContent.has(contentId)) popupByContent.set(contentId, popup);
+        });
         const groups = {};
         const items = {};
-        const readingEntries = new Map();
+        const readingEntries = [];
+        const readingByContentId = new Map();
         Object.entries(raw.PrtsReading || {}).forEach(([sourceId, reading]) => {
-            Object.values(reading?.list || {}).forEach(entry => {
+            Object.entries(reading?.list || {})
+                .sort(([, a], [, b]) => safeOrder(a?.order) - safeOrder(b?.order))
+                .forEach(([listId, entry]) => {
                 const contentId = String(entry?.contentId || '');
-                if (contentId && !readingEntries.has(contentId)) {
-                    readingEntries.set(contentId, { ...entry, sourceId });
-                }
+                if (!contentId) return;
+                const record = { ...entry, sourceId, listId };
+                readingEntries.push(record);
+                if (!readingByContentId.has(contentId)) readingByContentId.set(contentId, record);
             });
         });
-        const readingCategoryId = sourceId => {
-            if (String(sourceId).startsWith('term_001')) return 'text';
-            if (/gm01m27|调查报告|侦察报告/i.test(String(sourceId))) return 'report';
-            return 'digital';
-        };
-        let unnamedOrder = 0;
-        [...contentIds].sort((a, b) => a.localeCompare(b, 'en')).forEach((contentId, order) => {
-            if (linkedContentIds.has(contentId)) return;
+        const references = indexedReadingReferences(assetIndex);
+        const contentIds = new Set(readingEntries.map(entry => String(entry.contentId || '')));
+        references.byContentId.forEach((_, contentId) => contentIds.add(contentId));
+        const resolveContent = (contentId, reading) => {
+            const popup = popupByContent.get(contentId) || null;
             const rich = raw.RichContentTable?.[contentId] || null;
-            const radio = raw.RadioTable?.[contentId] || null;
-            const popup = Object.values(raw.ReadingPopUpTable || {})
-                .find(row => String(row?.contentId || '') === contentId) || null;
-            const reading = readingEntries.get(contentId);
-            const categoryId = readingCategoryId(reading?.sourceId || '');
+            const override = String(reading?.overrideRadioId || popup?.overrideRadioId || '').trim();
+            const radioId = override.startsWith('radio_')
+                ? override
+                : contentId.startsWith('radio_') ? contentId : '';
+            const radio = radioId ? raw.RadioTable?.[radioId] || null : null;
+            return {
+                popup,
+                rich,
+                radio,
+                radioId,
+                voiceId: override.startsWith('au_') ? override : ''
+            };
+        };
+        const generatedContentIds = new Set();
+        const referencePathsFor = (contentId, reading) => [
+            ...(references.byContentId.get(contentId) || []),
+            ...(references.byUniqId.get(String(reading?.uniqId || '')) || [])
+        ].filter((path, index, paths) => paths.indexOf(path) === index);
+        const appendRecord = (contentId, reading, order, orphan) => {
+            if (linkedContentIds.has(contentId) || linkedItemIds.has(String(reading?.prtsId || ''))) return;
+            const content = resolveContent(contentId, reading);
             const title = gameText(reading?.name)
-                || gameText(rich?.title)
-                || gameText(popup?.title)
+                || gameText(content.rich?.title)
+                || gameText(content.popup?.title)
                 || '';
-            const isUnnamed = !title;
-            const groupId = isUnnamed ? READING_LIST_UNNAMED_GROUP_ID : `${READING_LIST_CATEGORY_ID}:${contentId}`;
+            const sourceKey = reading
+                ? `${reading.sourceId}:${reading.uniqId || reading.listId || contentId}`
+                : `orphan:${contentId}`;
+            const groupId = `${READING_LIST_CATEGORY_ID}:${sourceKey}`;
             const itemId = `${groupId}:entry`;
-            if (!groups[groupId]) {
-                groups[groupId] = {
-                    firstLvId: groupId,
-                    categoryId: READING_LIST_CATEGORY_ID,
-                    name: isUnnamed ? t('readingList.unnamed', null, '任务文本') : title,
-                    subName: '',
-                    readingCategoryId: isUnnamed ? READING_LIST_CATEGORY_ID : categoryId,
-                    icon: READING_LIST_ICON,
-                    order: isUnnamed ? Number.MAX_SAFE_INTEGER - 1 : order
-                };
-            }
-            const entryId = isUnnamed
-                ? `${groupId}:${contentId}`
-                : itemId;
-            items[entryId] = {
-                id: entryId,
+            const levelScriptPaths = referencePathsFor(contentId, reading);
+            groups[groupId] = {
+                firstLvId: groupId,
+                categoryId: READING_LIST_CATEGORY_ID,
+                name: title || t('readingList.unnamed', null, '任务文本'),
+                subName: gameText(reading?.subtitle),
+                icon: READING_LIST_ICON,
+                order,
+                contentId,
+                readingSourceId: reading?.sourceId || '',
+                readingUniqId: reading?.uniqId || '',
+                levelScriptPaths,
+                orphan: Boolean(orphan)
+            };
+            items[itemId] = {
+                id: itemId,
                 firstLvId: groupId,
                 contentId,
-                name: title || contentId,
+                name: title || t('readingList.unnamed', null, '任务文本'),
                 desc: '',
-                overrideRadioId: reading?.overrideRadioId || popup?.overrideRadioId || '',
-                type: radio ? 'multi_media' : 'text',
-                order: isUnnamed ? unnamedOrder++ : 0
+                overrideRadioId: content.voiceId,
+                radioId: content.radioId,
+                type: content.radio ? 'multi_media' : 'text',
+                order: 0,
+                readingSourceId: reading?.sourceId || '',
+                readingUniqId: reading?.uniqId || '',
+                levelScriptPaths,
+                orphan: Boolean(orphan)
             };
+            generatedContentIds.add(contentId);
+        };
+        readingEntries.forEach((reading, order) => {
+            appendRecord(String(reading.contentId || ''), reading, order, false);
+        });
+        [...contentIds].sort((a, b) => a.localeCompare(b, 'en')).forEach((contentId, order) => {
+            if (generatedContentIds.has(contentId)) return;
+            appendRecord(contentId, readingByContentId.get(contentId) || null, readingEntries.length + order, true);
         });
         return { groups, items };
     }
@@ -574,12 +643,15 @@
                 group.levelDataPath,
                 group.levelDataType,
                 group.dialogId,
-                group.jsonGameVersion
+                group.jsonGameVersion,
+                group.readingSourceId,
+                group.readingUniqId,
+                ...(group.levelScriptPaths || [])
             );
             state.groupSearch.set(String(group.firstLvId), normalizeSearch(ownParts.join(' ')));
             itemRowsForGroup(group.firstLvId).forEach(item => {
                 const rich = state.tables.richContent?.[item.contentId] || null;
-                const radio = state.tables.radio?.[item.contentId] || null;
+                const radio = radioForItem(item);
                 const popup = popupForItem(item);
                 const parts = [
                     itemDisplayName(item),
@@ -587,7 +659,14 @@
                     gameText(rich?.title),
                     gameText(popup?.title)
                 ];
-                if (includeTechnicalIds) parts.push(item.id, item.contentId, item.type);
+                if (includeTechnicalIds) parts.push(
+                    item.id,
+                    item.contentId,
+                    item.type,
+                    item.readingSourceId,
+                    item.readingUniqId,
+                    ...(item.levelScriptPaths || [])
+                );
                 (rich?.contentList || []).forEach(entry => parts.push(gameText(entry?.content)));
                 (radio?.radioSingleDataList || []).forEach(line => {
                     parts.push(gameText(line.actorName), gameText(line.infoActorName), gameText(line.radioText));
@@ -611,13 +690,13 @@
 
     function prepareTables(raw, assetIndex) {
         const mapText = mapTextRecords(raw.DialogTextTable || {}, assetIndex);
-        const supplementalReading = supplementalReadingRecords(raw);
+        const supplementalReading = supplementalReadingRecords(raw, assetIndex);
         state.tables = {
             pages: {
                 ...(raw.PrtsPage || {}),
                 [READING_LIST_CATEGORY_ID]: {
                     pageType: READING_LIST_CATEGORY_ID,
-                    name: t('readingList.category', null, '目录列表'),
+                    name: t('readingList.category', null, '任务文本'),
                     icon: `icon/${READING_LIST_ICON.replace(/\.png$/i, '')}`
                 },
                 [MAP_TEXT_CATEGORY_ID]: mapText.page
@@ -627,7 +706,7 @@
                 [MAP_TEXT_CATEGORY_ID]: mapText.category,
                 [READING_LIST_CATEGORY_ID]: {
                     categoryId: READING_LIST_CATEGORY_ID,
-                    name: t('readingList.category', null, '目录列表'),
+                    name: t('readingList.category', null, '任务文本'),
                     order: Number.MAX_SAFE_INTEGER
                 }
             },
@@ -972,7 +1051,7 @@
     }
 
     function renderTranscript(item, popup) {
-        const radio = state.tables.radio?.[item.contentId] || null;
+        const radio = radioForItem(item);
         const lines = [...(radio?.radioSingleDataList || [])].sort((a, b) => safeOrder(a.index) - safeOrder(b.index));
         const logo = popupLogo(popup);
         const lineHtml = lines.map(line => {
@@ -1038,12 +1117,15 @@
         const icon = groupIconTag(group, gamePlainText(groupName), '');
         const detailIsAdded = state.addedGroupIds.has(String(group.firstLvId))
             || state.addedItemIds.has(String(item.id));
+        const readingTechnical = showTechnicalIds() && group.categoryId === READING_LIST_CATEGORY_ID
+            ? `<span>${escapeHtml(t('details.contentId', null, '内容 ID'))}: ${escapeHtml(item.contentId || '')}</span>${item.readingUniqId ? `<span>${escapeHtml(t('details.readingId', null, '目录项 ID'))}: ${escapeHtml(item.readingUniqId)}</span>` : ''}${(item.levelScriptPaths || []).map(path => `<span>${escapeHtml(t('details.levelScriptPath', null, '关卡脚本'))}: ${escapeHtml(path)}</span>`).join('')}`
+            : '';
         const detailHeader = window.AKEUI.detailHeader({
             icon: window.AKEUI.fragment(icon),
             beforeTitle: window.AKEUI.fragment(`<div class="ake-ui-detail-meta">
                 <span>${gameHtml(pageDisplayName(page))}</span>
                 <span>${escapeHtml(t('details.category', null, '分类'))}: ${gameHtml(categoryDisplayName(category))}</span>
-                ${showTechnicalIds() ? `<span>${escapeHtml(t('details.archiveId', null, '档案组 ID'))}: ${escapeHtml(group.firstLvId)}</span><span>${escapeHtml(t('details.entryId', null, '条目 ID'))}: ${escapeHtml(item.id)}</span>` : ''}
+                ${showTechnicalIds() ? `<span>${escapeHtml(t('details.archiveId', null, '档案组 ID'))}: ${escapeHtml(group.firstLvId)}</span><span>${escapeHtml(t('details.entryId', null, '条目 ID'))}: ${escapeHtml(item.id)}</span>${readingTechnical}` : ''}
                 ${detailIsAdded ? addedTag(t('changes.added', null, '新增')) : ''}
             </div>`),
             title: window.AKEUI.fragment(gameHtml(groupName)),
