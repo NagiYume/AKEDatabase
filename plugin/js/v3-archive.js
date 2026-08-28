@@ -33,8 +33,11 @@
 
     const SPRITE_ROOT = '/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/';
     const MAP_TEXT_CATEGORY_ID = 'map_text';
+    const READING_LIST_CATEGORY_ID = 'reading_list';
+    const READING_LIST_ICON = 'prts_centralAchive_new.png';
+    const READING_LIST_UNNAMED_GROUP_ID = `${READING_LIST_CATEGORY_ID}:unnamed`;
     const MAP_TEXT_INITIAL_GAME_VERSION = '1.4.4';
-    const PAGE_ORDER = Object.freeze(['document', 'multi_media', 'text', 'map_text']);
+    const PAGE_ORDER = Object.freeze(['document', 'multi_media', 'text', 'reading_list', 'map_text']);
     const CATEGORY_PAGE = Object.freeze({
         document: 'document',
         report: 'document',
@@ -42,6 +45,7 @@
         paper: 'text',
         digital: 'text',
         collection: 'text',
+        reading_list: 'reading_list',
         map_text: 'map_text'
     });
     const TABLE_NAMES = Object.freeze([
@@ -53,7 +57,8 @@
         'RadioTable',
         'ReadingPopUpTable',
         'ReadingPopUpIconTable',
-        'DialogTextTable'
+        'DialogTextTable',
+        'PrtsReading'
     ]);
 
     const state = {
@@ -108,11 +113,14 @@
     }
 
     function groupDisplayName(group) {
+        if (group?.categoryId === READING_LIST_CATEGORY_ID) {
+            return String(group?.name || '').trim() || t('empty.untitledGroup', null, '未命名档案');
+        }
         return displayEntityText(
             group?.name,
             group?.categoryId === MAP_TEXT_CATEGORY_ID
                 ? [group?.dialogId, group?.firstLvId]
-                : [group?.firstLvId],
+                : [group?.firstLvId, group?.contentId],
             t('empty.untitledGroup', null, '未命名档案')
         );
     }
@@ -136,6 +144,10 @@
     }
 
     function groupSecondary(group, page, item) {
+        if (group?.categoryId === READING_LIST_CATEGORY_ID) {
+            const readingCategory = state.tables?.categories?.[group.readingCategoryId];
+            return categoryDisplayName(readingCategory);
+        }
         if (group?.categoryId === MAP_TEXT_CATEGORY_ID && !showTechnicalIds()) {
             return categoryDisplayName(categoryForGroup(group));
         }
@@ -179,6 +191,7 @@
     }
 
     function pageIcon(page) {
+        if (page?.pageType === READING_LIST_CATEGORY_ID) return assetUrl('prts/icon', READING_LIST_ICON);
         return assetUrl('prts', page?.icon);
     }
 
@@ -324,6 +337,18 @@
         return state.popupByContent.get(String(item?.contentId || '')) || null;
     }
 
+    function itemVoiceId(item, popup) {
+        return String(item?.overrideRadioId || popup?.overrideRadioId || '').trim();
+    }
+
+    function contentDisplayTitle(ref, item, fallback) {
+        return displayEntityText(
+            ref,
+            [item?.contentId, item?.id],
+            fallback || itemDisplayName(item)
+        );
+    }
+
     function popupLogo(popup) {
         if (!popup || !popup.iconType) return '';
         const iconGroup = state.tables.popupIcons?.[String(popup.iconType)]?.iconMap || {};
@@ -430,6 +455,77 @@
         };
     }
 
+    function supplementalReadingRecords(raw) {
+        const linkedContentIds = new Set(Object.values(raw.PrtsAllItem || {})
+            .map(item => String(item?.contentId || ''))
+            .filter(Boolean));
+        const contentIds = new Set([
+            ...Object.keys(raw.RichContentTable || {}),
+            ...Object.keys(raw.RadioTable || {}),
+            ...Object.values(raw.ReadingPopUpTable || {})
+                .map(popup => String(popup?.contentId || ''))
+                .filter(Boolean)
+        ]);
+        const groups = {};
+        const items = {};
+        const readingEntries = new Map();
+        Object.entries(raw.PrtsReading || {}).forEach(([sourceId, reading]) => {
+            Object.values(reading?.list || {}).forEach(entry => {
+                const contentId = String(entry?.contentId || '');
+                if (contentId && !readingEntries.has(contentId)) {
+                    readingEntries.set(contentId, { ...entry, sourceId });
+                }
+            });
+        });
+        const readingCategoryId = sourceId => {
+            if (String(sourceId).startsWith('term_001')) return 'text';
+            if (/gm01m27|调查报告|侦察报告/i.test(String(sourceId))) return 'report';
+            return 'digital';
+        };
+        let unnamedOrder = 0;
+        [...contentIds].sort((a, b) => a.localeCompare(b, 'en')).forEach((contentId, order) => {
+            if (linkedContentIds.has(contentId)) return;
+            const rich = raw.RichContentTable?.[contentId] || null;
+            const radio = raw.RadioTable?.[contentId] || null;
+            const popup = Object.values(raw.ReadingPopUpTable || {})
+                .find(row => String(row?.contentId || '') === contentId) || null;
+            const reading = readingEntries.get(contentId);
+            const categoryId = readingCategoryId(reading?.sourceId || '');
+            const title = gameText(reading?.name)
+                || gameText(rich?.title)
+                || gameText(popup?.title)
+                || '';
+            const isUnnamed = !title;
+            const groupId = isUnnamed ? READING_LIST_UNNAMED_GROUP_ID : `${READING_LIST_CATEGORY_ID}:${contentId}`;
+            const itemId = `${groupId}:entry`;
+            if (!groups[groupId]) {
+                groups[groupId] = {
+                    firstLvId: groupId,
+                    categoryId: READING_LIST_CATEGORY_ID,
+                    name: isUnnamed ? t('readingList.unnamed', null, '任务文本') : title,
+                    subName: '',
+                    readingCategoryId: isUnnamed ? READING_LIST_CATEGORY_ID : categoryId,
+                    icon: READING_LIST_ICON,
+                    order: isUnnamed ? Number.MAX_SAFE_INTEGER - 1 : order
+                };
+            }
+            const entryId = isUnnamed
+                ? `${groupId}:${contentId}`
+                : itemId;
+            items[entryId] = {
+                id: entryId,
+                firstLvId: groupId,
+                contentId,
+                name: title || contentId,
+                desc: '',
+                overrideRadioId: reading?.overrideRadioId || popup?.overrideRadioId || '',
+                type: radio ? 'multi_media' : 'text',
+                order: isUnnamed ? unnamedOrder++ : 0
+            };
+        });
+        return { groups, items };
+    }
+
     function buildIndexes() {
         const includeTechnicalIds = showTechnicalIds();
         state.groupMap.clear();
@@ -515,11 +611,28 @@
 
     function prepareTables(raw, assetIndex) {
         const mapText = mapTextRecords(raw.DialogTextTable || {}, assetIndex);
+        const supplementalReading = supplementalReadingRecords(raw);
         state.tables = {
-            pages: { ...(raw.PrtsPage || {}), [MAP_TEXT_CATEGORY_ID]: mapText.page },
-            categories: { ...(raw.PrtsCategory || {}), [MAP_TEXT_CATEGORY_ID]: mapText.category },
-            groups: { ...(raw.PrtsFirstLv || {}), ...mapText.groups },
-            items: { ...(raw.PrtsAllItem || {}), ...mapText.items },
+            pages: {
+                ...(raw.PrtsPage || {}),
+                [READING_LIST_CATEGORY_ID]: {
+                    pageType: READING_LIST_CATEGORY_ID,
+                    name: t('readingList.category', null, '目录列表'),
+                    icon: `icon/${READING_LIST_ICON.replace(/\.png$/i, '')}`
+                },
+                [MAP_TEXT_CATEGORY_ID]: mapText.page
+            },
+            categories: {
+                ...(raw.PrtsCategory || {}),
+                [MAP_TEXT_CATEGORY_ID]: mapText.category,
+                [READING_LIST_CATEGORY_ID]: {
+                    categoryId: READING_LIST_CATEGORY_ID,
+                    name: t('readingList.category', null, '目录列表'),
+                    order: Number.MAX_SAFE_INTEGER
+                }
+            },
+            groups: { ...(raw.PrtsFirstLv || {}), ...mapText.groups, ...supplementalReading.groups },
+            items: { ...(raw.PrtsAllItem || {}), ...mapText.items, ...supplementalReading.items },
             richContent: raw.RichContentTable || {},
             radio: raw.RadioTable || {},
             popups: raw.ReadingPopUpTable || {},
@@ -842,13 +955,17 @@
     function renderDocument(item, popup) {
         const rich = state.tables.richContent?.[item.contentId] || null;
         const itemName = itemDisplayName(item);
-        const title = gameText(rich?.title) || gameText(popup?.title) || itemName;
+        const title = contentDisplayTitle(
+            rich?.title || popup?.title,
+            item,
+            itemName
+        );
         const logo = popupLogo(popup);
         const body = (rich?.contentList || []).map(entry => renderRichValue(gameText(entry?.content))).join('');
         return `${richContentHasGenderImage(rich) ? renderGenderControl() : ''}
             <article class="akearchive-document">
                 <header class="ake-ui-section__header">
-                    <div>${logo ? imageTag(logo, 'akearchive-popup-logo', '', ' aria-hidden="true"') : ''}<h2 class="ake-ui-section__title">${gameHtml(title)}</h2><p class="ake-ui-section__meta">${gameHtml(itemName)}</p></div>
+                    <div>${logo ? imageTag(logo, 'akearchive-popup-logo', '', ' aria-hidden="true"') : ''}${voiceButtonHtml(itemVoiceId(item, popup))}<h2 class="ake-ui-section__title">${gameHtml(title)}</h2><p class="ake-ui-section__meta">${gameHtml(itemName)}</p></div>
                 </header>
                 ${body || `<p class="akearchive-paragraph">${escapeHtml(t('empty.content', null, '该档案暂无正文内容'))}</p>`}
             </article>`;
@@ -869,7 +986,7 @@
         }).join('');
         return `<section class="akearchive-transcript ake-ui-section">
             <header class="ake-ui-section__header">
-                <div>${logo ? imageTag(logo, 'akearchive-popup-logo', '', ' aria-hidden="true"') : ''}<h2 class="ake-ui-section__title">${gameHtml(gameText(popup?.title) || itemDisplayName(item))}</h2></div>
+                <div>${logo ? imageTag(logo, 'akearchive-popup-logo', '', ' aria-hidden="true"') : ''}${voiceButtonHtml(itemVoiceId(item, popup))}<h2 class="ake-ui-section__title">${gameHtml(contentDisplayTitle(popup?.title, item))}</h2></div>
                 <span class="ake-ui-section__meta">${escapeHtml(tr('counts.entries', { count: lines.length }, `${lines.length} 条记录`))}</span>
             </header>
             <div class="akearchive-transcript-list">${lineHtml || `<div class="ake-ui-state" data-state="empty"><div><p>${escapeHtml(t('empty.transcript', null, '该档案暂无字幕'))}</p></div></div>`}</div>
