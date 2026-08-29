@@ -2,21 +2,6 @@
 <script src="/plugin/js/module-overview.js"></script>
 <div class="ake-ui-directory" id="akeArchiveModule" data-ake-module="archive">
     <aside class="ake-ui-directory__sidebar" id="akeArchiveSidebar" data-i18n-aria-label="modules.archive.directory.title" aria-label="档案目录">
-        <header class="ake-ui-directory__sidebar-header">
-            <div>
-                <h1 data-i18n="modules.archive.title">档案库</h1>
-                <div class="ake-ui-directory__meta" id="akeArchiveMeta" aria-live="polite" data-i18n="modules.archive.loading.directory">正在整理档案目录</div>
-            </div>
-            <button
-                class="ake-ui-icon-button"
-                id="akeArchiveHome"
-                type="button"
-                aria-label="全部档案"
-                title="全部档案"
-                data-i18n-aria-label="modules.archive.directory.all"
-                data-i18n-title="modules.archive.directory.all"
-            ><span class="ake-module-home__icon" aria-hidden="true">&#8962;</span></button>
-        </header>
 
         <label class="ake-ui-directory__search" for="akeArchiveSearch">
             <span class="ake-ui-directory__search-icon" aria-hidden="true"></span>
@@ -31,6 +16,17 @@
                 data-i18n-aria-label="modules.archive.search.label"
             >
         </label>
+
+        <div class="ake-ui-filter" id="akeArchiveFilterBar">
+            <div class="ake-ui-filter__group">
+                <span class="ake-ui-filter__label">地区</span>
+                <div class="ake-ui-filter__options" id="akeArchiveRegionFilter" aria-label="地区筛选"></div>
+            </div>
+            <div class="ake-ui-filter__group">
+                <span class="ake-ui-filter__label">档案类型</span>
+                <div class="ake-ui-filter__options" id="akeArchiveTypeFilter" aria-label="档案类型筛选"></div>
+            </div>
+        </div>
 
         <nav
             class="ake-ui-directory__list"
@@ -91,6 +87,16 @@
                     data-i18n-aria-label="modules.archive.search.label"
                 >
             </label>
+            <div class="ake-ui-filter" id="akeArchiveMobileFilterBar">
+                <div class="ake-ui-filter__group">
+                    <span class="ake-ui-filter__label">地区</span>
+                    <div class="ake-ui-filter__options" id="akeArchiveMobileRegionFilter" aria-label="地区筛选"></div>
+                </div>
+                <div class="ake-ui-filter__group">
+                    <span class="ake-ui-filter__label">档案类型</span>
+                    <div class="ake-ui-filter__options" id="akeArchiveMobileTypeFilter" aria-label="档案类型筛选"></div>
+                </div>
+            </div>
             <nav
                 class="ake-ui-directory__mobile-list"
                 id="akeArchiveMobileDirectory"
