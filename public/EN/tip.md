@@ -2,6 +2,21 @@ AKEData has moved to www.akedata.wiki. The former domain, akedata.top, now redir
 
 # AKEData Version Changelog
 
+### v1.2.16
+
+#### Archive
+
+- Added the “Map Text” and “Task Text” categories for in-game map interactions, environmental investigation text, and entries from `PrtsReading`. Each dialogue segment is shown as an independent entry named after its first sentence.
+- Archive start and directory views now support collapsible filters for region and archive type. Directory and card subtitles consistently show “region · content type”.
+- Archive navigation uses a flat entry layout, and returning to the start page preserves the search, filters, and scroll positions from before opening an entry without forcing a page reload.
+- When Hidden Mode is disabled, in-game archive, entry, content, reading-item, and LevelScriptData identifiers remain hidden.
+
+#### Version differences and text resolution
+
+- Archive data in Latest continues to compare against the final Hotfix of the previous major game version; Map Text uses `DialogTextTable`, while Task Text uses `PrtsReading` for change detection.
+- Fixed false “Modified” badges caused by filling in localized task titles or subtitles when the underlying content did not change.
+- Fixed the missing link between `text_` content IDs and their matching `radio_` entries, restoring the body and transcript for entries such as “Regarding the OP-α Recon Report”.
+
 ### v1.2.15
 
 #### Character icons and skill popups
