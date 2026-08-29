@@ -1932,7 +1932,7 @@
                                 ctx.save();
                                 ctx.translate(x, y);
                                 ctx.rotate(angle);
-                                ctx.fillText('AKEData.top', 0, 0);
+                                ctx.fillText('AKEData.wiki', 0, 0);
                                 ctx.restore();
                             }
                         }

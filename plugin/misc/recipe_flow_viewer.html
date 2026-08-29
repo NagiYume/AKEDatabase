@@ -1,0 +1,53 @@
+<section class="ake-ui-page" data-ake-view="recipe-flow-viewer" data-misc-module="recipe_flow_viewer" aria-labelledby="recipeFlowViewerTitle">
+    <header class="ake-ui-page__header">
+        <div>
+            <div class="ake-ui-page__eyebrow" data-i18n="modules.misc.recipeFlowViewer.eyebrow">Recipe flow</div>
+            <h2 id="recipeFlowViewerTitle" data-i18n="modules.misc.recipeFlowViewer.title">Recipe Flow Viewer</h2>
+            <p class="ake-ui-page__summary" data-i18n="modules.misc.recipeFlowViewer.summary">Trace production inputs and immediate uses for an item.</p>
+        </div>
+        <div class="ake-ui-page__status" id="recipeFlowViewerStatus" role="status" aria-live="polite"></div>
+    </header>
+
+    <div class="ake-ui-toolbar">
+        <label for="recipeFlowViewerSearch">
+            <span data-i18n="modules.misc.recipeFlowViewer.itemLabel">Item</span>
+            <input id="recipeFlowViewerSearch" class="ake-ui-control" type="search" autocomplete="off"
+                data-i18n-placeholder="modules.misc.recipeFlowViewer.searchPlaceholder"
+                data-i18n-aria-label="modules.misc.recipeFlowViewer.searchItem"
+                placeholder="Search by item name or ID">
+        </label>
+    </div>
+    <div id="recipeFlowViewerResults" class="ake-ui-tree" role="listbox" hidden></div>
+
+    <section class="ake-ui-section" aria-labelledby="recipeFlowViewerSelectedTitle">
+        <div class="ake-ui-section__header">
+            <h3 id="recipeFlowViewerSelectedTitle" class="ake-ui-section__title" data-i18n="modules.misc.recipeFlowViewer.selectedItem">Selected item</h3>
+        </div>
+        <div id="recipeFlowViewerSelected"></div>
+    </section>
+
+    <section class="ake-ui-section" aria-labelledby="recipeFlowViewerUpstreamTitle">
+        <div class="ake-ui-section__header">
+            <h3 id="recipeFlowViewerUpstreamTitle" class="ake-ui-section__title" data-i18n="modules.misc.recipeFlowViewer.upstream">Upstream production</h3>
+            <span id="recipeFlowViewerUpstreamCount" class="ake-ui-section__meta"></span>
+            <div class="ake-ui-card__header-actions">
+                <button id="recipeFlowViewerFullscreen" class="ake-ui-icon-button" type="button" title="Fullscreen" aria-label="Fullscreen">
+                    <span aria-hidden="true">&#x26F6;</span>
+                </button>
+                <button id="recipeFlowViewerExport" class="ake-ui-icon-button" type="button" title="Export PNG" aria-label="Export PNG">
+                    <span aria-hidden="true">&#x2193;</span>
+                </button>
+            </div>
+        </div>
+        <div id="recipeFlowViewerUpstream"></div>
+    </section>
+
+    <section class="ake-ui-section" aria-labelledby="recipeFlowViewerDownstreamTitle">
+        <div class="ake-ui-section__header">
+            <h3 id="recipeFlowViewerDownstreamTitle" class="ake-ui-section__title" data-i18n="modules.misc.recipeFlowViewer.downstream">Immediate uses</h3>
+            <span id="recipeFlowViewerDownstreamCount" class="ake-ui-section__meta"></span>
+        </div>
+        <div id="recipeFlowViewerDownstream"></div>
+    </section>
+</section>
+<script src="/plugin/js/misc-recipe-flow-viewer.js"></script>
