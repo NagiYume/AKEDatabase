@@ -1,11 +1,9 @@
 # AKEDatabase
-# AKEDatabase
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 ![Static](https://img.shields.io/badge/Static-HTML%2FCSS%2FJS-blue)
 [![Last Commit](https://img.shields.io/github/last-commit/nagiyume/akedatabase)](https://github.com/nagiyume/AKEDatabase)
 
-> 《明日方舟：终末地》非官方数据查询与研究站。
 > 《明日方舟：终末地》非官方数据查询与研究站。
 
 AKEData 为玩家提供角色、武器、敌人、装备、物品、活动、副本、商店、档案等资料查询，也收录游戏机制研究和一些实用的小工具。项目采用静态 HTML、CSS 和 JavaScript 构建，游戏数据与网站代码分离，并由独立数据域提供。
@@ -61,8 +59,6 @@ AKEData 为玩家提供角色、武器、敌人、装备、物品、活动、副
 
 AKEData 同时为以下工具和网站提供数据支持：
 
-AKEData 同时为以下工具和网站提供数据支持：
-
 - [Perlica Bot](https://bot.perlica.tech/)：QQ 机器人与《终末地》游戏助手
 - [终末地地图集](https://opendfieldmap.cn/)：地图工具
 - [CEP 终末地基质规划器](https://end.canmoe.com/)：基质、精锻和养成规划工具
@@ -72,7 +68,6 @@ AKEData 同时为以下工具和网站提供数据支持：
 
 ## 赞助支持
 
-赞助将用于服务器维护、功能开发和内容创作。支付宝渠道无法稳定获取赞助者信息，如需署名或添加备注，请通过任意联系方式补充赞助截图。
 赞助将用于服务器维护、功能开发和内容创作。支付宝渠道无法稳定获取赞助者信息，如需署名或添加备注，请通过任意联系方式补充赞助截图。
 
 | 支付宝                                                                    | 微信赞赏码                                                              |
@@ -94,15 +89,6 @@ AKEData 同时为以下工具和网站提供数据支持：
 项目中的游戏配置、运行数据和相关图片版权归鹰角网络及相关权利方所有。本项目仅供学习、交流和研究，不得用于侵犯权利方权益或其他非法用途。
 - 项目地址：[nagiyume/AKEDatabase](https://github.com/nagiyume/AKEDatabase)
 
-## 免责声明
-
-本项目是玩家同好项目，与鹰角网络、Gryphline 官方无关。所有商标归各自权利方所有。
-
-项目中的游戏配置、运行数据和相关图片版权归鹰角网络及相关权利方所有。本项目仅供学习、交流和研究，不得用于侵犯权利方权益或其他非法用途。
-
-项目开发中使用了 AI 工具辅助编程，数据和实现可能存在错误，请以游戏内实际表现为准。
-
-项目代码采用 [GNU Affero General Public License v3.0](./LICENSE)。
 项目开发中使用了 AI 工具辅助编程，数据和实现可能存在错误，请以游戏内实际表现为准。
 
 项目代码采用 [GNU Affero General Public License v3.0](./LICENSE)。
