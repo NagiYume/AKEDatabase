@@ -2,6 +2,29 @@ AKEData has moved to www.akedata.wiki. The former domain, akedata.top, now redir
 
 # AKEData Version Changelog
 
+### v1.2.17
+
+#### Miscellaneous
+
+- Added a Recipe Flow Viewer with item-name and item-ID search, upstream production recipes, and immediate downstream uses.
+- The flow combines machine, manual, hub, equipment, spaceship-cabin, fuel, power, mining, and fluid production relationships, with expandable alternative and repeated recipes.
+- Flow diagrams support zooming, panning, fullscreen viewing, and PNG export; selecting an item continues the trace through a new recipe chain.
+
+#### Rich text and skill popups
+
+- RichTextStyleTable colors now follow the site theme: light and eye-comfort modes use the first slot, while dark mode uses the second slot.
+- The Character Skill Popup Generator always uses the second slot for rich-text colors, icons, and scale, matching its dark game-style popup.
+
+#### Startup and routing
+
+- Fixed the first-load refresh that occurred near completion when the Service Worker first took control of a new user's page.
+- `plugin/id` deep links are preserved during startup and reload, with compatibility for legacy `v2_*` module links.
+- Fixed module-manifest failures being shown as 404 pages and stopped 404 handling from erasing the original route.
+
+#### Other
+
+- Updated the site domain embedded in image watermarks to `AKEData.wiki`.
+
 ### v1.2.16
 
 #### Archive

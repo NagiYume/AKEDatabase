@@ -69,12 +69,12 @@ http://localhost:5501/
 
 常用示例：
 
-| URL | 用途 |
-| --- | --- |
-| `/?plugin=v3_character` | 打开角色模块 |
-| `/?plugin=v3_character&id=chr_0002_endminm` | 打开指定角色 |
-| `/?plugin=v3_enemy&id=eny_0045_agtrinit` | 打开指定敌人 |
-| `/?plugin=v3_archive` | 打开档案一览 |
+| URL                                         | 用途               |
+| ------------------------------------------- | ------------------ |
+| `/?plugin=v3_character`                     | 打开角色模块       |
+| `/?plugin=v3_character&id=chr_0002_endminm` | 打开指定角色       |
+| `/?plugin=v3_enemy&id=eny_0045_agtrinit`    | 打开指定敌人       |
+| `/?plugin=v3_archive`                       | 打开档案一览       |
 | `/?plugin=misc&id=character_icon_generator` | 打开角色图标生成器 |
 
 路由使用 `history.replaceState`。设置中的“保持 URL 完整”关闭后，初始深链接仍可读取，但页面会清理地址栏参数。
@@ -183,4 +183,3 @@ git status --short
 - 客户端令牌和隐藏设置只是 UI 门槛，不是安全边界。
 
 项目代码采用 [GNU Affero General Public License v3.0](./LICENSE)。
-
