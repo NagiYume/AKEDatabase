@@ -19,6 +19,8 @@
     const DESCRIPTION_LINE_HEIGHT = 30.3;
     const FONT_FAMILY = '"HarmonyOS Sans SC Medium", "Microsoft YaHei", sans-serif';
     const MAX_SKILL_LEVEL = 12;
+    // The generated game-style popup keeps the dark-background slot regardless of site theme.
+    const SKILL_RICH_TEXT_STYLE_SLOT = 1;
     const SKILL_DEFAULT_COLOR = '#d6d6d6';
     const SKILL_DAMAGE_COLORS = Object.freeze({
         0: '#d6d6d6',
@@ -215,16 +217,15 @@
                     styles[id] = style;
                     return;
                 }
-                (row?.preDef || []).slice(0, 2).forEach((definition, index) => {
-                    const value = String(definition || '');
-                    const color = value.match(/<color=([^>]+)>/);
-                    const image = value.match(/<image="([^"]+)"\s+scale=([0-9.]+)>/);
-                    if (color) style.color[index] = color[1];
-                    if (image) {
-                        style.image[index] = normalizeRichTextImagePath(image[1]);
-                        style.scale[index] = Number(image[2]) || 1;
-                    }
-                });
+                const definition = row?.preDef?.[SKILL_RICH_TEXT_STYLE_SLOT];
+                const value = String(definition || '');
+                const color = value.match(/<color=([^>]+)>/);
+                const image = value.match(/<image="([^"]+)"\s+scale=([0-9.]+)>/);
+                if (color) style.color[SKILL_RICH_TEXT_STYLE_SLOT] = color[1];
+                if (image) {
+                    style.image[SKILL_RICH_TEXT_STYLE_SLOT] = normalizeRichTextImagePath(image[1]);
+                    style.scale[SKILL_RICH_TEXT_STYLE_SLOT] = Number(image[2]) || 1;
+                }
                 if (style.color.length || style.image.length) styles[id] = style;
             });
             return { hyperlinks, styles };
@@ -232,6 +233,13 @@
 
         function richTextStyle(id) {
             return richTextConfig.styles?.[id] || null;
+        }
+
+        function richTextStyleValue(styleDefinition, field) {
+            const values = styleDefinition?.[field];
+            if (!Array.isArray(values)) return null;
+            const value = values[SKILL_RICH_TEXT_STYLE_SLOT];
+            return value === undefined || value === null || value === '' ? null : value;
         }
 
         function richTextImageUrl(path) {
@@ -401,15 +409,13 @@
             const id = value.slice(1);
             const hyperlink = richTextConfig.hyperlinks?.[id];
             const definition = richTextStyle(isStyle ? id : hyperlink?.styleid);
-            const color = definition?.color?.[1]
-                || definition?.color?.[0]
+            const color = richTextStyleValue(definition, 'color')
                 || (isStyle ? SKILL_DEFAULT_COLOR : tagColor(id, SKILL_DEFAULT_COLOR));
-            const image = definition?.image?.[1]
-                || definition?.image?.[0]
+            const image = richTextStyleValue(definition, 'image')
                 || (!isStyle ? hyperlink?.iconPath : '');
             const scale = !isStyle && hyperlink?.iconPath
                 ? 1.25
-                : Number(definition?.scale?.[1] || definition?.scale?.[0]) || 1;
+                : Number(richTextStyleValue(definition, 'scale')) || 1;
             if (color) option.dataset.akeUiRichColor = color;
             if (image) option.dataset.akeUiRichImage = richTextImageUrl(image);
             option.dataset.akeUiRichScale = String(scale);
@@ -1156,9 +1162,9 @@
                 const styleDefinition = prefix === '@'
                     ? richTextStyle(tagId)
                     : richTextStyle(richTextConfig.hyperlinks?.[tagId]?.styleid);
-                const styleColor = styleDefinition?.color?.[1] || styleDefinition?.color?.[0];
-                const styleImage = styleDefinition?.image?.[1] || styleDefinition?.image?.[0];
-                const styleScale = styleDefinition?.scale?.[1] || styleDefinition?.scale?.[0] || 1;
+                const styleColor = richTextStyleValue(styleDefinition, 'color');
+                const styleImage = richTextStyleValue(styleDefinition, 'image');
+                const styleScale = Number(richTextStyleValue(styleDefinition, 'scale')) || 1;
                 const linkImage = richTextConfig.hyperlinks?.[tagId]?.iconPath;
                 style.color = styleColor || tagColor(tagId, style.color);
                 style.underline = prefix === '#';

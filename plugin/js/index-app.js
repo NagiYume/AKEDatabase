@@ -58,7 +58,7 @@
                 </div>
             `;
 
-            function showHomePage(checkTip = true) {
+            function showHomePage(checkTip = true, preserveUrl = false) {
                 stashMountedModule();
                 moduleLoadGeneration++;
                 activateModuleScope(null);
@@ -67,7 +67,7 @@
                 document.getElementById('homeTipButton')?.addEventListener('click', showTip);
                 document.querySelectorAll('.module-item').forEach(item => item.classList.remove('active'));
                 activeModuleId = null;
-                if (window.__akeRouter) window.__akeRouter.clearUrl();
+                if (window.__akeRouter && !preserveUrl) window.__akeRouter.clearUrl();
                 if (checkTip !== false) showUpdatedTip();
             }
 
@@ -96,7 +96,6 @@
                 activeModuleId = null;
                 const btn = document.getElementById('notFoundHomeBtn');
                 if (btn) btn.addEventListener('click', showHomePage);
-                if (window.__akeRouter) window.__akeRouter.clearUrl();
             }
 
             let config = {
@@ -835,22 +834,20 @@
                 if (lowerTheme === 'light') {
                     themeLink.removeAttribute('href');
                     themeLink.disabled = true;
-                    storage.set('akedata-theme', lowerTheme);
-                    if (modalThemeSelect) modalThemeSelect.value = lowerTheme;
-                    window.AKEUI?.refreshSelect(modalThemeSelect);
-                    return;
+                } else {
+                    const themeUrl = new URL(`theme/${lowerTheme}.css`, window.location.href);
+                    if (window.akeVersion) {
+                        const themeKey = themeUrl.pathname.replace(/^\/+/, '');
+                        themeUrl.searchParams.set('v', window.akeVersion.cssversion?.[themeKey] || window.akeVersion.appversion);
+                    }
+                    if (window.__akeForceRefreshTimestamp) themeUrl.searchParams.set('t', window.__akeForceRefreshTimestamp);
+                    themeLink.disabled = false;
+                    themeLink.href = themeUrl.href;
                 }
-                const themeUrl = new URL(`theme/${lowerTheme}.css`, window.location.href);
-                if (window.akeVersion) {
-                    const themeKey = themeUrl.pathname.replace(/^\/+/, '');
-                    themeUrl.searchParams.set('v', window.akeVersion.cssversion?.[themeKey] || window.akeVersion.appversion);
-                }
-                if (window.__akeForceRefreshTimestamp) themeUrl.searchParams.set('t', window.__akeForceRefreshTimestamp);
-                themeLink.disabled = false;
-                themeLink.href = themeUrl.href;
                 storage.set('akedata-theme', lowerTheme);
                 if (modalThemeSelect) modalThemeSelect.value = lowerTheme;
                 window.AKEUI?.refreshSelect(modalThemeSelect);
+                refreshRenderedRichTextStyles();
             }
 
             function initTheme() {
@@ -1115,6 +1112,38 @@
                 return result;
             }
 
+            // RichTextStyleTable slots map to the browser themes used by the data site.
+            function richTextStyleSlot() {
+                return config.theme === 'dark' ? 1 : 0;
+            }
+
+            function richTextStyleValue(styleDef, field) {
+                const values = styleDef?.[field];
+                return Array.isArray(values) ? values[richTextStyleSlot()] ?? null : null;
+            }
+
+            function escapeRichTextAttribute(value) {
+                return String(value ?? '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+            }
+
+            function refreshRenderedRichTextStyles() {
+                const textstyleCfg = window.textstyleConfig || {};
+                document.querySelectorAll('[data-ake-rich-style-id]').forEach(element => {
+                    const styleDef = textstyleCfg[element.dataset.akeRichStyleId];
+                    if (!styleDef) return;
+                    const color = richTextStyleValue(styleDef, 'color');
+                    const mark = richTextStyleValue(styleDef, 'mark');
+                    if (color) element.style.color = color;
+                    else element.style.removeProperty('color');
+                    if (mark) element.style.backgroundColor = mark;
+                    else element.style.removeProperty('background-color');
+                });
+            }
+
             window.__akeRouter = {
                 updateUrl(plugin, id) {
                     moduleViewState?.route(plugin, id);
@@ -1135,9 +1164,47 @@
                     history.replaceState(null, '', window.location.pathname);
                 }
             };
+
+            const MODULE_ROUTE_ALIASES = Object.freeze({
+                weapon: 'v3_weapon',
+                v2_weapon: 'v3_weapon',
+                character: 'v3_character',
+                v2_character: 'v3_character',
+                enemy: 'v3_enemy',
+                v2_enemy: 'v3_enemy',
+                equip: 'v3_equip',
+                v2_equip: 'v3_equip',
+                item: 'v3_item',
+                v2_item: 'v3_item',
+                achievement: 'v3_achievement',
+                dungeon: 'v3_dungeon',
+                v2_dungeon: 'v3_dungeon',
+                activity: 'v3_activity',
+                cc: 'v3_cc',
+                v2_cc: 'v3_cc',
+                skill: 'v3_skill',
+                skill_v2: 'v3_skill',
+                buff: 'v3_buff'
+            });
+
+            function normalizeModuleRouteId(moduleId) {
+                const normalized = String(moduleId || '');
+                return MODULE_ROUTE_ALIASES[normalized] || normalized;
+            }
+
+            function replaceRouteQuery(urlParams) {
+                const query = urlParams.toString();
+                const currentState = history.state && typeof history.state === 'object' ? history.state : null;
+                history.replaceState(currentState, '', window.location.pathname + (query ? `?${query}` : ''));
+            }
+
             window.configLoaded = Promise.all([
                 window.AKEV3.table('HyperlinkTextTable').then(normalizeHyperlinkTable).then(cfg => window.hyperlinkConfig = cfg).catch(() => {}),
-                window.AKEV3.table('RichTextStyleTable').then(normalizeRichTextStyleTable).then(cfg => window.textstyleConfig = cfg).catch(() => {})
+                window.AKEV3.table('RichTextStyleTable').then(normalizeRichTextStyleTable).then(cfg => {
+                    window.textstyleConfig = cfg;
+                    refreshRenderedRichTextStyles();
+                    return cfg;
+                }).catch(() => {})
             ]);
 
             window.renderRawValueTip = function(displayValue, rawValue, variableName) {
@@ -1322,15 +1389,16 @@
                                                 if (!styleDef) {
                                                     tagResult = tagName.includes('info') ? `<span style="color: #999999;">${renderedInner}</span>` : renderedInner;
                                                 } else {
-                                                    const color = styleDef.color?.[1] ?? styleDef.color?.[0] ?? null;
-                                                    const image = styleDef.image?.[1] ?? styleDef.image?.[0] ?? null;
-                                                    const scale = styleDef.scale?.[1] ?? styleDef.scale?.[0] ?? 1;
-                                                    const mark = styleDef.mark?.[1] ?? styleDef.mark?.[0] ?? null;
+                                                    const color = richTextStyleValue(styleDef, 'color');
+                                                    const image = richTextStyleValue(styleDef, 'image');
+                                                    const scale = richTextStyleValue(styleDef, 'scale') ?? 1;
+                                                    const mark = richTextStyleValue(styleDef, 'mark');
                                                     const textStyle = `${color ? `color: ${color};` : ''}${mark ? `background-color: ${mark};` : ''}`;
+                                                    const styleIdAttribute = ` data-ake-rich-style-id="${escapeRichTextAttribute(tagName)}"`;
                                                     if (image) {
-                                                        tagResult = `<span class="textstyle-icon-text"><img src="${resolveRichTextImageUrl(image)}" style="transform: scale(${scale});" alt=""><span style="${textStyle}">${renderedInner}</span></span>`;
+                                                        tagResult = `<span class="textstyle-icon-text"><img src="${resolveRichTextImageUrl(image)}" style="transform: scale(${scale});" alt=""><span${styleIdAttribute} style="${textStyle}">${renderedInner}</span></span>`;
                                                     } else {
-                                                        tagResult = textStyle ? `<span style="${textStyle}">${renderedInner}</span>` : renderedInner;
+                                                        tagResult = textStyle ? `<span${styleIdAttribute} style="${textStyle}">${renderedInner}</span>` : renderedInner;
                                                     }
                                                 }
                                             } else {
@@ -1341,17 +1409,18 @@
                                                     if (hyperDef) {
                                                         const styleid = hyperDef.styleid;
                                                         const styleDef = styleid ? textstyleCfg?.[styleid] : null;
-                                                        const color = styleDef?.color?.[1] ?? styleDef?.color?.[0] ?? null;
-                                                        const styleImage = styleDef?.image?.[1] ?? styleDef?.image?.[0] ?? null;
-                                                        const styleScale = styleDef?.scale?.[1] ?? styleDef?.scale?.[0] ?? 1;
-                                                        const mark = styleDef?.mark?.[1] ?? styleDef?.mark?.[0] ?? null;
+                                                        const color = richTextStyleValue(styleDef, 'color');
+                                                        const styleImage = richTextStyleValue(styleDef, 'image');
+                                                        const styleScale = richTextStyleValue(styleDef, 'scale') ?? 1;
+                                                        const mark = richTextStyleValue(styleDef, 'mark');
                                                         const textStyle = `${color ? `color: ${color};` : ''}${mark ? `background-color: ${mark};` : ''}`;
                                                         const image = hyperDef.iconPath || styleImage;
                                                         const scale = hyperDef.iconPath ? 1.25 : styleScale;
                                                         const iconHtml = image
                                                             ? `<img src="${resolveRichTextImageUrl(image)}" style="transform: scale(${scale}); width: auto; height: 1em; display: inline-block; vertical-align: middle; margin-right: 0.15em;" alt="">`
                                                             : '';
-                                                        const linkHtml = `<span class="tag-hyperlink" data-tag-id="${tagName}"${textStyle ? ` style="${textStyle}"` : ''}>${renderedInner}</span>`;
+                                                        const styleIdAttribute = styleid ? ` data-ake-rich-style-id="${escapeRichTextAttribute(styleid)}"` : '';
+                                                        const linkHtml = `<span class="tag-hyperlink" data-tag-id="${tagName}"${styleIdAttribute}${textStyle ? ` style="${textStyle}"` : ''}>${renderedInner}</span>`;
                                                         tagResult = iconHtml
                                                             ? `<span class="textstyle-icon-text">${iconHtml}${linkHtml}</span>`
                                                             : linkHtml;
@@ -1606,20 +1675,15 @@
 
             async function initApp() {
                 const urlParams = new URLSearchParams(window.location.search);
-                const navigationEntry = window.performance?.getEntriesByType?.('navigation')?.[0];
-                const legacyNavigation = window.performance?.navigation;
-                const isReload = navigationEntry?.type === 'reload'
-                    || Boolean(legacyNavigation && legacyNavigation.type === legacyNavigation.TYPE_RELOAD);
-                if (isReload && history.state?.akeModuleSession === true) {
-                    urlParams.delete('plugin');
-                    urlParams.delete('id');
-                }
-                const deepPlugin = urlParams.get('plugin');
+                const requestedPlugin = urlParams.get('plugin');
+                const deepPlugin = normalizeModuleRouteId(requestedPlugin);
                 const deepId = urlParams.get('id');
-                if (urlParams.has('t') || (isReload && history.state?.akeModuleSession === true)) {
+                if (requestedPlugin && deepPlugin !== requestedPlugin) {
+                    urlParams.set('plugin', deepPlugin);
+                }
+                if (urlParams.has('t') || (requestedPlugin && deepPlugin !== requestedPlugin)) {
                     urlParams.delete('t');
-                    const query = urlParams.toString();
-                    history.replaceState(null, '', window.location.pathname + (query ? `?${query}` : ''));
+                    replaceRouteQuery(urlParams);
                 }
 
                 await window.akeI18n?.ready;
@@ -1630,7 +1694,7 @@
                 config.language = window.akeI18n?.getLanguage?.() || 'CH';
                 renderLanguageOptions();
                 renderDataSourceSettings();
-                showHomePage(false);
+                showHomePage(false, Boolean(deepPlugin));
                 const preloadTextTable = () => window.AKEV3?.preloadTextTable?.().catch(error => {
                     console.warn('无法预加载当前语言文本映射表，进入模块时将重试。', error);
                 });
@@ -1677,7 +1741,13 @@
                     window.__akeRouter.stripUrl();
                 }
 
-                if (deepPlugin) {
+                if (deepPlugin && !modulesReady) {
+                    window.AKEUI.setState(contentArea, {
+                        state: 'error',
+                        layout: 'page',
+                        message: tr('errors.moduleManifestRead')
+                    });
+                } else if (deepPlugin) {
                     const module = allModules.find(m => m.id === deepPlugin);
                     if (module) {
                         if ((module.hidden && !config.showHidden) || (module.token && !isModuleUnlocked(module))) {

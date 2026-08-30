@@ -274,16 +274,6 @@
     async function registerServiceWorker(version) {
         if (!('serviceWorker' in navigator) || !version) return;
         const dataSource = await window.akeDataSource?.ready;
-        let reloadingForControl = false;
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-            if (reloadingForControl || navigator.serviceWorker.controller) {
-                const reloadKey = `akedata-sw-controlled-${version.appversion}`;
-                if (storage.get(reloadKey) === 'true') return;
-                reloadingForControl = true;
-                storage.set(reloadKey, 'true');
-                location.reload();
-            }
-        });
         const workerUrl = new URL('/ake-sw.js', window.location.href);
         workerUrl.searchParams.set('v', version.appversion);
         workerUrl.searchParams.set('dataBaseUrl', dataSource?.baseUrl || '');
