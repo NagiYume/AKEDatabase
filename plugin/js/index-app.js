@@ -41,7 +41,7 @@
             const HOME_CONTENT = `
                 <div class="welcome-home">
                     <button class="home-tip-button" id="homeTipButton" type="button" data-i18n="home.announcement">Announcement</button>
-                    <img src="/public/images/index/main.jpg"
+                    <img src="/public/images/index/main.png"
                          alt="home.heroImageAlt"
                          data-i18n-alt="home.heroImageAlt"
                          class="home-image">
