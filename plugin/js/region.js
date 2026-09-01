@@ -28,7 +28,8 @@
     }
 
     function baseMineOutputPerMinute(itemId, tables) {
-        const miner = Object.values(tables.factoryMinerTable || {}).find(row => (row.mineable || []).some(entry => entry.miningItemId === itemId));
+        const producers = [tables.factoryMinerTable, tables.factoryGasMinerTable].flatMap(table => Object.values(table || {}));
+        const miner = producers.find(row => (row.mineable || []).some(entry => entry.miningItemId === itemId));
         const mineable = (miner?.mineable || []).find(entry => entry.miningItemId === itemId);
         const roundMs = Number(miner?.msPerRound);
         const produceRate = Number(mineable?.produceRate);
@@ -261,7 +262,7 @@
             settlementTable: 'SettlementBasicDataTable', settlementTagTable: 'SettlementTagTable', shopChannelTable: 'ShopChannelDevelopmentTable',
             shopGoodsTable: 'ShopGoodsTable', domainDepotTable: 'DomainDepotTable', domainDepotLevelTable: 'DomainDepotLevelTable',
             kiteStationTable: 'KiteStationLevelTable', recycleBinTable: 'RecycleBinTable', sewageTable: 'FactorySewageTreatPlantStoreTable',
-            simulationTable: 'SimulationTrainingLevelTable', factoryMinerTable: 'FactoryMinerTable'
+            simulationTable: 'SimulationTrainingLevelTable', factoryMinerTable: 'FactoryMinerTable', factoryGasMinerTable: 'FactoryGasMinerTable'
         };
         const values = await Promise.all(Object.values(tableNames).map(name => window.AKEV3.table(name)));
         const tables = Object.fromEntries(Object.keys(tableNames).map((key, index) => [key, values[index]]));
