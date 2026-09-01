@@ -263,7 +263,8 @@
                         ? { type: 'rarity', value: item.rarity }
                         : item.outline ? { type: 'status', value: item.outline.replace(/^status-/, '') } : null
                 });
-                card.addEventListener('click', () => {
+                card.addEventListener('click', event => {
+                    if (event.target.closest('.tag-hyperlink')) return;
                     options.onSelect(item);
                     const selector = options.sidebarSelector?.(item);
                     if (!selector) return;
@@ -279,6 +280,28 @@
                 const titleRow = document.createElement('div');
                 titleRow.className = 'ake-ui-card__header';
                 if (visual) titleRow.appendChild(visual);
+                if (visual && item.mediaIcons?.length) {
+                    const mediaIcons = document.createElement('span');
+                    mediaIcons.className = 'ake-ui-card__media-icons character-card-corner-icons';
+                    item.mediaIcons.slice(0, 2).forEach(icon => {
+                        if (!icon?.src) return;
+                        const anchor = document.createElement('span');
+                        anchor.className = 'character-card-corner-icon';
+                        if (icon.tagId) {
+                            anchor.classList.add('tag-hyperlink');
+                            anchor.dataset.tagId = icon.tagId;
+                        } else if (icon.label) {
+                            anchor.title = icon.label;
+                        }
+                        if (icon.kind) anchor.dataset.kind = icon.kind;
+                        const image = document.createElement('img');
+                        image.src = icon.src;
+                        image.alt = icon.label || '';
+                        anchor.appendChild(image);
+                        mediaIcons.appendChild(anchor);
+                    });
+                    titleRow.appendChild(mediaIcons);
+                }
                 const heading = document.createElement('div');
                 heading.className = 'ake-ui-card__heading';
                 const cardTitle = document.createElement('h3');

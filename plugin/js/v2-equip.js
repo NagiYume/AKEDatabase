@@ -1,5 +1,6 @@
 (function() {
         const t = window.akeI18n.scope('modules.equip');
+        const commonT = window.akeI18n.scope('common');
         let allSuits = [];
         let rawAllSuits = [];
         let activeSuitId = null;
@@ -9,6 +10,8 @@
         let compositeNameMap = {};
         let modifierTypeMap = {};
         let domainMap = {};
+        let tableAttributeNames = {};
+        const selectedEquipmentAttrs = [new Set(), new Set(), new Set()];
         let detailRequestGeneration = 0;
         let manifestRequestGeneration = 0;
 
@@ -46,6 +49,23 @@
             return attrMap[String(attrType)] || t('attributeFallback', { type: attrType });
         }
 
+        function equipmentAttrKey(modifier) {
+            return `${modifier?.modifierType ?? ''}:${modifier?.attrType ?? ''}:${modifier?.compositeAttr || ''}`;
+        }
+
+        function equipmentMatchesTerms(item) {
+            if (Number(item?.rarity) !== 5) return false;
+            return selectedEquipmentAttrs.every((selected, index) => {
+                if (!selected.size) return true;
+                const modifier = (item.displayAttrModifiers || []).find(entry => Number(entry.attrIndex) === index + 1);
+                return modifier ? selected.has(equipmentAttrKey(modifier)) : false;
+            });
+        }
+
+        function hasEquipmentTermFilter() {
+            return selectedEquipmentAttrs.some(selected => selected.size);
+        }
+
         function getDomainName(domainId) {
             return domainMap[domainId] || (getCurrentShowHidden() ? domainId : '');
         }
@@ -77,12 +97,45 @@
         }
 
         function filterSuits(suits) {
-            if (!searchTerm) return suits;
+            if (!searchTerm && !hasEquipmentTermFilter()) return suits;
             const t = searchTerm.toLowerCase();
             return suits.filter(s =>
-                (s.name && s.name.toLowerCase().includes(t)) ||
-                (s.suitID && s.suitID.toLowerCase().includes(t))
+                (!searchTerm || (s.name && s.name.toLowerCase().includes(t)) || (s.suitID && s.suitID.toLowerCase().includes(t))) &&
+                (!hasEquipmentTermFilter() || (s.equipmentIndex || []).some(equipmentMatchesTerms))
             );
+        }
+
+        function allEquipmentIndex() { return allSuits.flatMap(s => s.equipmentIndex || []); }
+
+        function generateAttributeFilters() {
+            const filterPanel = document.getElementById('v2equipFilterBar');
+            const containers = [0, 1, 2].map(index => document.getElementById(`v2equipAttributeFilter${index}`));
+            const updateFilterSummary = () => {
+                const count = selectedEquipmentAttrs.reduce((total, selected) => total + selected.size, 0);
+                window.AKEUI?.updateFilterPanel(filterPanel, {
+                    summary: count ? commonT('filterCount', { count }) : commonT('filter')
+                });
+            };
+            containers.forEach((container, index) => {
+                if (!container) return;
+                const attrs = new Map();
+                allEquipmentIndex().filter(item => Number(item.rarity) === 5).forEach(item => {
+                    const mod = (item.displayAttrModifiers || []).find(entry => Number(entry.attrIndex) === index + 1);
+                    if (!mod) return;
+                    const key = equipmentAttrKey(mod);
+                    const label = item.attributeNames?.[key] || getAttrName(mod.attrType, mod.compositeAttr);
+                    if (!attrs.has(key)) attrs.set(key, label);
+                });
+                container.innerHTML = '';
+                [...attrs.entries()].sort((a, b) => a[1].localeCompare(b[1])).forEach(([key, label]) => container.appendChild(window.AKEUI.filterButton({
+                    label, pressed: selectedEquipmentAttrs[index].has(key), onChange: pressed => {
+                        pressed ? selectedEquipmentAttrs[index].add(key) : selectedEquipmentAttrs[index].delete(key);
+                        updateFilterSummary();
+                        renderSuitList();
+                    }
+                })));
+            });
+            updateFilterSummary();
         }
 
         function createEquipDirectoryItem(suit, options = {}) {
@@ -173,6 +226,11 @@
             if (!container) return;
 
             const filtered = filterSuits(allSuits);
+            if (hasEquipmentTermFilter()) {
+                container.innerHTML = filtered.map(suit => createEquipDirectoryItem(suit, { active: false, onSelect: () => {} }).outerHTML).join('');
+                detailContainer.innerHTML = renderFilteredEquipment(filtered);
+                return;
+            }
             container.innerHTML = '';
 
             if (filtered.length === 0) {
@@ -231,6 +289,13 @@
                     loadSuitDetail(ai, detailContainer);
                 }
             }
+        }
+
+        function renderFilteredEquipment(suits) {
+            const itemRows = suits.flatMap(suit => (suit.equipmentIndex || []).map(item => ({ ...item, suitName: suit.name })));
+            const cards = itemRows.filter(equipmentMatchesTerms);
+            const html = cards.map(item => renderEquipCard(item.itemId, { ...item, displayAttrModifiers: item.displayAttrModifiers || [] }, { name: { text: item.name }, rarity: item.rarity, iconId: item.itemId }, null, null, {}, null, Object.fromEntries(itemRows.map(row => [row.itemId, { name: { text: row.name }, rarity: row.rarity, iconId: row.itemId }])) , null, false, itemRows)).join('');
+            return `<article class="ake-ui-detail" data-detail-kind="equipment-filter"><section class="ake-ui-section"><div class="ake-ui-section__header"><h2 class="ake-ui-section__title">${t('attributeFilter')}</h2></div><div class="ake-ui-card-grid" data-size="wide">${html || `<p>${t('none')}</p>`}</div></section></article>`;
         }
 
         function renderSubStatList(displayAttrModifiers) {
@@ -382,7 +447,7 @@
             return `<div class="v2eq-deco-desc"><b>${escapeHtml(t('acquisition.title', null, 'Acquisition and Unlock'))}</b><div>${escapeHtml(templateText)}${sourceIdHtml}</div>${mapPointsHtml}${direct}</div>`;
         }
 
-        function renderEquipCard(itemId, equipData, itemData, formulaData, formulaChainData, guaranteeRules, enhanceConst, itemTable, acquisition, isVersionAdded) {
+        function renderEquipCard(itemId, equipData, itemData, formulaData, formulaChainData, guaranteeRules, enhanceConst, itemTable, acquisition, isVersionAdded, recommendationPool) {
             const name = itemData?.name?.text || itemId;
             const rarity = itemData?.rarity ?? 0;
             const iconId = itemData?.iconId || '';
@@ -409,7 +474,17 @@
 
             const formulaBtnHtml = renderFormulaBtn(formulaData, formulaChainData, itemTable);
             const guaranteeBtnHtml = renderGuaranteeBtn(equipData.displayAttrModifiers, guaranteeRules, enhanceConst);
-            const hasActions = formulaBtnHtml || guaranteeBtnHtml;
+            const pool = recommendationPool || [];
+            const recommendationRows = (equipData.displayAttrModifiers || []).filter(mod => mod.attrIndex > 0).map(mod => {
+                const key = equipmentAttrKey(mod);
+                const value = Number(mod.attrValue);
+                const candidates = pool.filter(candidate => candidate.itemId !== itemId && candidate.partType === partType && (candidate.displayAttrModifiers || []).some(other => equipmentAttrKey(other) === key && Number(other.attrValue) > value))
+                    .sort((a, b) => Number((b.displayAttrModifiers || []).find(other => equipmentAttrKey(other) === key)?.attrValue || 0) - Number((a.displayAttrModifiers || []).find(other => equipmentAttrKey(other) === key)?.attrValue || 0) || a.itemId.localeCompare(b.itemId)).slice(0, 2);
+                const rows = (candidates.length ? candidates : [{ ...equipData, itemId, name, icon: iconSrc }]).map(candidate => `<div class="v2eq-recommend-item"><img src="${candidate.icon || getEquipIconSrc(candidate.itemId, candidate.iconId)}" alt=""><span>${escapeHtml(candidate.name || itemTable[candidate.itemId]?.name?.text || candidate.itemId)}</span></div>`).join('');
+                return `<div class="v2eq-recommend-row${candidates.length ? ' is-better-match' : ''}"><b>${escapeHtml(getAttrName(mod.attrType, mod.compositeAttr))}</b>${rows}</div>`;
+            }).join('');
+            const recommendationBtn = recommendationRows ? window.AKEUI.popover({ label: t('refiningRecommendation'), placement: 'bottom', className: 'v2eq-recommend-popover', panelElement: 'div', content: window.AKEUI.fragment(recommendationRows) })?.outerHTML || '' : '';
+            const hasActions = formulaBtnHtml || guaranteeBtnHtml || recommendationBtn;
             const addedLabel = window.akeData?.t('versionDiff.added', null, '新增') || '新增';
 
             return `
@@ -421,7 +496,7 @@
                                 <h3 class="ake-ui-card__title">${escapeHtml(name)}</h3>
                                 ${showHidden ? `<span class="ake-ui-card__id">${escapeHtml(itemId)}</span>` : ''}
                             </div>
-                            ${hasActions ? `<div class="ake-ui-card__header-actions">${formulaBtnHtml}${guaranteeBtnHtml}</div>` : ''}
+                            ${hasActions ? `<div class="ake-ui-card__header-actions">${formulaBtnHtml}${guaranteeBtnHtml}${recommendationBtn}</div>` : ''}
                         </header>
                         <div class="ake-ui-card__badges">
                             <span class="ake-ui-badge">${partName}</span>
@@ -537,6 +612,7 @@
             const enhanceConst = data.equipconst || null;
             const acquisitionTable = data.equipacquisitiontable || {};
             const addedEquipIds = new Set(data.__versionAddedEquipIds || []);
+            const recommendationPool = allEquipmentIndex();
 
             if (!equipTable) return '';
 
@@ -559,7 +635,7 @@
                 const formulaId = reverseFormulaTable[itemId] || '';
                 const fData = formulaId ? formulaTable[formulaId] : null;
                 const chainData = fData?.level ? formulaChainTable[fData.level] : null;
-                cardsHtml += renderEquipCard(itemId, equipData, iData, fData, chainData, guaranteeRules, enhanceConst, itemTable, acquisitionTable[itemId], addedEquipIds.has(itemId));
+                cardsHtml += renderEquipCard(itemId, equipData, iData, fData, chainData, guaranteeRules, enhanceConst, itemTable, acquisitionTable[itemId], addedEquipIds.has(itemId), recommendationPool);
             });
 
             return `
@@ -674,6 +750,8 @@
             const suits = await loadSuitManifest(showHidden);
             if (generation !== manifestRequestGeneration) return;
             allSuits = suits;
+            tableAttributeNames = suits.flatMap(suit => suit.equipmentIndex || []).map(item => item.attributeNames || {}).reduce((merged, names) => Object.assign(merged, names), {});
+            generateAttributeFilters();
             renderSuitList();
         }
 
@@ -711,6 +789,7 @@
 
             window.addEventListener('globalConfigChanged', () => {
                 searchTerm = '';
+                selectedEquipmentAttrs.forEach(selected => selected.clear());
                 const si = document.getElementById('v2equipSearchInput');
                 if (si) si.value = '';
                 refreshModule();

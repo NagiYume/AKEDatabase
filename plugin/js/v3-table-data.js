@@ -43,6 +43,11 @@
         return encoded.padStart(POINT_TOKEN_LENGTH, '0');
     }
 
+    function pointShareUrl(pointId) {
+        const token = encodePointIdToken(pointId);
+        return token ? `https://oem.re/${token}` : '';
+    }
+
     function equipTemplateRewardParts(rewardId) {
         const match = String(rewardId || '').match(/^reward_eco_([a-z0-9_-]+)_int_(\d+)$/i);
         return match ? { sceneId: match[1], localId: match[2] } : null;
@@ -370,12 +375,28 @@
     }
 
     async function characterManifest(version) {
-        const [chars, growth, maps, rewards, weaponRecommendations] = await Promise.all([
+        const [chars, growth, maps, rewards, weaponRecommendations, shipChars, shipSkills] = await Promise.all([
             table('CharacterTable', version), table('CharGrowthTable', version), loadMaps(), table('RewardTable', version),
-            table('CharWpnRecommendTable', version)
+            table('CharWpnRecommendTable', version), table('SpaceshipCharSkillTable', version), table('SpaceshipSkillTable', version)
         ]);
         const rows = Object.entries(chars).map(([charId, row], index) => {
             const grow = growth[charId] || {};
+            const logisticsSkills = Object.values((shipChars[charId]?.skillList || []).reduce((groups, entry) => {
+                const skill = shipSkills[entry.skillId];
+                if (!skill) return groups;
+                const key = String(entry.skillIndex ?? skill.sortId ?? entry.skillId);
+                const current = groups[key];
+                if (!current || Number(skill.level || 0) > Number(current.level || 0)) {
+                    groups[key] = {
+                        level: skill.level || 0,
+                        name: text(skill.talentName, text(skill.name, entry.skillId)),
+                        desc: text(skill.desc),
+                        roomType: skill.roomType,
+                        icon: skill.icon ? `/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/spaceship/spaceshipskillicon/${skill.icon}.png` : ''
+                    };
+                }
+                return groups;
+            }, {})).slice(0, 2);
             return {
                 charId, name: text(row.name, charId), rarity: row.rarity,
                 charType: maps.char_type_map?.[grow.charTypeId] || grow.charTypeId,
@@ -384,10 +405,11 @@
                 professionId: grow.profession,
                 weapontype: maps.weapon_id_map?.[String(grow.weaponType)] || grow.weaponType,
                 weaponTypeId: grow.weaponType,
-                mainAttrType: row.mainAttrType, charBattleTag: grow.charBattleTag || [],
+                mainAttrType: row.mainAttrType, subAttrType: row.subAttrType ?? grow.subAttrType,
+                charBattleTag: grow.charBattleTag || [], logisticsSkills,
                 icon: icon('character', charId), contentFile: `/__v3/character/${charId}.json`,
                 sourceOrder: index, hidden: false,
-                __diffSignature: diffSignature([row, grow, characterSupplementSignature(
+                __diffSignature: diffSignature([row, grow, shipChars[charId], logisticsSkills, characterSupplementSignature(
                     charId, rewards, weaponRecommendations
                 )])
             };
@@ -397,11 +419,12 @@
 
     async function characterDetail(id, version) {
         const [chars, growth, potentials, talentEffects, skills, shipChars, shipSkills, items, professions, rewards,
-            weaponRecommendations] = await Promise.all([
+            weaponRecommendations, responsiveDialogs, audioDialogs, dialogTexts, aiBarkTexts] = await Promise.all([
             table('CharacterTable', version), table('CharGrowthTable', version), table('CharacterPotentialTable', version),
             table('PotentialTalentEffectTable', version), table('SkillPatchTable', version), table('SpaceshipCharSkillTable', version),
             table('SpaceshipSkillTable', version), table('ItemTable', version), table('CharProfessionTable', version),
-            table('RewardTable', version), table('CharWpnRecommendTable', version)
+            table('RewardTable', version), table('CharWpnRecommendTable', version), table('ResponsiveDialog', version),
+            table('AudioDialog', version), table('DialogTextTable', version), table('AIBarkText', version)
         ]);
         const char = chars[id] || {};
         const grow = growth[id] || {};
@@ -430,21 +453,59 @@
         Object.values(weaponRecommendations[id] || {}).forEach(ids => {
             (Array.isArray(ids) ? ids : []).forEach(itemId => itemIds.add(itemId));
         });
+        const normalizeVoiceId = value => String(value || '').split('/').pop().replace(/\.wem$/i, '').toLowerCase();
+        const profileVoiceIds = new Set((char.profileVoice || []).map(row => normalizeVoiceId(row.voId)).filter(Boolean));
+        const textByAudioOverride = Object.values(dialogTexts || {}).reduce((map, row) => {
+            const value = row?.dialogText?.text || '';
+            if (row?.audioOverride && value) map[row.audioOverride] = value;
+            return map;
+        }, {});
+        const specialVoices = [];
+        const seenSpecial = new Set();
+        Object.values(responsiveDialogs || {}).forEach(dialog => Object.entries(dialog?.speakers || {}).forEach(([speakerKey, speaker]) => {
+            const speakerId = String(speaker?.speakerChannel || speakerKey || '');
+            if (speakerId && speakerId !== id && !speakerId.includes(id)) return;
+            Object.entries(speaker?.triggers || {}).forEach(([trigger, triggerData]) => {
+                (triggerData?.response || []).forEach(responseId => {
+                    const key = String(responseId);
+                    if (!key) return;
+                    const audio = audioDialogs?.[key] || audioDialogs?.[responseId];
+                    if (!audio?.path) return;
+                    const fileName = audio.path.split('/').pop()?.replace(/\.wem$/i, '') || key;
+                    const voId = fileName || audio.overrideWwiseEvent || key;
+                    const normalizedVoId = normalizeVoiceId(voId);
+                    if (!normalizedVoId || profileVoiceIds.has(normalizedVoId) || seenSpecial.has(normalizedVoId)) return;
+                    seenSpecial.add(normalizedVoId);
+                    specialVoices.push({ voId, responseId: key, trigger, category: trigger.split('_')[0] || 'other', path: audio.path,
+                        text: textByAudioOverride[fileName] || textByAudioOverride[audio.overrideWwiseEvent]
+                            || aiBarkTexts?.[key]?.barkText?.text || '' });
+                });
+            });
+        }));
+        specialVoices.sort((a, b) => a.category.localeCompare(b.category) || a.trigger.localeCompare(b.trigger) || a.voId.localeCompare(b.voId));
         return {
             charId: id, charactertable: char, chargrowthtable: grow, characterpotentialtable: potential,
             potentialtalenteffecttable: pick(talentEffects, talentIds.concat(potentialIds)),
             skillpatchtable: pick(skills, Array.from(skillIds)), spaceshipcharskilltable: shipRow,
             spaceshipskilltable: pick(shipSkills, shipIds), itemtable: items[id] || {}, costitemtable: pick(items, Array.from(itemIds)),
             charprofessiontable: professions[char.profession] || {}, giftrewardtable: giftRewards,
-            charwpnrecommendtable: weaponRecommendations[id] || {}
+            charwpnrecommendtable: weaponRecommendations[id] || {}, specialvoicetable: specialVoices
         };
     }
 
     async function weaponManifest(version) {
-        const [weapons, items] = await Promise.all([table('WeaponBasicTable', version), table('ItemTable', version)]);
+        const [weapons, items, tags, gems] = await Promise.all([
+            table('WeaponBasicTable', version), table('ItemTable', version), table('GemTagKeyToWeaponTable', version), table('GemTable', version)
+        ]);
+        const weaponTagMeta = Object.values(gems || {}).reduce((map, gem) => {
+            if (gem?.tagId) map[gem.tagId] = { label: text(gem.tagName, gem.tagId), dimension: Number(gem.termType), sort: Number(gem.sortOrder || 0) };
+            return map;
+        }, {});
         const rows = Object.entries(weapons).map(([weaponId, row], index) => {
             const item = items[weaponId] || {};
+            const weaponTags = Object.entries(tags || {}).filter(([, tag]) => (tag.list || []).includes(weaponId)).map(([tagId]) => tagId);
             return { weaponId, name: text(item.name, weaponId), rarity: row.rarity, weaponType: row.weaponType,
+                weaponTags, weaponTagMeta,
                 icon: icon('weapon', weaponId, item.iconId), contentFile: `/__v3/weapon/${weaponId}.json`, sourceOrder: index, hidden: false,
                 __diffSignature: diffSignature([row, item]) };
         });
@@ -494,7 +555,20 @@
     }
 
     async function equipManifest(version) {
-        const [suits, equips, items] = await Promise.all([table('EquipSuitTable', version), table('EquipTable', version), table('ItemTable', version)]);
+        const [suits, equips, items, attributeFilters, attributeShows] = await Promise.all([
+            table('EquipSuitTable', version), table('EquipTable', version), table('ItemTable', version), table('AttributeFilterTable', version),
+            table('AttributeShowConfigTable', version)
+        ]);
+        const attributeNames = {};
+        Object.entries(attributeShows || {}).forEach(([attrType, group]) => (group.list || []).forEach(entry => {
+            if (entry.name?.text) attributeNames[`${entry.attributeModifier}:${attrType}:`] = entry.name.text;
+        }));
+        Object.values(attributeFilters || {}).forEach(group => (group.list || []).forEach(entry => {
+            if (!entry.name?.text) return;
+            const key = `${entry.attributeModifier}:${entry.attributeType}:${entry.compositeAttr || ''}`;
+            attributeNames[key] = entry.name.text;
+            if (entry.compositeAttr) attributeNames[entry.compositeAttr] = entry.name.text;
+        }));
         const rows = Object.entries(suits);
         const unsuited = Object.keys(equips).filter(id => !rows.some(([, suit]) => (suit.equipList || []).includes(id)));
         if (unsuited.length) rows.unshift(['suit_none', { equipList: unsuited, list: [] }]);
@@ -507,6 +581,8 @@
             const highest = items[highestId] || {};
             return { suitID, name: text(row.list?.[0]?.suitName, suitID === 'suit_none' ? window.akeI18n?.t('modules.equip.independentEquipment') : suitID), rarity: highest.rarity || 1,
                 icon: icon('equip', highestId, highest.iconId), equipCount: (row.equipList || []).length, isIndependentGroup: suitID === 'suit_none',
+                equipmentIndex: equipIds.map(itemId => { const equip = equips[itemId] || {}; const item = items[itemId] || {}; return { itemId, name: text(item.name, itemId), rarity: item.rarity || 0, icon: icon('equip', itemId, item.iconId), partType: equip.partType,
+                    minWearLv: equip.minWearLv, domainId: equip.domainId || '', displayBaseAttrModifier: equip.displayBaseAttrModifier || {}, displayAttrModifiers: equip.displayAttrModifiers || [], attributeNames }; }),
                 contentFile: `/__v3/equip/${suitID}.json`, sourceOrder: index, hidden: false,
                 __diffGroupSignature: diffSignature((row.list || []).map(entry => pick(entry, ['suitName', 'skillID']))),
                 __diffEntitySignatures: Object.fromEntries(equipIds.map(itemId => [itemId, diffSignature([
@@ -1134,10 +1210,11 @@
                 : Promise.all((entries || []).map(entry => table(entry.name, entry.version, { ...options, ...entry })));
         },
         text,
+        pointShareUrl,
         async equipTemplateShareUrl(rewardIds) {
             for (const rewardId of rewardIds || []) {
-                const token = encodePointIdToken(await equipTemplatePointId(rewardId));
-                if (token) return `https://oem.re/${token}`;
+                const url = pointShareUrl(await equipTemplatePointId(rewardId));
+                if (url) return url;
             }
             return '';
         }

@@ -8,6 +8,7 @@
         let searchTerm = '';
         let selectedTagIds = new Set();
         let selectedStatus = null;
+        let gachaMode = false;
 
         const IMAGE_BASE_PATH = '/public/images/';
 
@@ -17,6 +18,35 @@
 
         function parseText(text) {
             return window.parseText(text, IMAGE_BASE_PATH);
+        }
+
+        async function renderGachaRecords() {
+            const detail = document.getElementById('activityDetail');
+            const list = document.getElementById('activityList');
+            if (!detail || !window.AKEV3?.table) return;
+            detail.innerHTML = `<div class="ake-ui-state" data-state="loading">${t('loading')}</div>`;
+            try {
+                const [chars, weapons, times] = await Promise.all([
+                    window.AKEV3.table('GachaCharPoolTable'), window.AKEV3.table('GachaWeaponPoolTable'), window.AKEV3.table('TimeRangeTable')
+                ]);
+                const records = [];
+                const add = (type, poolId, row) => {
+                    const rangeId = row.clientTopTimeId || `time_${poolId}`;
+                    const range = times[rangeId]?.timeRangeList?.[0]
+                        || times[`time_activity_gacha_${poolId}`]?.timeRangeList?.[0]
+                        || {};
+                    records.push({ type, poolId, name: row.name?.text || poolId, open: range.openTime || '', close: range.closeTime || '', duration: range.openTime && range.closeTime ? Math.max(0, Math.ceil((new Date(range.closeTime) - new Date(range.openTime)) / 86400000)) : null });
+                };
+                Object.entries(chars || {}).forEach(([id, row]) => add(t('gacha.character', null, '角色寻访'), id, row));
+                Object.entries(weapons || {}).forEach(([id, row]) => add(t('gacha.weapon', null, '武库寻访'), id, row));
+                records.sort((a, b) => String(a.open).localeCompare(String(b.open)) || a.poolId.localeCompare(b.poolId));
+                list.innerHTML = '';
+                detail.innerHTML = `<article class="ake-ui-detail" data-detail-kind="gacha"><section class="ake-ui-section"><div class="ake-ui-section__header"><h2 class="ake-ui-section__title">${t('gachaRecords', null, '寻访记录')}</h2></div><div class="ake-ui-table-shell"><table class="ake-ui-table"><thead><tr><th>${t('gacha.type', null, '类型')}</th><th>${t('gacha.pool', null, '卡池')}</th><th>${t('gacha.start', null, '开始')}</th><th>${t('gacha.end', null, '结束')}</th><th>${t('gacha.duration', null, '持续天数')}</th></tr></thead><tbody>${records.map(row => `<tr><td>${row.type}</td><td>${row.name}</td><td>${formatTime(row.open)}</td><td>${formatTime(row.close)}</td><td>${row.duration ?? t('dates.permanent')}</td></tr>`).join('')}</tbody></table></div></section></article>`;
+                const timeline = renderGachaTimeline(records);
+                if (timeline) detail.querySelector('article')?.prepend(timeline);
+            } catch (error) {
+                detail.innerHTML = `<div class="ake-ui-state" data-state="error">${t('loadFailed', { message: error.message })}</div>`;
+            }
         }
 
         function getActivityStatus(openTime, closeTime) {
@@ -147,6 +177,8 @@
 
         const TIMELINE_DAY_MS = 24 * 60 * 60 * 1000;
         const TIMELINE_DAY_WIDTH = 28;
+        const TIMELINE_WEEK_MS = 7 * TIMELINE_DAY_MS;
+        const GACHA_TIMELINE_WEEK_WIDTH = 20;
         const TIMELINE_PAST_DAYS = 14;
         const TIMELINE_FUTURE_DAYS = 90;
 
@@ -193,9 +225,86 @@
             return date;
         }
 
+        function startOfWeek(value) {
+            const date = startOfDay(value);
+            const mondayOffset = (date.getDay() + 6) % 7;
+            date.setDate(date.getDate() - mondayOffset);
+            return date;
+        }
+
         function timelineLocale() {
             const language = window.akeData?.getLanguage?.() || 'CH';
             return { CH: 'zh-CN', TC: 'zh-TW', JP: 'ja-JP', KR: 'ko-KR', EN: 'en-US' }[language] || 'en-US';
+        }
+
+        function renderGachaTimeline(records) {
+            const timed = records.map(record => ({
+                record,
+                open: parseActivityTime(record.open),
+                close: parseActivityTime(record.close)
+            })).filter(entry => entry.open && entry.close && entry.close > entry.open);
+            if (!timed.length) return null;
+            const rangeStart = startOfWeek(Math.min(...timed.map(entry => entry.open.getTime())));
+            const rangeEnd = startOfWeek(Math.max(...timed.map(entry => entry.close.getTime())));
+            rangeEnd.setDate(rangeEnd.getDate() + 7);
+            const weekCount = Math.max(1, Math.ceil((rangeEnd - rangeStart) / TIMELINE_WEEK_MS));
+            const section = document.createElement('section');
+            section.className = 'activity-timeline';
+            section.setAttribute('aria-label', t('gacha.timeline', null, '寻访时间轴'));
+            section.classList.add('activity-timeline--weekly');
+            section.style.setProperty('--timeline-days', weekCount);
+            section.style.setProperty('--timeline-day-width', `${GACHA_TIMELINE_WEEK_WIDTH}px`);
+            const viewport = document.createElement('div');
+            viewport.className = 'activity-timeline__viewport';
+            const canvas = document.createElement('div');
+            canvas.className = 'activity-timeline__canvas';
+            const axis = document.createElement('div');
+            axis.className = 'activity-timeline__axis';
+            const locale = timelineLocale();
+            let previousMonth = -1;
+            let previousYear = -1;
+            for (let index = 0; index < weekCount; index += 1) {
+                const date = new Date(rangeStart);
+                date.setDate(date.getDate() + index * 7);
+                const tick = document.createElement('div');
+                tick.className = 'activity-timeline__tick';
+                const isNewMonth = index === 0 || date.getMonth() !== previousMonth;
+                const isNewYear = index === 0 || date.getFullYear() !== previousYear;
+                if (isNewMonth) tick.classList.add('is-month-start');
+                tick.textContent = new Intl.DateTimeFormat(locale, {
+                    year: isNewYear ? '2-digit' : undefined,
+                    month: isNewMonth ? 'numeric' : undefined,
+                    day: '2-digit'
+                }).format(date);
+                previousMonth = date.getMonth();
+                previousYear = date.getFullYear();
+                axis.appendChild(tick);
+            }
+            canvas.appendChild(axis);
+            timed.sort((a, b) => a.open - b.open || a.close - b.close).forEach(({ record, open, close }) => {
+                const row = document.createElement('div');
+                row.className = 'activity-timeline__row';
+                const bar = document.createElement('div');
+                const offsetWeeks = (open - rangeStart) / TIMELINE_WEEK_MS;
+                const durationWeeks = Math.max(1 / 7, (close - open) / TIMELINE_WEEK_MS);
+                const typeIndex = record.type === t('gacha.weapon', null, '武库寻访') ? 1 : 0;
+                bar.className = `activity-timeline__bar activity-timeline__bar--type-${typeIndex}`;
+                bar.style.left = `${offsetWeeks * GACHA_TIMELINE_WEEK_WIDTH}px`;
+                bar.style.width = `${durationWeeks * GACHA_TIMELINE_WEEK_WIDTH}px`;
+                const title = document.createElement('span');
+                title.className = 'activity-timeline__bar-title';
+                title.textContent = record.name;
+                bar.appendChild(title);
+                const tooltipItem = { name: record.name, activityId: record.poolId, openTime: record.open, closeTime: record.close };
+                bar.addEventListener('pointerenter', event => showTimelineTooltip(tooltipItem, event.clientX, event.clientY));
+                bar.addEventListener('pointermove', event => positionTimelineTooltip(getTimelineTooltip(), event.clientX, event.clientY));
+                bar.addEventListener('pointerleave', hideTimelineTooltip);
+                row.appendChild(bar);
+                canvas.appendChild(row);
+            });
+            viewport.appendChild(canvas);
+            section.appendChild(viewport);
+            return section;
         }
 
         function renderActivityTimeline(items, container) {
@@ -630,6 +739,10 @@
             if (isInitialized) return;
             isInitialized = true;
             if (window.configLoaded) await window.configLoaded;
+            const gachaButton = document.createElement('button');
+            gachaButton.type = 'button'; gachaButton.className = 'ake-ui-button'; gachaButton.textContent = t('gachaRecords', null, '寻访记录');
+            gachaButton.addEventListener('click', () => { gachaMode = !gachaMode; gachaMode ? renderGachaRecords() : refreshModule(); });
+            document.querySelector('#activitySearchInput')?.parentElement?.insertAdjacentElement('afterend', gachaButton);
 
             window.addEventListener('globalConfigChanged', (e) => {
                 searchTerm = '';

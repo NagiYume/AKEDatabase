@@ -27,12 +27,14 @@
         let selectedCharTypes = new Set();
         let selectedProfessions = new Set();
         let selectedWeaponTypes = new Set();
+        let selectedLogisticsRooms = new Set();
 
         const CHARACTER_META_ICON_BASE = '/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/elementicon/';
         const CHARACTER_PROFESSION_ICON_BASE = '/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/charprofessionicon/';
         const CHARACTER_WEAPON_ICON_BASE = '/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/wiki/groupicon/';
         const CHARACTER_PORTRAIT_BASE = '/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/charicon/';
         const CHARACTER_SKILL_ICON_BASE = '/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/skillicon/';
+        const CHARACTER_ATTRIBUTE_ICON_BASE = '/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/attributeicon/';
         const ITEM_ICON_BASE = '/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/';
         const CHAR_TYPE_ICON_MAP = {
             Physical: 'physical', Fire: 'fire', Pulse: 'pulse', Cryst: 'cold', Natural: 'nature'
@@ -44,6 +46,9 @@
         const WEAPON_ICON_MAP = {
             1: 'sword', 2: 'wand', 3: 'claymores', 5: 'lance', 6: 'pistol',
             Sword: 'sword', Wand: 'wand', Claymores: 'claymores', Lance: 'lance', Pistol: 'pistol'
+        };
+        const CHARACTER_ATTRIBUTE_ICON_MAP = {
+            39: 'str', 40: 'agi', 41: 'wisd', 42: 'will'
         };
 
         const IMAGE_BASE_PATH = '/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/bufficon/';
@@ -294,6 +299,22 @@
             return icons;
         }
 
+        function getCharacterAbilityIcons(character) {
+            return [character.mainAttrType, character.subAttrType].map(attrType => {
+                const iconName = CHARACTER_ATTRIBUTE_ICON_MAP[attrType];
+                if (!iconName) return null;
+                return {
+                    src: `${CHARACTER_ATTRIBUTE_ICON_BASE}icon_attribute_${iconName}.png`,
+                    label: getAttrName(attrType),
+                    kind: 'ability'
+                };
+            }).filter(Boolean);
+        }
+
+        function hasLogisticsRoomFilter() {
+            return selectedLogisticsRooms.size > 0;
+        }
+
         function createCharacterDirectoryItem(character, options = {}) {
             const item = window.AKEUI.directoryItem({
                 layout: 'entity',
@@ -330,6 +351,8 @@
                 if (selectedProfessions.size > 0 && !selectedProfessions.has(c.profession)) return false;
                 // 武器类型筛选
                 if (selectedWeaponTypes.size > 0 && !selectedWeaponTypes.has(c.weapontype)) return false;
+                // 后勤技能房间筛选
+                if (selectedLogisticsRooms.size > 0 && !(c.logisticsSkills || []).some(skill => selectedLogisticsRooms.has(String(skill.roomType)))) return false;
                 return true;
             });
         }
@@ -341,11 +364,12 @@
             const typeContainer = document.getElementById('v2charTypeFilter');
             const profContainer = document.getElementById('v2charProfessionFilter');
             const weaponContainer = document.getElementById('v2charWeaponFilter');
-            if (!rarityContainer || !typeContainer || !profContainer || !weaponContainer) return;
+            const logisticsContainer = document.getElementById('v2charLogisticsRoomFilter');
+            if (!rarityContainer || !typeContainer || !profContainer || !weaponContainer || !logisticsContainer) return;
 
             const updateFilterSummary = () => {
                 const count = selectedRarities.size + selectedCharTypes.size
-                    + selectedProfessions.size + selectedWeaponTypes.size;
+                    + selectedProfessions.size + selectedWeaponTypes.size + selectedLogisticsRooms.size;
                 window.AKEUI?.updateFilterPanel(filterPanel, {
                     summary: count ? commonT('filterCount', { count }) : commonT('filter')
                 });
@@ -423,6 +447,24 @@
                 });
                 weaponContainer.appendChild(btn);
             });
+
+            const existingRooms = new Set(allCharacters.flatMap(character => (character.logisticsSkills || [])
+                .map(skill => String(skill.roomType)).filter(roomType => roomType !== 'undefined' && roomType !== 'null')));
+            logisticsContainer.innerHTML = '';
+            Object.entries(roomTypeMap).filter(([roomType]) => existingRooms.has(String(roomType))).forEach(([roomType, roomName]) => {
+                const normalizedRoomType = String(roomType);
+                const btn = window.AKEUI.filterButton({
+                    label: roomName || normalizedRoomType,
+                    pressed: selectedLogisticsRooms.has(normalizedRoomType),
+                    attributes: { 'data-logistics-room': normalizedRoomType },
+                    onChange: pressed => {
+                        pressed ? selectedLogisticsRooms.add(normalizedRoomType) : selectedLogisticsRooms.delete(normalizedRoomType);
+                        updateFilterSummary();
+                        renderCharacterList();
+                    }
+                });
+                logisticsContainer.appendChild(btn);
+            });
             updateFilterSummary();
         }
 
@@ -476,6 +518,14 @@
 
         function renderCharacterOverview(items, container) {
             window.AKEVoicePlayer?.stop();
+            window.hyperlinkConfig = window.hyperlinkConfig || {};
+            if (hasLogisticsRoomFilter()) {
+                items.forEach(char => (char.logisticsSkills || []).slice(0, 2).forEach((skill, index) => {
+                    const tagId = `char-overview-logistics-${char.charId}-${index}`;
+                    window.hyperlinkConfig[tagId] = { name: skill.name || '', desc: skill.desc || '' };
+                    skill.tagId = tagId;
+                }));
+            }
             window.AKEModuleOverview.render(container, {
                 title: t('overview.title'), description: t('overview.description'),
                 variant: 'character',
@@ -486,7 +536,10 @@
                 items: items.map(char => ({ ...char, id: char.charId,
                     image: `${CHARACTER_PORTRAIT_BASE}icon_${encodeURIComponent(char.charId)}.png`, imageFallback: char.icon,
                     fallback: t('overview.fallback'),
-                    icons: getCharacterMetaIcons(char) }))
+                    icons: getCharacterMetaIcons(char),
+                    mediaIcons: hasLogisticsRoomFilter()
+                        ? (char.logisticsSkills || []).map(skill => ({ src: skill.icon, label: skill.name, tagId: skill.tagId }))
+                        : getCharacterAbilityIcons(char) }))
             });
         }
 
@@ -722,7 +775,8 @@
                 giftStages: [],
                 weaponRecommendations: { skillAdaptation: [], attributeAdaptation: [] },
                 profileRecord: [],
-                profileVoice: []
+                profileVoice: [],
+                specialVoices: []
             };
 
             const preferredAttrs = GROWTH_ATTRIBUTES.map(attribute => attribute.id);
@@ -1151,6 +1205,11 @@
                 title: getText(v.voiceTitle) || v.voId || '',
                 desc: getText(v.voiceDesc),
                 voId: v.voId || ''
+            }));
+            legacy.specialVoices = (rawData.specialvoicetable || []).map(v => ({
+                voId: v.voId,
+                title: v.trigger || t('specialVoiceOther', null, '特殊台词'),
+                desc: v.text ? parseText(v.text) : `<span class="ake-ui-muted">${t('specialVoiceFallback', null, '该语音暂无对照文本')}</span>`
             }));
 
             return legacy;
@@ -1703,6 +1762,7 @@
                     `).join('')}
                 </div>
             ` : `<p>${t('none')}</p>`;
+            const specialVoiceHtml = (data.specialVoices || []).length ? `<div class="character-voice-list character-special-voice-list">${data.specialVoices.map(v => `<div class="character-voice-row"><div class="voice-title">${voiceButtonHtml(v.voId)}${escapeAttribute(v.title)}</div><div class="voice-desc">${v.desc}</div></div>`).join('')}</div>` : `<p>${t('none')}</p>`;
 
             const spaceshipSkills = data.spaceshipSkills || [];
             const spaceshipHtml = spaceshipSkills.length ? spaceshipSkills.map(slot => `
@@ -1821,6 +1881,8 @@
                         </div>
                         <div class="collapse-content">
                             ${voiceHtml}
+                            <h4 class="ake-ui-section__title">${t('specialVoices', null, '特殊台词')}</h4>
+                            ${specialVoiceHtml}
                         </div>
                     </div>
                 </div>
@@ -1885,6 +1947,7 @@
                 selectedCharTypes.clear();
                 selectedProfessions.clear();
                 selectedWeaponTypes.clear();
+                selectedLogisticsRooms.clear();
                 refreshModule();
             });
 
