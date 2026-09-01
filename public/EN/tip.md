@@ -2,6 +2,37 @@ AKEData has moved to www.akedata.wiki. The former domain, akedata.top, now redir
 
 # AKEData Version Changelog
 
+### v1.2.18
+
+#### Regional development
+
+- Added the Regional Development module with growth requirements, mineral output, level descriptions and rewards, outpost management, and regional facility upgrades.
+- Mining-point details show the area, mineral quantity, purity, and calculated output per minute, with New markers and “View on OEM” location links.
+- Outpost management lists each level, required development, traits, and material exchanges. Regional facilities show dispatch-coupon upgrade costs, descriptions, and rewards by level.
+- Region-level output, mining-point details, outpost management, and regional facility levels are independently collapsible and start collapsed.
+
+#### Characters and special voice lines
+
+- Character voice records now include special contextual lines such as squad changes and Operator switching, combining `ResponsiveDialog` and `AIBarkText` text while removing duplicates already present in regular profile voices.
+- Special voices without a matching transcript display a consistent unavailable-text message.
+- Restored Logistics Skill room filters on the Character start page. While a filter is active, cards show two Logistics Skill icons with hover descriptions; otherwise they show the character's primary and secondary ability icons on dark backgrounds.
+
+#### Recruitment history
+
+- Added Character Recruitment and Arsenal Recruitment history tables with banner start dates, end dates, and durations.
+- Added a timeline spanning the earliest through latest banners, divided into weekly intervals at 20 pixels per week.
+
+#### Weapons and equipment
+
+- Weapons can be filtered by Ability, Attribute, and Series Skill terms, with term mapping corrected against `GemTable`. Three-star weapons are excluded from term filtering.
+- Equipment can be filtered across all three term dimensions for gold-rarity individual pieces. Filtered results use individual equipment cards with corrected attribute-type and name mappings.
+- Added Refining Recommendations that select same-slot materials with higher initial values for the matching sub-attribute. The compact popup distinguishes better matches from the self-item fallback.
+- Equipment filters are collapsible, with improved spacing and a narrower recommendation popup.
+
+#### Sidebars and interface
+
+- Completed resize registration for standard directory modules, fixing sidebars that could not be dragged in modules such as Assets and Regional Development.
+
 ### v1.2.17
 
 #### Miscellaneous

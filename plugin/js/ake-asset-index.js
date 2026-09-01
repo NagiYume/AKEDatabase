@@ -46,7 +46,7 @@
         const filename = parts[parts.length - 1];
         const id = filename.endsWith('.json') ? filename.slice(0, -5) : filename;
         const name = id.startsWith('buff_') ? id.slice(5) : id;
-        const entry = { id, name, contentFile: contentFile(path), hidden: false, priority: 10 + index, size: record.size, md5: record.md5 };
+        const entry = { id, name, path, contentFile: contentFile(path), hidden: false, priority: 10 + index, size: record.size, md5: record.md5, version: record.version || '' };
         if (record.meta && typeof record.meta === 'object') {
             entry.meta = structuredClone(record.meta);
             Object.assign(entry, structuredClone(record.meta));

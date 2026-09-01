@@ -620,7 +620,26 @@
 
     function mountModule(root, moduleId) {
         unmountModule();
-        const preset = modulePresets.get(moduleId);
+        let preset = modulePresets.get(moduleId);
+        if (!preset && root instanceof HTMLElement && root.querySelector('.ake-ui-directory > .ake-ui-directory__sidebar')) {
+            preset = {
+                selector: '.ake-ui-directory > .ake-ui-directory__sidebar',
+                fallbackWidth: 280,
+                minWidth: 72,
+                maxWidth: 520,
+                minContentWidth: 360,
+                mediaQuery: DEFAULT_MEDIA_QUERY,
+                ...iconCompact(
+                    '.ake-ui-directory__item',
+                    '.ake-ui-directory__item-icon',
+                    '.ake-ui-directory__item-copy',
+                    '.ake-ui-directory__list, .ake-ui-tree',
+                    '.ake-ui-directory__sidebar-header, .ake-ui-directory__search, .ake-ui-directory__meta, .ake-ui-filter',
+                    { minWidth: 72, compactThreshold: 180 }
+                ),
+                layout: 'grid'
+            };
+        }
         if (!(root instanceof HTMLElement) || !preset) return null;
         const element = root.querySelector(preset.selector);
         if (!(element instanceof HTMLElement)) return null;

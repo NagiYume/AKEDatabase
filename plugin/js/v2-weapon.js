@@ -12,6 +12,7 @@
     let currentWeapon = null;
     let selectedRarities = new Set();
     let selectedTypes = new Set();
+    const selectedTagDimensions = [new Set(), new Set(), new Set()];
 
     const IMAGE_BASE_PATH = '/public/images/';
     const WEAPON_TYPE_KEY_MAP = { 1: 'oneHandedSword', 2: 'artsUnit', 3: 'twoHandedSword', 5: 'polearm', 6: 'handcannon' };
@@ -37,6 +38,15 @@
         return key ? t(`weaponTypes.${key}`) : t(unknownKey);
     }
 
+    function weaponTagValues(weapon) {
+        const dimensions = [new Set(), new Set(), new Set()];
+        (weapon.weaponTags || []).forEach(tag => String(tag).split('+').forEach(value => {
+            const dimension = Number(weapon.weaponTagMeta?.[value]?.dimension);
+            if (Number.isInteger(dimension) && dimensions[dimension]) dimensions[dimension].add(value);
+        }));
+        return dimensions;
+    }
+
     function filterWeapons(weapons) {
         return weapons.filter(w => {
             if (searchTerm) {
@@ -46,17 +56,30 @@
             }
             if (selectedRarities.size > 0 && !selectedRarities.has(w.rarity)) return false;
             if (selectedTypes.size > 0 && !selectedTypes.has(w.weaponType)) return false;
+            if (w.rarity >= 4) {
+                const dimensions = weaponTagValues(w);
+                for (let index = 0; index < selectedTagDimensions.length; index++) {
+                    const selected = selectedTagDimensions[index];
+                    if (selected.size && ![...dimensions[index]].some(value => selected.has(value))) return false;
+                }
+            } else if (selectedTagDimensions.some(set => set.size)) return false;
             return true;
         });
+    }
+
+    function weaponTagLabel(value) {
+        const source = allWeapons.find(weapon => weapon.weaponTagMeta?.[value]);
+        return source?.weaponTagMeta?.[value]?.label || value;
     }
 
     function generateFilterButtons() {
         const rc = document.getElementById('v2wpnRarityFilter');
         const tc = document.getElementById('v2wpnTypeFilter');
+        const tagContainers = [0, 1, 2].map(index => document.getElementById(`v2wpnTagFilter${index}`));
         if (!rc || !tc) return;
         const filterPanel = rc.closest('.ake-ui-filter');
         const updateFilterSummary = () => {
-            const count = selectedRarities.size + selectedTypes.size;
+            const count = selectedRarities.size + selectedTypes.size + selectedTagDimensions.reduce((sum, set) => sum + set.size, 0);
             window.AKEUI?.updateFilterPanel(filterPanel, {
                 summary: count ? commonT('filterCount', { count }) : commonT('filter')
             });
@@ -94,6 +117,21 @@
             });
             tc.appendChild(btn);
         }
+        tagContainers.forEach((container, index) => {
+            if (!container) return;
+            const values = new Map();
+            allWeapons.filter(w => w.rarity >= 4).forEach(w => weaponTagValues(w)[index].forEach(value => {
+                const meta = w.weaponTagMeta?.[value] || {};
+                if (!values.has(value)) values.set(value, meta);
+            }));
+            container.innerHTML = '';
+            [...values.entries()].sort((a, b) => Number(a[1].sort || 0) - Number(b[1].sort || 0) || a[0].localeCompare(b[0])).forEach(([value]) => container.appendChild(window.AKEUI.filterButton({
+                label: weaponTagLabel(value), pressed: selectedTagDimensions[index].has(value), onChange: pressed => {
+                    pressed ? selectedTagDimensions[index].add(value) : selectedTagDimensions[index].delete(value);
+                    updateFilterSummary(); renderWeaponList();
+                }
+            })));
+        });
         updateFilterSummary();
     }
 
@@ -617,6 +655,7 @@
             showAllWeaponLevels = false;
             selectedRarities.clear();
             selectedTypes.clear();
+            selectedTagDimensions.forEach(set => set.clear());
             refreshModule();
         });
 
