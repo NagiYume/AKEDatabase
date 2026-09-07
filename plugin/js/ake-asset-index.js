@@ -81,7 +81,10 @@
                 const index = validateIndex(await response.json());
                 if (base === state.baseUrl) window.akeDataSource.setAssetRevision(index.revision);
                 return Object.freeze(index);
-            })());
+            })().catch(error => {
+                sharedPromises.delete(cacheKey);
+                throw error;
+            }));
         }
         return sharedPromises.get(cacheKey);
     }

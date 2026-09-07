@@ -18,6 +18,7 @@
     const DAILY_REFRESH_OFFSET = 4 * 60 * 60 * 1000;
     const WEEKLY_REFRESH_OFFSET = 12 * 60 * 60 * 1000;
 
+    // Legacy observed schedule, not derivable from ShopGoodsTable order. See data-contracts.md.
     const DAILY_ROTATION = [
         ['wpn_claym_0011', 'wpn_pistol_0004'], ['wpn_sword_0007', 'wpn_pistol_0006'],
         ['wpn_claym_0014', 'wpn_sword_0018'], ['wpn_funnel_0014', 'wpn_lance_0006'],
@@ -1004,6 +1005,18 @@
     window.addEventListener('ake:module-activate', onModuleActivate);
     window.addEventListener('ake:module-deactivate', onModuleDeactivate);
     window.__akeShopController = {
+        getRotationDiagnostics() {
+            if (!state.tables) return { state: 'not-loaded' };
+            const known = new Set(DAILY_ROTATION.flat());
+            const goodsIds = state.tables.shops.shop_pay_weapon_daily?.shopGoodsIds || [];
+            const offered = new Set(goodsIds.flatMap(id => {
+                const rewardId = state.tables.goods[id]?.rewardId;
+                return (state.tables.rewards[rewardId]?.itemBundles || []).filter(row => state.tables.weapons[row.id]).map(row => row.id);
+            }));
+            return { source: 'legacy-observed-schedule', start: new Date(ROTATION_START).toISOString(),
+                unscheduledWeapons: [...offered].filter(id => !known.has(id)),
+                unavailableWeapons: [...known].filter(id => !offered.has(id)) };
+        },
         destroy() {
             window.removeEventListener('globalConfigChanged', onConfigChanged);
             window.removeEventListener('ake:module-activate', onModuleActivate);

@@ -5,21 +5,25 @@
     if (!root || root.dataset.initialized === 'true') return;
     root.dataset.initialized = 'true';
 
+    const t = window.akeI18n.scope('modules.baker');
     const IMAGE_ROOT = '/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites';
-    const STICKER_PACK_SIZES = [16, 18, 20, 16, 16, 16, 16, 16];
+    // Legacy ordinal mapping: see skills/akedatabase-development/references/data-contracts.md.
+    const LEGACY_STICKER_PACK_SIZES = [16, 18, 20, 16, 16, 16, 16, 16];
+    const indexedStickers = new Map();
+    const unresolvedStickers = new Set();
     const CHAT_TYPES = {
-        1: { label: '联系人', order: 2 },
-        2: { label: '群聊', order: 3 },
-        3: { label: '干员', order: 1 }
+        1: { label: t('contacts'), order: 2 },
+        2: { label: t('groups'), order: 3 },
+        3: { label: t('operators'), order: 1 }
     };
     const CONTENT_LABELS = {
-        4: '视频消息',
-        5: '语音消息',
-        6: '物品附件',
-        8: '联系人名片',
-        10: '档案条目',
-        11: '特殊消息',
-        12: '关联任务'
+        4: t('video'),
+        5: t('voice'),
+        6: t('item'),
+        8: t('contactCard'),
+        10: t('archive'),
+        11: t('special'),
+        12: t('mission')
     };
 
     const state = {
@@ -48,7 +52,10 @@
         mobile: document.getElementById('bakerMobileButton'),
         backdrop: document.getElementById('bakerMobileBackdrop')
     };
-    window.AKEUI?.updateFilterPanel(elements.filterPanel, { summary: '筛选' });
+    window.AKEUI?.updateFilterPanel(elements.filterPanel, { summary: t('filter') });
+    elements.filters.setAttribute('aria-label', t('types'));
+    elements.mobile.setAttribute('aria-label', t('openContacts'));
+    elements.backdrop.setAttribute('aria-label', t('closeContacts'));
 
     function escapeHtml(value) {
         return String(value ?? '').replace(/[&<>"']/g, character => ({
@@ -74,11 +81,11 @@
     }
 
     function chatName(chat, fallback = '') {
-        return chat?.name?.text || fallback || chat?.chatId || '未知联系人';
+        return chat?.name?.text || fallback || chat?.chatId || t('unknownContact');
     }
 
     function chatType(chat) {
-        return CHAT_TYPES[Number(chat?.chatType)] || { label: '会话', order: 9 };
+        return CHAT_TYPES[Number(chat?.chatType)] || { label: t('chat'), order: 9 };
     }
 
     function avatarUrl(chat) {
@@ -95,14 +102,18 @@
 
     function stickerUrl(resourceId) {
         const resource = String(resourceId || '').toLowerCase();
+        if (indexedStickers.get(resource)) return asset(indexedStickers.get(resource));
         if (/^sns_sticker_\d{3}$/.test(resource)) {
             return asset(`${IMAGE_ROOT}/sns/sticker/${resource}.png`);
         }
         const emojiMatch = resource.match(/^sns_emoji_(\d{3})$/);
-        if (!emojiMatch) return '';
+        if (!emojiMatch) {
+            if (resource) unresolvedStickers.add(resource);
+            return '';
+        }
         let index = Number(emojiMatch[1]);
-        for (let packIndex = 0; packIndex < STICKER_PACK_SIZES.length; packIndex += 1) {
-            const packSize = STICKER_PACK_SIZES[packIndex];
+        for (let packIndex = 0; packIndex < LEGACY_STICKER_PACK_SIZES.length; packIndex += 1) {
+            const packSize = LEGACY_STICKER_PACK_SIZES[packIndex];
             if (index <= packSize) {
                 const pack = String(packIndex + 1).padStart(2, '0');
                 const item = String(index).padStart(2, '0');
@@ -110,7 +121,24 @@
             }
             index -= packSize;
         }
+        unresolvedStickers.add(resource);
         return '';
+    }
+
+    async function loadStickerIndex() {
+        try {
+            const index = await window.akeAssetIndex.load();
+            for (const path of Object.keys(index.datasets.images?.files || {})) {
+                const match = path.match(/(?:^|\/)sns\/sticker\/(?:[^/]+\/)*(sns_(?:emoji|sticker)_[^/]+)\.png$/i);
+                if (!match) continue;
+                const key = match[1].toLowerCase();
+                const url = `/public/images/${path}`;
+                if (!indexedStickers.has(key)) indexedStickers.set(key, url);
+                else if (indexedStickers.get(key) !== url) indexedStickers.set(key, null);
+            }
+        } catch (error) {
+            console.warn('Baker sticker index unavailable; retaining explicit legacy mappings', error);
+        }
     }
 
     function contentText(node) {
@@ -125,7 +153,7 @@
             const text = contentText(nodes[index]);
             if (text) return text.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
         }
-        return dialog?.relatedMissionId ? `关联任务 ${dialog.relatedMissionId}` : '';
+        return dialog?.relatedMissionId ? t('missionId', { id: dialog.relatedMissionId }) : '';
     }
 
     function buildRows() {
@@ -156,7 +184,7 @@
                 const rowDialogs = dialog ? [dialog] : [];
                 const topic = dialog ? state.topics[dialog.topicId] || state.topicByDialog.get(dialog.dialogId) : null;
                 const dialogLabel = topic?.topicName?.text || topic?.topicStartOptionDesc?.text || dialog?.dialogId || chatId;
-                const preview = dialog ? dialogPreview(dialog) || dialogLabel : '暂无对话内容';
+                const preview = dialog ? dialogPreview(dialog) || dialogLabel : t('emptyPreview');
                 const messageText = dialog ? Object.values(dialog.dialogContentData || {}).map(contentText) : [];
                 const optionText = dialog ? Object.values(dialog.dialogContentData || {}).flatMap(node =>
                     (node.dialogOptionIds || []).map(optionId => {
@@ -214,9 +242,9 @@
     function renderContacts() {
         const rows = filteredRows();
         const withMessages = state.rows.filter(row => row.dialogs.length).length;
-        elements.summary.textContent = `${rows.length} / ${state.rows.length} 个会话 · ${withMessages} 个有记录`;
+        elements.summary.textContent = t('summary', { count: rows.length, total: state.rows.length, recorded: withMessages });
         if (!rows.length) {
-            elements.list.innerHTML = '<div class="ake-ui-state" data-state="empty" data-density="compact">没有符合条件的会话</div>';
+            elements.list.innerHTML = `<div class="ake-ui-state" data-state="empty" data-density="compact">${escapeHtml(t('noMatches'))}</div>`;
             return;
         }
         elements.list.replaceChildren(...rows.map(createContactDirectoryItem));
@@ -224,7 +252,7 @@
 
     function speakerInfo(speakerId, selectedRow) {
         const isSelf = !speakerId || speakerId === 'endmin' || speakerId === 'player';
-        if (isSelf) return { id: 'endmin', name: '管理员', chat: null, isSelf: true };
+        if (isSelf) return { id: 'endmin', name: t('self'), chat: null, isSelf: true };
         const chat = state.chats[speakerId] || (selectedRow.chatId === speakerId ? selectedRow.chat : null);
         return { id: speakerId, name: chatName(chat, speakerId), chat, isSelf: false };
     }
@@ -232,7 +260,7 @@
     function bubbleMessage(node, row, body) {
         const speaker = speakerInfo(node.speaker, row);
         return `<div class="baker-message${speaker.isSelf ? ' is-self' : ''}">
-            ${speaker.isSelf ? '<span class="baker-avatar baker-avatar--self" aria-hidden="true">终</span>' : avatarHtml(speaker.chat, speaker.name)}
+            ${speaker.isSelf ? '<span class="baker-avatar baker-avatar--self" aria-hidden="true">E</span>' : avatarHtml(speaker.chat, speaker.name)}
             <div class="baker-message__main">
                 <div class="baker-message__speaker">${escapeHtml(speaker.name)}</div>
                 <div class="baker-bubble">${body}</div>
@@ -260,13 +288,13 @@
 
     function reactionHtml(node) {
         const reactions = parseContentParams(node.contentParams);
-        if (!Array.isArray(reactions)) return '<div class="baker-system-message">收到一组表情回应</div>';
+        if (!Array.isArray(reactions)) return `<div class="baker-system-message">${escapeHtml(t('reactions'))}</div>`;
         return `<div class="baker-reactions">${reactions.map(reaction => {
             const people = (reaction.npcIds || []).map(id => chatName(state.chats[id], id)).join('、');
             const resourceId = reaction.emojiResPath || '';
             const source = stickerUrl(resourceId);
-            const emoji = source ? `<img class="baker-reaction__emoji" src="${escapeHtml(source)}" alt="${escapeHtml(resourceId)}" loading="lazy">` : escapeHtml(resourceId || '表情');
-            return `<span class="baker-reaction">${emoji}<span>${escapeHtml(people || `${reaction.npcCount || 0} 人`)}</span></span>`;
+            const emoji = source ? `<img class="baker-reaction__emoji" src="${escapeHtml(source)}" alt="${escapeHtml(resourceId)}" loading="lazy">` : escapeHtml(resourceId || t('emoji'));
+            return `<span class="baker-reaction">${emoji}<span>${escapeHtml(people || t('people', { count: reaction.npcCount || 0 }))}</span></span>`;
         }).join('')}</div>`;
     }
 
@@ -287,22 +315,22 @@
 
         let attachment = '';
         const params = node.contentParam || [];
-        if (type === 4) attachment = attachmentHtml(CONTENT_LABELS[type], params[1] || params[0], '视频资源未在网页端发布', '▶');
+        if (type === 4) attachment = attachmentHtml(CONTENT_LABELS[type], params[1] || params[0], t('videoUnavailable'), '▶');
         else if (type === 5) attachment = attachmentHtml(CONTENT_LABELS[type], text || params[0], params.filter(Boolean).join(' · '), '♪');
         else if (type === 6) {
             const itemId = params[0] || '';
             const item = state.items[itemId] || {};
-            attachment = attachmentHtml(CONTENT_LABELS[type], item.name?.text || itemId, itemId, '物');
+            attachment = attachmentHtml(CONTENT_LABELS[type], item.name?.text || itemId, itemId, '+');
         } else if (type === 8) {
             const linkedChat = state.chats[params[0]];
-            attachment = attachmentHtml(CONTENT_LABELS[type], chatName(linkedChat, params[0]), params[1] || params[0], '人');
+            attachment = attachmentHtml(CONTENT_LABELS[type], chatName(linkedChat, params[0]), params[1] || params[0], '@');
         } else if (type === 10) {
             const archive = parseContentParams(node.contentParams) || {};
-            attachment = attachmentHtml(CONTENT_LABELS[type], archive.id || '叙事档案', archive.phaseId || '档案记录', '档');
+            attachment = attachmentHtml(CONTENT_LABELS[type], archive.id || t('narrative'), archive.phaseId || t('archiveRecord'), '#');
         } else if (type === 12) {
             const missionId = node.linkMissionId || params[0] || '';
-            attachment = attachmentHtml(CONTENT_LABELS[type], missionId, 'Baker 消息关联任务', '任');
-        } else attachment = attachmentHtml(CONTENT_LABELS[type] || `消息类型 ${type}`, text, params.join(' · '), '?');
+            attachment = attachmentHtml(CONTENT_LABELS[type], missionId, t('missionAttachment'), '!');
+        } else attachment = attachmentHtml(CONTENT_LABELS[type] || t('messageType', { type }), text, params.join(' · '), '?');
         const caption = text && type !== 5 ? `<div class="baker-bubble__text">${richText(text)}</div>` : '';
         return bubbleMessage(node, row, attachment + caption);
     }
@@ -355,9 +383,9 @@
     function renderDialog(dialog, row) {
         const path = dialogPath(dialog);
         const content = path.map(node => `${renderNode(node, row)}${optionButtons(dialog, node)}`).join('');
-        const metadata = [dialog.dialogId, dialog.relatedMissionId ? `任务 ${dialog.relatedMissionId}` : '', dialog.noticeType ? '通知' : '']
+        const metadata = [dialog.dialogId, dialog.relatedMissionId ? t('missionId', { id: dialog.relatedMissionId }) : '', dialog.noticeType ? t('notice') : '']
             .filter(Boolean).join(' · ');
-        return `<section class="baker-dialog"><div class="baker-dialog__meta">${escapeHtml(metadata)}</div>${content || '<div class="baker-system-message">该段对话没有可显示内容</div>'}</section>`;
+        return `<section class="baker-dialog"><div class="baker-dialog__meta">${escapeHtml(metadata)}</div>${content || `<div class="baker-system-message">${escapeHtml(t('emptyDialog'))}</div>`}</section>`;
     }
 
     function conversationGroups(row) {
@@ -376,21 +404,21 @@
     function renderConversation() {
         const row = state.rowById.get(state.selectedId);
         if (!row) {
-            elements.conversation.innerHTML = '<div class="baker-welcome"><b>选择一个 Baker 会话</b></div>';
+            elements.conversation.innerHTML = `<div class="baker-welcome"><b>${escapeHtml(t('select'))}</b></div>`;
             return;
         }
         const groups = conversationGroups(row);
         const type = chatType(row.chat);
         const topicCount = groups.filter(group => group.topic).length;
         const threads = groups.length ? groups.map(group => {
-            const title = group.topic?.topicName?.text || group.topic?.topicStartOptionDesc?.text || (row.dialogs.length === 1 ? 'Baker 对话' : group.dialogs[0].dialogId);
-            return `<section class="baker-thread"><h3 class="baker-thread__heading"><strong>${escapeHtml(title)}</strong>${group.topic ? `<span>${group.dialogs.length} 段</span>` : ''}</h3>${group.dialogs.sort((a, b) => naturalCompare(a.dialogId, b.dialogId)).map(dialog => renderDialog(dialog, row)).join('')}</section>`;
-        }).join('') : '<div class="baker-welcome"><b>该联系人暂时没有可读取的对话</b></div>';
+            const title = group.topic?.topicName?.text || group.topic?.topicStartOptionDesc?.text || (row.dialogs.length === 1 ? t('dialog') : group.dialogs[0].dialogId);
+            return `<section class="baker-thread"><h3 class="baker-thread__heading"><strong>${escapeHtml(title)}</strong>${group.topic ? `<span>${escapeHtml(t('segments', { count: group.dialogs.length }))}</span>` : ''}</h3>${group.dialogs.sort((a, b) => naturalCompare(a.dialogId, b.dialogId)).map(dialog => renderDialog(dialog, row)).join('')}</section>`;
+        }).join('') : `<div class="baker-welcome"><b>${escapeHtml(t('emptyContact'))}</b></div>`;
         elements.conversation.innerHTML = `
             <header class="baker-chat-header">
                 ${avatarHtml(row.chat, row.name)}
                 <div><h2>${escapeHtml(row.name)}</h2><p>${escapeHtml(row.id)} · ${escapeHtml(type.label)}</p></div>
-                <div class="baker-chat-header__stats"><span class="baker-badge">${row.dialogs.length} 段对话</span><span class="baker-badge">${topicCount} 个话题</span></div>
+                <div class="baker-chat-header__stats"><span class="baker-badge">${escapeHtml(t('dialogs', { count: row.dialogs.length }))}</span><span class="baker-badge">${escapeHtml(t('topics', { count: topicCount }))}</span></div>
             </header>
             <div class="baker-thread-list">${threads}</div>
         `;
@@ -421,8 +449,11 @@
         state.options = options || {};
         state.topics = topics || {};
         state.items = items || {};
+        await loadStickerIndex();
         buildRows();
     }
+
+    window.__akeBakerDiagnostics = () => ({ unresolvedStickers: [...unresolvedStickers] });
 
     elements.search.addEventListener('input', event => {
         state.search = event.target.value;
@@ -439,7 +470,7 @@
             item.setAttribute('aria-pressed', String(active));
         });
         window.AKEUI?.updateFilterPanel(elements.filterPanel, {
-            summary: state.type === 'all' ? '筛选' : '筛选 (1)'
+            summary: state.type === 'all' ? t('filter') : t('filter') + ' (1)'
         });
         renderContacts();
     });
@@ -474,8 +505,8 @@
         else renderConversation();
     }).catch(error => {
         console.error('Baker 模块初始化失败', error);
-        elements.summary.textContent = '读取失败';
+        elements.summary.textContent = t('readFailed');
         elements.list.innerHTML = '';
-        elements.conversation.innerHTML = `<div class="ake-ui-state" data-state="error"><div><strong>Baker 数据加载失败</strong><span>${escapeHtml(error.message)}</span></div></div>`;
+        elements.conversation.innerHTML = `<div class="ake-ui-state" data-state="error"><div><strong>${escapeHtml(t('loadFailed'))}</strong><span>${escapeHtml(error.message)}</span></div></div>`;
     });
 })();

@@ -71,6 +71,16 @@
         return `<div class="region-cell-list">${items.map(item => `<div><span class="ake-ui-badge"><img class="ake-ui-inline-icon" src="${itemIcon(item.id, itemTable)}" alt="">${escapeHtml(itemName(item.id, itemTable))}${item.count == null ? '' : ` × ${formatNumber(item.count)}`}</span></div>`).join('')}</div>`;
     }
 
+    function buildArcheryData(domain, tables) {
+        const constants = tables.typhoeaConst || {};
+        if (String(constants.shootingRangeDomainId || '') !== String(domain.domainId || '')) return null;
+        return {
+            costItemId: domain.domainGoldItemId || '',
+            mapLevel: constants.shootingRangeLevelId || '',
+            levels: Object.values(tables.typhoeaLevelTable || {}).sort((a, b) => Number(a.level || 0) - Number(b.level || 0))
+        };
+    }
+
     function describeDomainLevel(domain, row, previous, levelNames) {
         const descriptions = [];
         if (!previous || Number(row.moneyLimit) !== Number(previous.moneyLimit)) {
@@ -120,7 +130,7 @@
                 rewards: rewardItems(row.rewardId, tables)
             };
         });
-        return { ...domain, name: window.AKEV3.text(domain.domainName, domain.domainId), itemTable: tables.itemTable, mines: Array.from(mines.values()), levels, levelNames };
+        return { ...domain, name: window.AKEV3.text(domain.domainName, domain.domainId), itemTable: tables.itemTable, mines: Array.from(mines.values()), levels, levelNames, archery: buildArcheryData(domain, tables) };
     }
 
     function domainListItem(domain, active) {
@@ -192,8 +202,8 @@
         return rewardItems(rewardId, tables);
     }
 
-    function facilityCard(title, subtitle, rows) {
-        return `<article class="ake-ui-card" data-ake-component="card"><div class="ake-ui-card__content"><header class="ake-ui-card__header"><div class="ake-ui-card__heading"><h4 class="ake-ui-card__title">${escapeHtml(title)}</h4>${subtitle ? `<div class="ake-ui-card__id">${escapeHtml(subtitle)}</div>` : ''}</div></header><div class="ake-ui-table-wrap"><table class="ake-ui-table"><thead><tr><th>${commonT('level')}</th><th>${t('upgradeCost', null, '升级消耗调度券')}</th><th>${t('facilityEffect', null, '说明、奖励或解锁内容')}</th></tr></thead><tbody>${rows}</tbody></table></div></div></article>`;
+    function facilityCard(title, subtitle, rows, effectTitle = null) {
+        return `<article class="ake-ui-card" data-ake-component="card"><div class="ake-ui-card__content"><header class="ake-ui-card__header"><div class="ake-ui-card__heading"><h4 class="ake-ui-card__title">${escapeHtml(title)}</h4>${subtitle ? `<div class="ake-ui-card__id">${escapeHtml(subtitle)}</div>` : ''}</div></header><div class="ake-ui-table-wrap"><table class="ake-ui-table"><thead><tr><th>${commonT('level')}</th><th>${t('upgradeCost', null, '升级消耗调度券')}</th><th>${effectTitle || t('facilityEffect', null, '说明、奖励或解锁内容')}</th></tr></thead><tbody>${rows}</tbody></table></div></div></article>`;
     }
 
     function renderFacilitySection(domain) {
@@ -228,6 +238,17 @@
             const rows = Object.values(tables.simulationTable || {}).sort((a, b) => Number(a.gamblingBattleLevel) - Number(b.gamblingBattleLevel)).map(data => `<tr><th scope="row">Lv.${data.gamblingBattleLevel}</th><td>${data.isFinalMaxLevel ? t('maxLevel', null, '满级') : formatNumber(data.costDomainMoney)}</td><td>${escapeHtml(data.desc?.text || '-')}</td></tr>`).join('');
             if (rows) cards.push(facilityCard(t('facilityTypes.simulation', null, '选剑演武'), t('facilityTypes.simulationTraining', null, '演武平台'), rows));
         }
+        if (domain.archery) {
+            const archery = domain.archery;
+            const rows = archery.levels.map(row => {
+                const rewardId = row.levelReward || row.levelRewardPreview;
+                const cost = Number(row.costItemCount) > 0 && archery.costItemId
+                    ? renderItems([{ id: archery.costItemId, count: row.costItemCount }], domain.itemTable)
+                    : '-';
+                return `<tr><th scope="row">Lv.${formatNumber(row.level)}</th><td>${cost}</td><td>${renderItems(rewardItems(rewardId, tables), domain.itemTable)}</td></tr>`;
+            }).join('');
+            if (rows) cards.push(facilityCard(t('archery.title', null, '提弗洛斯的靶场'), archery.mapLevel ? t('archery.mapLevel', { level: archery.mapLevel }) : '', rows, t('levelRewards', null, '等级奖励')));
+        }
         if (!cards.length) return '';
         return renderCollapsibleSection(t('facilities', null, '地区设施等级'), `<div class="ake-ui-card-grid" data-size="wide">${cards.join('')}</div>`);
     }
@@ -252,9 +273,10 @@
             settlementTable: 'SettlementBasicDataTable', settlementTagTable: 'SettlementTagTable', shopChannelTable: 'ShopChannelDevelopmentTable',
             shopGoodsTable: 'ShopGoodsTable', domainDepotTable: 'DomainDepotTable', domainDepotLevelTable: 'DomainDepotLevelTable',
             kiteStationTable: 'KiteStationLevelTable', recycleBinTable: 'RecycleBinTable', sewageTable: 'FactorySewageTreatPlantStoreTable',
-            simulationTable: 'SimulationTrainingLevelTable', factoryMinerTable: 'FactoryMinerTable', factoryGasMinerTable: 'FactoryGasMinerTable'
+            simulationTable: 'SimulationTrainingLevelTable', factoryMinerTable: 'FactoryMinerTable', factoryGasMinerTable: 'FactoryGasMinerTable',
+            typhoeaConst: 'TyphoeaArcheryConst', typhoeaLevelTable: 'TyphoeaArcheryLevelTable'
         };
-        const values = await Promise.all(Object.values(tableNames).map(name => window.AKEV3.table(name)));
+        const values = await Promise.all(Object.entries(tableNames).map(([key, name]) => window.AKEV3.table(name, undefined, { optional: key.startsWith('typhoea') })));
         const tables = Object.fromEntries(Object.keys(tableNames).map((key, index) => [key, values[index]]));
         const currentVersion = window.akeDataSource?.getState?.()?.selected?.id || '';
         const entries = [];

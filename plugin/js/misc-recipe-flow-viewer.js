@@ -27,18 +27,6 @@
         'FactoryVaporizerTable',
         'WikiDefaultCraftTable'
     ];
-    const FACTORY_ENVIRONMENT_TEXT_IDS = Object.freeze({
-        1: '4749896721646405651',
-        2: '2583412103900909986',
-        3: '8325730894015926297',
-        4: '3873336576577928485'
-    });
-    const FACTORY_ENVIRONMENT_COLORS = Object.freeze({
-        1: '#32c0ff',
-        2: '#ffffff',
-        3: '#ffba00',
-        4: '#1ec89a'
-    });
 
     window.AKEMisc.register(MODULE_ID, async function (context) {
         const root = context.root;
@@ -196,16 +184,7 @@
         }
 
         function environmentInfo(value, environments) {
-            const gasEnv = number(value, 0);
-            if (!gasEnv) return null;
-            const environmentId = number(environments[String(gasEnv)]?.GenEnv, gasEnv);
-            const textId = FACTORY_ENVIRONMENT_TEXT_IDS[environmentId];
-            return {
-                id: environmentId,
-                name: environmentTextTable.localized?.[textId] || environmentTextTable.chinese?.[textId] ||
-                    actionText('环境 ' + environmentId, 'Environment ' + environmentId),
-                color: FACTORY_ENVIRONMENT_COLORS[environmentId] || '#ffffff'
-            };
+            return window.AKEV3.factoryEnvironment(value, environments, environmentTextTable);
         }
 
         function addRecipe(recipe) {
@@ -317,28 +296,20 @@
             });
 
             entries(equipFormulas).forEach(([formulaId, row]) => {
-                const chainList = equipChains?.[String(row.level)]?.chainList || [];
-                chainList.forEach((chain, chainIndex) => {
-                    const inputs = (chain.costItemId || []).map((id, index) => ({
-                        id: String(id),
-                        count: number(chain.costItemNum?.[index], 0)
-                    })).filter(entry => entry.count > 0);
-                    if (chain.costGoldId && number(chain.costGoldNum, 0) > 0) {
-                        inputs.unshift({ id: String(chain.costGoldId), count: number(chain.costGoldNum, 0) });
-                    }
+                window.AKEV3.equipmentRecipeVariants(formulaId, row, equipChains).forEach(variant => {
                     const outputId = row.outcomeEquipId;
                     if (!outputId) return;
                     const outputName = itemInfo(String(outputId)).name;
                     const level = row.level ? t('equipmentLevel', { level: row.level }, 'Level ' + row.level) : '';
-                    const chainName = t('equipmentChain', { chain: chain.chainId || chainIndex + 1 }, 'Chain ' + (chain.chainId || chainIndex + 1));
+                    const chainName = t('equipmentChain', { chain: variant.chainId }, 'Chain ' + variant.chainId);
                     addRecipe({
-                        recipeId: formulaId + ':' + String(chain.chainId || chainIndex),
+                        recipeId: variant.recipeId,
                         kind: t('kinds.equipment', null, 'Equipment'),
                         kindOrder: 40,
                         inputOrder: 70,
                         name: outputName + ' ' + chainName,
-                        inputs,
-                        outputs: [{ id: String(outputId), count: 1 }],
+                        inputs: variant.inputs,
+                        outputs: variant.outputs,
                         meta: level,
                         isEquipment: true
                     });
