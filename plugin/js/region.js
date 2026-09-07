@@ -18,13 +18,14 @@
 
     function parseDensity(mine) {
         const values = Array.isArray(mine?.densityLevel) ? mine.densityLevel : [];
-        const result = [];
+        const purityByLevel = new Map();
         for (let index = 0; index + 1 < values.length; index += 2) {
-            const quantity = Number(values[index]);
+            const requiredLevel = Number(values[index]);
             const purity = Number(values[index + 1]);
-            if (Number.isFinite(quantity) && Number.isFinite(purity)) result.push({ stage: index / 2, quantity, purity });
+            if (Number.isFinite(requiredLevel) && Number.isFinite(purity)) purityByLevel.set(requiredLevel, purity);
         }
-        return result;
+        return Array.from(purityByLevel, ([requiredLevel, purity]) => ({ requiredLevel, purity }))
+            .sort((a, b) => a.requiredLevel - b.requiredLevel);
     }
 
     function baseMineOutputPerMinute(itemId, tables) {
@@ -41,28 +42,18 @@
         return baseMineOutputPerMinute(itemId, tables) * Math.max(0, Number(purity) || 0) / 100;
     }
 
-    function mineUpgradeLevels(domain, levelId) {
-        return (domain.domainDevelopmentLevel || [])
-            .filter(row => row.domainDevelopmentLevelEffect?.[levelId]?.isMineOutputUp)
-            .map(row => Number(row.domainDevelopmentLevel))
-            .filter(Number.isFinite)
-            .sort((a, b) => a - b);
-    }
-
     function stageAtDomainLevel(mine, domainLevel) {
         const stages = parseDensity(mine);
-        if (!stages.length) return null;
-        const stageIndex = Math.min(mine.upgradeLevels.filter(level => level <= domainLevel).length, stages.length - 1);
-        return stages[stageIndex];
+        return stages.filter(stage => stage.requiredLevel <= domainLevel).at(-1) || null;
     }
 
-    function stageRangeText(mine, stageIndex, stageCount) {
-        const start = stageIndex === 0 ? null : mine.upgradeLevels[stageIndex - 1];
-        const end = mine.upgradeLevels[stageIndex];
-        if (start == null && end != null) return t('ranges.before', { end }, `地区等级 < ${end}`);
+    function stageRangeText(stages, stageIndex) {
+        const start = stages[stageIndex]?.requiredLevel;
+        const end = stages[stageIndex + 1]?.requiredLevel;
+        if (stageIndex === 0 && start <= 1 && end != null) return t('ranges.before', { end }, `地区等级 < ${end}`);
         if (start != null && end != null) return t('ranges.between', { start, end }, `${start} <= 地区等级 < ${end}`);
         if (start != null) return t('ranges.after', { start }, `地区等级 >= ${start}`);
-        return stageCount === 1 ? t('ranges.all', null, '全部地区等级') : '-';
+        return '-';
     }
 
     function rewardItems(rewardId, tables) {
@@ -107,8 +98,7 @@
                 levelId,
                 levelName: tables.levelDescTable?.[levelId]?.showName?.text || levelId,
                 sourcePath: entry.path || '',
-                isNew: rawMine.addedVersion === currentVersion,
-                upgradeLevels: mineUpgradeLevels(domain, levelId)
+                isNew: rawMine.addedVersion === currentVersion
             });
         }));
         const developmentRows = [...(domain.domainDevelopmentLevel || [])].sort((a, b) => Number(a.domainDevelopmentLevel) - Number(b.domainDevelopmentLevel));
@@ -173,12 +163,12 @@
     function renderMineDetails(domain) {
         const rows = domain.mines.sort((a, b) => String(a.levelId).localeCompare(String(b.levelId)) || String(a.logicMineDataId).localeCompare(String(b.logicMineDataId))).map(mine => {
             const stages = parseDensity(mine);
-            const ranges = stages.map((stage, index) => `${stageRangeText(mine, index, stages.length)}：${t('mineQuantity', { count: formatNumber(stage.quantity) }, `矿物数量 ${formatNumber(stage.quantity)}`)}，${formatNumber(outputPerMinute(stage.purity, mine.itemId, domain.tables))}/min，${formatNumber(stage.purity)}%`).join('<br>');
+            const ranges = stages.map((stage, index) => `${stageRangeText(stages, index)}：${formatNumber(outputPerMinute(stage.purity, mine.itemId, domain.tables))}/min，${formatNumber(stage.purity)}%`).join('<br>');
             const oemUrl = window.AKEV3?.pointShareUrl?.(mine.logicMineDataId) || '';
             const oemLink = oemUrl ? `<div><a class="v2eq-oem-link" href="${escapeHtml(oemUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(equipT('acquisition.oemMapLink', null, '在 OEM 查看'))}</a></div>` : '';
             return `<tr><td>${escapeHtml(mine.logicMineDataId)}${mine.isNew ? ` <span class="ake-ui-badge">${t('new', null, '新增')}</span>` : ''}${oemLink}</td><td>${escapeHtml(mine.levelName)}</td><td><img class="ake-ui-inline-icon" src="${itemIcon(mine.itemId, domain.itemTable)}" alt="">${escapeHtml(itemName(mine.itemId, domain.itemTable))}</td><td>${ranges || '-'}</td></tr>`;
         }).join('');
-        return renderCollapsibleSection(t('mineDetails'), `<div class="ake-ui-table-wrap"><table class="ake-ui-table"><thead><tr><th>${t('mineId')}</th><th>${t('mineRegion', null, '所在地区')}</th><th>${t('mineral')}</th><th>${t('stageIntervals', null, '地区等级区间、矿物数量、产量与纯度')}</th></tr></thead><tbody>${rows}</tbody></table></div>`);
+        return renderCollapsibleSection(t('mineDetails'), `<div class="ake-ui-table-wrap"><table class="ake-ui-table"><thead><tr><th>${t('mineId')}</th><th>${t('mineRegion', null, '所在地区')}</th><th>${t('mineral')}</th><th>${t('stageIntervals', null, '地区等级区间、产量与纯度')}</th></tr></thead><tbody>${rows}</tbody></table></div>`);
     }
 
     function renderSettlementSection(domain) {

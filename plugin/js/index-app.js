@@ -19,6 +19,52 @@
             const configuredPluginVersions = bootstrapVersion.pluginversion || {};
             const configuredJsVersions = bootstrapVersion.jsversion || {};
             const HIDDEN_MODULE_MARKER_ICON = '<svg viewBox="0 0 24 24" focusable="false"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>';
+            const EXPORT_COLOR_FUNCTION_PATTERN = /\bcolor\([^()]*\)/gi;
+
+            function normalizeExportColorFunctions(clonedDocument, exportRoot) {
+                const view = clonedDocument?.defaultView;
+                const documentRoot = clonedDocument?.documentElement;
+                if (!view || !documentRoot || !exportRoot) return;
+
+                const sampleCanvas = clonedDocument.createElement('canvas');
+                sampleCanvas.width = 1;
+                sampleCanvas.height = 1;
+                const sampleContext = sampleCanvas.getContext('2d', { willReadFrequently: true });
+                if (!sampleContext) return;
+
+                const toLegacyColor = colorValue => {
+                    sampleContext.clearRect(0, 0, 1, 1);
+                    sampleContext.fillStyle = '#000';
+                    sampleContext.fillStyle = colorValue;
+                    sampleContext.fillRect(0, 0, 1, 1);
+                    const [red, green, blue, alphaByte] = sampleContext.getImageData(0, 0, 1, 1).data;
+                    if (alphaByte === 255) return `rgb(${red}, ${green}, ${blue})`;
+                    const alpha = Number((alphaByte / 255).toFixed(4));
+                    return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+                };
+
+                const elements = new Set([documentRoot, clonedDocument.body, exportRoot]);
+                exportRoot.querySelectorAll('*').forEach(element => elements.add(element));
+                elements.forEach(element => {
+                    if (!element) return;
+                    let computedStyle;
+                    try {
+                        computedStyle = view.getComputedStyle(element);
+                    } catch {
+                        return;
+                    }
+                    for (let index = 0; index < computedStyle.length; index++) {
+                        const property = computedStyle[index];
+                        const value = computedStyle.getPropertyValue(property);
+                        if (!value || !value.toLowerCase().includes('color(')) continue;
+                        const normalized = value.replace(EXPORT_COLOR_FUNCTION_PATTERN, toLegacyColor);
+                        if (normalized !== value) {
+                            element.style.setProperty(property, normalized, 'important');
+                        }
+                    }
+                });
+            }
+
             const readStoredVersions = key => {
                 try {
                     const value = JSON.parse(storage.get(key, '{}'));
@@ -1983,6 +2029,7 @@
                             
                                 clonedDoc.body.style.margin = '0';
                                 clonedDoc.body.style.padding = '0';
+                                normalizeExportColorFunctions(clonedDoc, element);
                             }
                         });
                     

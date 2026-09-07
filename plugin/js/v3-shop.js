@@ -17,26 +17,6 @@
     const DAY_MS = 24 * 60 * 60 * 1000;
     const DAILY_REFRESH_OFFSET = 4 * 60 * 60 * 1000;
     const WEEKLY_REFRESH_OFFSET = 12 * 60 * 60 * 1000;
-    const WEEKLY_SIX_STAR = [
-        'wpn_sword_0021', 'wpn_funnel_0009', 'wpn_lance_0010', 'wpn_pistol_0009',
-        'wpn_funnel_0008', 'wpn_claym_0006', 'wpn_sword_0013', 'wpn_funnel_0009',
-        'wpn_sword_0011', 'wpn_pistol_0009', 'wpn_lance_0010', 'wpn_claym_0004',
-        'wpn_claym_0008', 'wpn_funnel_0009', 'wpn_lance_0011', 'wpn_pistol_0009',
-        'wpn_funnel_0010', 'wpn_lance_0010', 'wpn_sword_0014', 'wpn_funnel_0008',
-        'wpn_pistol_0008', 'wpn_lance_0011', 'wpn_sword_0013', 'wpn_claym_0006',
-        'wpn_funnel_0009', 'wpn_funnel_0008', 'wpn_lance_0011', 'wpn_claym_0008',
-        'wpn_sword_0012', 'wpn_lance_0010', 'wpn_pistol_0009', 'wpn_sword_0011'
-    ];
-    const WEEKLY_FIVE_STAR = [
-        'wpn_funnel_0004', 'wpn_sword_0019', 'wpn_pistol_0012', 'wpn_funnel_0014',
-        'wpn_sword_0018', 'wpn_sword_0020', 'wpn_lance_0013', 'wpn_pistol_0006',
-        'wpn_funnel_0012', 'wpn_funnel_0005', 'wpn_sword_0005', 'wpn_lance_0004',
-        'wpn_funnel_0004', 'wpn_claym_0011', 'wpn_funnel_0014', 'wpn_sword_0018',
-        'wpn_pistol_0004', 'wpn_sword_0007', 'wpn_lance_0006', 'wpn_claym_0012',
-        'wpn_sword_0019', 'wpn_claym_0015', 'wpn_lance_0013', 'wpn_funnel_0012',
-        'wpn_lance_0004', 'wpn_sword_0005', 'wpn_pistol_0006', 'wpn_funnel_0004',
-        'wpn_claym_0014', 'wpn_funnel_0007', 'wpn_lance_0006', 'wpn_lance_0013'
-    ];
 
     const DAILY_ROTATION = [
         ['wpn_claym_0011', 'wpn_pistol_0004'], ['wpn_sword_0007', 'wpn_pistol_0006'],
@@ -58,6 +38,7 @@
         comparisonVersion: '',
         changes: { normal: {}, cash: {}, groups: {} },
         groups: [],
+        weeklyRotations: [],
         activeGroupId: '',
         activeShopId: '',
         query: ''
@@ -386,9 +367,29 @@
         return product;
     }
 
+    function prepareWeeklyRotations() {
+        const goodsIds = state.tables.shops.shop_pay_weapon_weekly?.shopGoodsIds || [];
+        const rotations = [];
+        let sixStarId = '';
+        goodsIds.forEach(goodsId => {
+            const goods = state.tables.goods[goodsId];
+            const reward = goods ? state.tables.rewards[goods.rewardId] : null;
+            const weaponBundle = (reward?.itemBundles || []).find(bundle => state.tables.weapons[bundle.id]);
+            const weaponId = weaponBundle?.id || '';
+            const rarity = Number(state.tables.weapons[weaponId]?.rarity || 0);
+            if (rarity === 6) {
+                sixStarId = weaponId;
+            } else if (rarity === 5 && sixStarId) {
+                rotations.push([sixStarId, weaponId]);
+                sixStarId = '';
+            }
+        });
+        state.weeklyRotations = rotations;
+    }
+
     function weeklyRotation(index) {
-        if (index < 0 || index >= WEEKLY_SIX_STAR.length) return null;
-        return [WEEKLY_SIX_STAR[index], WEEKLY_FIVE_STAR[index]];
+        if (index < 0 || index >= state.weeklyRotations.length) return null;
+        return state.weeklyRotations[index];
     }
 
     function rotationState() {
@@ -800,7 +801,7 @@
 
     function renderRotationCombinedTable() {
         const rot = rotationState();
-        const totalWeeks = WEEKLY_SIX_STAR.length;
+        const rotations = state.weeklyRotations;
         const header1Html = '<th></th><th></th><th></th><th></th><th></th>' +
             `<th colspan="7">${escapeHtml(t('rotation.dailyTitle'))}</th>`;
         const header2Html = '<th></th>' +
@@ -812,7 +813,7 @@
 
         let rows = '';
         const currentDow = rot.dayIndex >= 0 ? rot.dayIndex % 7 : -1;
-        for (let w = 0; w < totalWeeks; w++) {
+        for (let w = 0; w < rotations.length; w++) {
             const isActiveWeek = w === rot.weekIndex;
             const weekStart = new Date(ROTATION_START + w * 7 * DAY_MS);
             const weekEnd = new Date(ROTATION_START + (w + 1) * 7 * DAY_MS - 1);
@@ -827,8 +828,8 @@
                 <td>${w + 1}</td>
                 <td>${formatDate(weekStart.getTime())}</td>
                 <td>${formatDate(weekEnd.getTime())}</td>
-                <td>${weaponIconCell(WEEKLY_SIX_STAR[w])}</td>
-                <td>${weaponIconCell(WEEKLY_FIVE_STAR[w])}</td>
+                <td>${weaponIconCell(rotations[w][0])}</td>
+                <td>${weaponIconCell(rotations[w][1])}</td>
                 ${dayCells}
             </tr>`;
         }
@@ -948,6 +949,7 @@
             const loaded = await Promise.all(names.map(name => window.AKEV3.table(name)));
             const raw = Object.fromEntries(names.map((name, index) => [name, loaded[index]]));
             state.tables = remapShopTables(raw);
+            prepareWeeklyRotations();
             prepareChannelUnlocks();
             state.groups = Object.values(state.tables.shopGroups);
             const comparison = window.akeDataSource?.getState?.()?.comparison;
