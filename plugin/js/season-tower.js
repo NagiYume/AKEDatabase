@@ -185,9 +185,9 @@
             const source = row.conditional ? escapeHtml(t('scriptBuff', { id: row.scriptId })) : '';
             const tips = [source, ...values];
             const label = `${escapeHtml(row.buffId)}${row.conditional ? `<small>${escapeHtml(t('script'))}</small>` : ''}`;
-            return tips.length
-                ? `<span class="v2d-buff-tag${row.conditional ? ' v2d-script-buff' : ''} v2d-has-tip ake-ui-popover-anchor">${label}<span class="v2d-buff-tip ake-ui-popover" data-placement="top">${tips.map(value => `<div>${value}</div>`).join('')}</span></span>`
-                : `<span class="v2d-buff-tag">${label}</span>`;
+            const className = `v2d-buff-tag${row.conditional ? ' v2d-script-buff' : ''}${tips.length ? ' v2d-has-tip ake-ui-popover-anchor' : ''}`;
+            const contentHtml = tips.length ? `${label}<span class="v2d-buff-tip ake-ui-popover" data-placement="top">${tips.map(value => `<div>${value}</div>`).join('')}</span>` : label;
+            return window.AKEUI.entryLinkHtml({ plugin: 'v3_buff', id: row.buffId, label: row.buffId, className, contentHtml });
         }).join('')}</div>`;
     }
 
@@ -212,6 +212,11 @@
             getDetails: getEnemyStatDetails
         });
         return window.AKEEnemyRenderer.renderCard({
+            dataAttributes: {
+                akeEntryPlugin: 'v3_enemy',
+                akeEntryId: enemy.templateId || enemyId,
+                akeEntryLabel: text(display.name, enemy.templateId || enemyId)
+            },
             iconSrc: `/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/monstericonbig/${enemy.templateId || enemyId}.png`,
             name: text(display.name, enemy.templateId || enemyId),
             nickname: text(display.nickname),
@@ -335,7 +340,8 @@
 
     function itemReward(bundle, items) {
         const item = items[bundle.id] || {};
-        return `<span class="st-reward"><img src="/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/${escapeHtml(item.iconId || bundle.id)}.png" alt=""><span>${escapeHtml(text(item.name, bundle.id))}</span><b>×${Number(bundle.count || 0).toLocaleString()}</b></span>`;
+        const name = text(item.name, bundle.id);
+        return window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: bundle.id, label: name, className: 'st-reward', contentHtml: `<img src="/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/${escapeHtml(item.iconId || bundle.id)}.png" alt=""><span>${escapeHtml(name)}</span><b>×${Number(bundle.count || 0).toLocaleString()}</b>` });
     }
 
     function renderRanks(data) {
@@ -347,8 +353,12 @@
 
     function renderDifficulty(entry, data, options) {
         const { baseId, gameId, star, dungeon, mechanic, rewardId, feature, special } = entry;
+        const difficultyName = DIFFICULTIES[star] || t('difficulty', { id: star });
+        const difficultyTitle = dungeon.dungeonSeriesId
+            ? window.AKEUI.entryLinkHtml({ plugin: 'v3_dungeon', id: dungeon.dungeonSeriesId, label: difficultyName, contentHtml: escapeHtml(difficultyName) })
+            : escapeHtml(difficultyName);
         return `<div class="st-difficulty st-difficulty--${star}">
-            <div class="st-difficulty-head"><span>${star} ★</span><b>${DIFFICULTIES[star] || t('difficulty', { id: star })}</b><small>${escapeHtml(t('recommended', { level: dungeon.recommendLv || '-' }))}</small></div>
+            <div class="st-difficulty-head"><span>${star} ★</span><b>${difficultyTitle}</b><small>${escapeHtml(t('recommended', { level: dungeon.recommendLv || '-' }))}</small></div>
             <div class="st-goal">${parseGameText(text(mechanic.desc, t('defeatAll')))}</div>
             ${options.showFeature && feature ? `<div class="st-feature">${parseGameText(feature)}</div>` : ''}
             ${options.showSpecial && special ? `<div class="st-special"><b>${escapeHtml(t('special'))}</b>${parseGameText(special)}</div>` : ''}
@@ -416,6 +426,9 @@
                 src: `/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/activity/${data.activity.tabImg || 'activity_tab_bg_seasontower'}.png`
             },
             title: `${text(data.activity.name, t('title'))} · ${season.name}`,
+            beforeTitle: data.activity.activityId
+                ? window.AKEUI.entryLink({ plugin: 'v3_activity', id: data.activity.activityId, label: text(data.activity.name, t('title')), content: text(data.activity.name, t('title')) })
+                : null,
             subtitle: text(data.activity.desc),
             content: window.AKEUI.fragment(`<div class="ake-ui-detail-meta"><span class="ake-ui-badge" data-accent="status" data-accent-value="${status.key}">${status.label}</span><span>${formatDate(season.openTime)}</span><span>${formatDate(season.closeTime)}</span></div>`)
         });
@@ -515,7 +528,7 @@
             Object.values(dungeons).forEach(dungeon => {
                 dungeon.spawnerConfigs = spawnersForDungeon(dungeon, spawnersByScene[dungeon.sceneId] || {});
             });
-            const towerActivities = Object.values(activities).filter(row => row.panelId === 'ActivitySeasonTower');
+            const towerActivities = Object.entries(activities).filter(([, row]) => row.panelId === 'ActivitySeasonTower').map(([activityId, row]) => ({ ...row, activityId }));
             const activity = towerActivities.length === 1 ? towerActivities[0] : {};
             if (towerActivities.length > 1) console.warn('SeasonTower: multiple activities without a season-to-activity relation', towerActivities.map(row => row.id));
             const missingReferences = [...groupIds].filter(id => !gameGroups[id]).concat([...dungeonIds].filter(id => !allDungeons[id]));

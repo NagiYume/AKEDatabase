@@ -1119,11 +1119,15 @@
         const configuredIcon = identity.iconPath || identity.iconConfig?._spritePath || identity.iconConfig?.spritePath;
         const buffIcon = identity.hasIcon === false ? '' : iconPath(configuredIcon);
         const ownerIcon = owner.icon ? `<img src="${escapeHtml(owner.icon)}" alt="">` : '';
+        const ownerPlugin = owner.icon && owner.entityKind === 'character' ? 'v3_character' : (owner.icon && owner.entityKind === 'enemy' ? 'v3_enemy' : '');
+        const ownerChip = ownerPlugin
+            ? window.AKEUI.entryLinkHtml({ plugin: ownerPlugin, id: owner.id, label: owner.name, className: 'buffv3-owner-chip', contentHtml: `${ownerIcon}<span>${escapeHtml(owner.name)}</span>` })
+            : `<span class="buffv3-owner-chip">${ownerIcon}<span>${escapeHtml(owner.name)}</span></span>`;
         const metrics = coreMetrics();
         const detailHeader = window.AKEUI.detailHeader({
             layout: 'showcase',
             icon: buffIcon ? { src: buffIcon } : null,
-            beforeTitle: window.AKEUI.fragment(`<div class="ake-ui-detail-meta"><span class="buffv3-owner-chip">${ownerIcon}<span>${escapeHtml(owner.name)}</span></span><span>BuffData</span></div>`),
+            beforeTitle: window.AKEUI.fragment(`<div class="ake-ui-detail-meta">${ownerChip}<span>BuffData</span></div>`),
             title: item.displayName,
             id: item.id,
             after: window.AKEUI.fragment(`<aside class="ake-ui-detail-aside"><strong class="ake-ui-detail-aside__title">${escapeHtml(t('header.ownerHint', null, '归属提示'))}</strong><span class="ake-ui-detail-aside__body">${escapeHtml(t('header.prefixNotice', null, '目录归属由 ID 前缀推断，不代表运行时来源。'))}</span></aside>`)

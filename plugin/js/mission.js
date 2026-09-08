@@ -576,7 +576,12 @@
             ['领取方式', row.meta?.acceptMode?.mode ?? '缺少 Meta'], ['任务奖励', mission.rewardId || '无'],
             ['额外说明', extraInfo?.extraInfoDesc?.text || '无']
         ];
-        return `<dl class="ake-ui-meta-grid">${cells.map(([label, value]) => `<div class="ake-ui-meta-grid__item"><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join('')}</dl>`;
+        return `<dl class="ake-ui-meta-grid">${cells.map(([label, value]) => {
+            const content = label === '关联角色' && mission.charId
+                ? window.AKEUI.entryLinkHtml({ plugin: 'v3_character', id: mission.charId, label: value, contentHtml: escapeHtml(value) })
+                : escapeHtml(value);
+            return `<div class="ake-ui-meta-grid__item"><dt>${label}</dt><dd>${content}</dd></div>`;
+        }).join('')}</dl>`;
     }
 
     function conditionSummary(objective) {
@@ -598,7 +603,8 @@
         return `<div class="mission-reward-list">${bundles.map(bundle => {
             const item = auxiliary.ItemTable?.[bundle.id] || {};
             const icon = item.iconId ? `/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/${item.iconId}.png` : '';
-            return `<div class="mission-reward">${icon ? `<img src="${escapeHtml(icon)}" alt="">` : ''}<div><b>${escapeHtml(item.name?.text || bundle.id)}</b><br><small>× ${escapeHtml(bundle.count ?? '?')}</small></div></div>`;
+            const name = item.name?.text || bundle.id;
+            return window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: bundle.id, label: name, className: 'mission-reward', contentHtml: `${icon ? `<img src="${escapeHtml(icon)}" alt="">` : ''}<div><b>${escapeHtml(name)}</b><br><small>× ${escapeHtml(bundle.count ?? '?')}</small></div>` });
         }).join('') || `<div class="mission-reward"><b>${escapeHtml(rewardId)}</b></div>`}</div>`;
     }
 
@@ -612,7 +618,10 @@
             return `<details class="mission-quest" ${questIndex < 3 ? 'open' : ''}><summary><span class="mission-quest__id">${escapeHtml(quest.questId)}</span><span class="mission-quest__desc">${richText(summary)}</span><span class="ake-ui-badge">${QUEST_TYPES[quest.questType] || quest.questType}</span></summary><div class="mission-quest__body">
                 ${(quest.objectiveList || []).map((objective, index) => `<div class="mission-objective"><div class="mission-objective__index">${index + 1}</div><div><div class="mission-objective__text">${richText(objectiveDescription(objective))}</div><div class="mission-objective__meta">${escapeHtml(conditionSummary(objective))}</div></div></div>`).join('') || '<div class="mission-dialog-empty">该 Quest 没有 Objective</div>'}
                 ${quest.rewardId ? `<div><b>Quest 奖励</b>${rewardHtml(quest.rewardId, auxiliary)}</div>` : ''}
-                ${(quest.needItemIds || []).length ? `<div class="mission-objective__meta">需求物品：${escapeHtml(quest.needItemIds.join(', '))}</div>` : ''}
+                ${(quest.needItemIds || []).length ? `<div class="mission-objective__meta">需求物品：${quest.needItemIds.map(itemId => {
+                    const name = auxiliary.ItemTable?.[itemId]?.name?.text || itemId;
+                    return window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: itemId, label: name, contentHtml: escapeHtml(name) });
+                }).join(', ')}</div>` : ''}
             </div></details>`;
         }).join('')}</div>`;
     }

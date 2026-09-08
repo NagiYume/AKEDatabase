@@ -277,8 +277,11 @@
         }).join('')}</div>`;
     }
 
-    function attachmentHtml(label, title, detail, marker) {
-        return `<div class="baker-attachment"><span class="baker-attachment__icon" aria-hidden="true">${escapeHtml(marker)}</span><div><strong>${escapeHtml(title || label)}</strong><small>${escapeHtml(detail || label)}</small></div></div>`;
+    function attachmentHtml(label, title, detail, marker, route) {
+        const contentHtml = `<span class="baker-attachment__icon" aria-hidden="true">${escapeHtml(marker)}</span><div><strong>${escapeHtml(title || label)}</strong><small>${escapeHtml(detail || label)}</small></div>`;
+        return route?.id
+            ? window.AKEUI.entryLinkHtml({ plugin: route.plugin, id: route.id, label: title || label, className: 'baker-attachment', contentHtml })
+            : `<div class="baker-attachment">${contentHtml}</div>`;
     }
 
     function parseContentParams(value) {
@@ -320,7 +323,7 @@
         else if (type === 6) {
             const itemId = params[0] || '';
             const item = state.items[itemId] || {};
-            attachment = attachmentHtml(CONTENT_LABELS[type], item.name?.text || itemId, itemId, '+');
+            attachment = attachmentHtml(CONTENT_LABELS[type], item.name?.text || itemId, itemId, '+', { plugin: 'v3_item', id: itemId });
         } else if (type === 8) {
             const linkedChat = state.chats[params[0]];
             attachment = attachmentHtml(CONTENT_LABELS[type], chatName(linkedChat, params[0]), params[1] || params[0], '@');
@@ -329,7 +332,7 @@
             attachment = attachmentHtml(CONTENT_LABELS[type], archive.id || t('narrative'), archive.phaseId || t('archiveRecord'), '#');
         } else if (type === 12) {
             const missionId = node.linkMissionId || params[0] || '';
-            attachment = attachmentHtml(CONTENT_LABELS[type], missionId, t('missionAttachment'), '!');
+            attachment = attachmentHtml(CONTENT_LABELS[type], missionId, t('missionAttachment'), '!', { plugin: 'v3_mission', id: missionId });
         } else attachment = attachmentHtml(CONTENT_LABELS[type] || t('messageType', { type }), text, params.join(' · '), '?');
         const caption = text && type !== 5 ? `<div class="baker-bubble__text">${richText(text)}</div>` : '';
         return bubbleMessage(node, row, attachment + caption);

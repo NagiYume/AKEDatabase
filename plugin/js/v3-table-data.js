@@ -908,6 +908,7 @@
                 canBeUpgraded: achievement.canBeUpgraded,
                 canBePlated: achievement.canBePlated,
                 applyRareEffect: achievement.applyRareEffect,
+                plateConditions: (achievement.plateConditions || []).map(condition => pick(condition, ['desc', 'progressToCompare'])),
                 levels: Object.values(achievement.levelInfos || {}).map(level => ({
                     achieveLevel: level.achieveLevel,
                     completeDesc: level.completeDesc,
@@ -939,12 +940,19 @@
             if (!(row.groupId in groupNames)) return;
             const groupName = groupNames[row.groupId] || 'default';
             if (!group[groupName]) group[groupName] = {};
+            const levels = Object.values(row.levelInfos || {}).sort((a, b) => Number(a.achieveLevel || 0) - Number(b.achieveLevel || 0));
+            const platingLevel = levels[levels.length - 1]?.achieveLevel;
             group[groupName][achieveId] = { name: text(row.name, achieveId), order: row.order, canBeUpgraded: row.canBeUpgraded,
                 canBePlated: row.canBePlated, applyRareEffect: row.applyRareEffect, noObtainCanView: category.noObtainCanView,
-                level: Object.values(row.levelInfos || {}).map(level => ({ level: level.achieveLevel,
+                level: levels.map(level => ({ level: level.achieveLevel,
                     icon: `/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/medaliconbig/${achieveId}_lv${String(level.achieveLevel).padStart(2, '0')}.png`,
                     desc: text(level.completeDesc), conditions: (level.conditions || []).map(cond => text(cond.desc)),
-                    progressToCompare: (level.conditions || []).map(cond => cond.progressToCompare) })) };
+                    progressToCompare: (level.conditions || []).map(cond => cond.progressToCompare) })),
+                plating: row.canBePlated && platingLevel !== undefined ? {
+                    icon: `/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/medaliconbig/${achieveId}_lv${String(platingLevel).padStart(2, '0')}_plating.png`,
+                    conditions: (row.plateConditions || []).map(condition => text(condition.desc)),
+                    progressToCompare: (row.plateConditions || []).map(condition => condition.progressToCompare)
+                } : null };
         });
         return { categoryId: id, categoryName: text(category.categoryName, id), group };
     }
@@ -1082,7 +1090,7 @@
 
         Object.entries(detailTables.charTrials || {}).filter(([, trial]) => trial.activityId === id).forEach(([trialId, trial], index) => addRewardGroup({
             id: trialId, kind: 'trial', index: index + 1, desc: text(trial.desc), sortId: 1000 + (trial.sortId ?? index + 1),
-            rewardId: trial.rewardId
+            rewardId: trial.rewardId, relatedCharId: trial.relatedCharId
         }));
         Object.entries(detailTables.birthStages || {}).forEach(([stageId, stage], index) => {
             if (!stage.rewardItemId || stage.isVisible === false) return;
@@ -1106,6 +1114,7 @@
         stageRows.forEach(({ stageId, stage, dungeon, source }) => {
             if (source === 'dungeon') {
                 stageList[stageId] = { name: text(dungeon.dungeonName, stageId), desc: text(dungeon.dungeonDesc), sortId: dungeon.sortId,
+                    dungeonSeriesId: dungeon.dungeonSeriesId,
                     opentime: times[row.timeId]?.timeRangeList?.[0]?.openTime || '', rewarddetail: rewardsToView(dungeon.rewardId, rewards, items) };
                 return;
             }

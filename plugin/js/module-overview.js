@@ -251,6 +251,13 @@
                 card.dataset.akeComponent = 'card';
                 card.dataset.cardKind = 'overview';
                 card.dataset.overviewVariant = overviewVariant;
+                const moduleId = container.closest('[data-ake-module]')?.dataset.akeModule;
+                const routePlugin = window.__akeRouter?.normalizeModuleId?.(moduleId);
+                if (routePlugin && item.id) {
+                    card.dataset.akeEntryPlugin = routePlugin;
+                    card.dataset.akeEntryId = item.id;
+                    card.dataset.akeEntryLabel = item.name || '';
+                }
                 const tagsLayout = text(options.tagsLayout);
                 if (tagsLayout) card.dataset.tagsLayout = tagsLayout;
                 card.setAttribute('aria-label', item.id ? `${text(item.name)} · ${text(item.id)}` : text(item.name));

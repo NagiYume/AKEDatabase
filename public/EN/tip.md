@@ -1,6 +1,35 @@
+# Special Announcement
+
+AKEData `v1.2.19` is now available. This release adds cross-module entry navigation, an optional new-tab workflow, and four-language voice playback, while fixing medal plating details and link hit areas that could interfere with data interactions.
+
 AKEData has moved to www.akedata.wiki. The former domain, akedata.top, now redirects here.
 
 # AKEData Version Changelog
+
+### v1.2.19
+
+#### Entry navigation and page experience
+
+- Browser titles now follow the active module and entry, so each tab identifies the content currently being viewed.
+- Added an “Open entries in a new tab” global setting, enabled by default. Start-page entries and cross-module links follow this setting, while left-sidebar navigation remains in the current tab.
+- Added cross-module navigation for related recommended weapons, activity and mission rewards, upgrade materials, skills, Buffs, enemies, dungeons, shops, regions, and Baker attachments.
+- Entry links inherit their surrounding component's normal typography and color instead of using the browser's default blue and underline.
+- Enemy cards in Dungeons, Crisis Calculation, and Season Tower now navigate only from the portrait. Stat values, raw-value details, Buff popovers, and other nested controls keep their original interactions.
+
+#### Character and Archive voices
+
+- Character and Archive voices support Chinese, Japanese, English, and Korean. The Character language selector is placed directly above the voice records.
+- Voice assets automatically fall back through `cn.endfield.fffdan.com`, `cn2.endfield.fffdan.com`, and `endfield-assets.fffdan.com`, using the current page protocol.
+
+#### Medals
+
+- Fixed the loading and display of medal plating icons, conditions, details, and progress.
+- Medals with timed-clear plating requirements now show those requirements correctly.
+
+#### Data presentation and maintenance
+
+- Regional Development and Typhoea's Shooting Range no longer expose internal IDs when Hidden Mode is disabled; missing names and relations use recognizable interface labels.
+- Adjusted the order of several modules and updated the sponsor list.
 
 ### v1.2.18
 

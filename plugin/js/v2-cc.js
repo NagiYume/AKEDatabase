@@ -601,7 +601,9 @@
                 ? `/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/${item.iconId}.png`
                 : '',
             name: item.name,
-            count: item.count
+            count: item.count,
+            element: 'a',
+            attributes: window.__akeRouter?.entryAttributes?.('v3_item', item.id, item.name)
         };
     }
 
@@ -678,7 +680,7 @@
 
         return `
             <div class="ake-ui-section">
-                <div class="ake-ui-section__header"><h3 class="ake-ui-section__title">${t('shop.title', { name: parseText(groupName) })}</h3></div>
+                <div class="ake-ui-section__header"><h3 class="ake-ui-section__title">${window.AKEUI.entryLinkHtml({ plugin: 'v3_shop', id: sgt.shopGroupId, label: groupName, contentHtml: t('shop.title', { name: parseText(groupName) }) })}</h3></div>
                 ${shopIds.map(sid => {
                     const shop = shopTable[sid];
                     if (!shop) return '';
@@ -707,9 +709,10 @@
                                     const rewardItems = resolveRewardItems(g.rewardId, data.rewardtable || {}, itemTable);
                                     const itemIcon = rewardItems.length ? rewardItems[0].iconId : '';
                                     const itemName = rewardItems.length
-                                        ? rewardItems.map(r => escapeHtml(r.name) + (r.count > 1 ? `<span class="v2cc-item-qty">×${r.count}</span>` : '')).join(' + ')
+                                        ? rewardItems.map(r => window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: r.id, label: r.name, contentHtml: escapeHtml(r.name) + (r.count > 1 ? `<span class="v2cc-item-qty">×${r.count}</span>` : '') })).join(' + ')
                                         : `<span class="v2cc-goods-fallback">${escapeHtml(g.goodsTagId || g.goodsId)}</span>`;
-                                    const currencyName = escapeHtml(getCurrencyName(g.moneyId));
+                                    const currencyText = getCurrencyName(g.moneyId);
+                                    const currencyName = window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: g.moneyId, label: currencyText, contentHtml: escapeHtml(currencyText) });
                                     const limitText = g.limitCount > 0 ? g.limitCount : '∞';
                                     const hasDiscount = g.cnDiscount > 0 && g.cnDiscount < 1;
                                     const actualPrice = hasDiscount ? Math.ceil(g.price * g.cnDiscount) : g.price;
@@ -971,9 +974,9 @@
             });
             const isCcTag = extraIds.includes(id);
             const cls = isCcTag ? 'v2d-buff-tag v2d-has-tip cc-tag-buff' : 'v2d-buff-tag v2d-has-tip';
-            if (rows.length === 0) return `<span class="${isCcTag ? 'v2d-buff-tag cc-tag-buff' : 'v2d-buff-tag'}">${escapeHtml(id)}</span>`;
+            if (rows.length === 0) return window.AKEUI.entryLinkHtml({ plugin: 'v3_buff', id, label: id, className: isCcTag ? 'v2d-buff-tag cc-tag-buff' : 'v2d-buff-tag', contentHtml: escapeHtml(id) });
             const tipHtml = rows.map(r => `<div>${r}</div>`).join('');
-            return `<span class="${cls} ake-ui-popover-anchor">${escapeHtml(id)}<span class="v2d-buff-tip ake-ui-popover" data-placement="top">${tipHtml}</span></span>`;
+            return window.AKEUI.entryLinkHtml({ plugin: 'v3_buff', id, label: id, className: `${cls} ake-ui-popover-anchor`, contentHtml: `${escapeHtml(id)}<span class="v2d-buff-tip ake-ui-popover" data-placement="top">${tipHtml}</span>` });
         }).join('')}</div>`;
     }
 
@@ -1012,7 +1015,7 @@
                 ['buff加成', libraryBuffModifiers],
                 ['副本加成', scriptModifiers]
             ]);
-        const scriptBuffTagsHtml = showHidden && (scriptedBuffs || []).length ? `<div class="v2d-enemy-buffs">${scriptedBuffs.map(row => `<span class="v2d-buff-tag v2d-script-buff v2d-has-tip ake-ui-popover-anchor">${escapeHtml(row.buffId)}<small>脚本</small><span class="v2d-buff-tip ake-ui-popover" data-placement="top"><div>条件性脚本 Buff · LevelScript ${escapeHtml(row.scriptId)}</div></span></span>`).join('')}</div>` : '';
+        const scriptBuffTagsHtml = showHidden && (scriptedBuffs || []).length ? `<div class="v2d-enemy-buffs">${scriptedBuffs.map(row => window.AKEUI.entryLinkHtml({ plugin: 'v3_buff', id: row.buffId, label: row.buffId, className: 'v2d-buff-tag v2d-script-buff v2d-has-tip ake-ui-popover-anchor', contentHtml: `${escapeHtml(row.buffId)}<small>脚本</small><span class="v2d-buff-tip ake-ui-popover" data-placement="top"><div>条件性脚本 Buff · LevelScript ${escapeHtml(row.scriptId)}</div></span>` })).join('')}</div>` : '';
 
         const statState = window.AKEEnemyRenderer.calculateStats({
             attrData,
@@ -1027,7 +1030,10 @@
                 enemyId,
                 enemyLevel,
                 libBuffs,
-                scriptBuffs: scriptedBuffs || []
+                scriptBuffs: scriptedBuffs || [],
+                akeEntryPlugin: 'v3_enemy',
+                akeEntryId: templateId,
+                akeEntryLabel: name
             },
             iconSrc,
             name,
@@ -1224,12 +1230,13 @@
             const desc = dg.dungeonDesc?.text ? parseText(dg.dungeonDesc.text) : '';
             const featureDesc = dg.featureDesc?.text ? parseText(dg.featureDesc.text) : '';
             const recommendLv = dg.recommendLv || '?';
+            const seriesId = dg.dungeonSeriesId || '';
 
             const waveSpawners = parseDungeonWaves(dg);
 
             html += `<div class="ake-ui-card" data-card-kind="cc-dungeon" data-density="regular">
                 <div class="ake-ui-card__header">
-                    <span class="ake-ui-card__title">${escapeHtml(name)}</span>
+                    ${seriesId ? window.AKEUI.entryLinkHtml({ plugin: 'v3_dungeon', id: seriesId, label: name, className: 'ake-ui-card__title', contentHtml: escapeHtml(name) }) : `<span class="ake-ui-card__title">${escapeHtml(name)}</span>`}
                     <span class="ake-ui-badge">${t('dungeon.recommendedLevel', { label: commonT('level'), level: recommendLv })}</span>
                 </div>
                 ${desc ? `<div class="ake-ui-card__body">${desc}</div>` : ''}
@@ -1350,6 +1357,9 @@
 
         const detailHeader = window.AKEUI.detailHeader({
             title,
+            beforeTitle: game.activityId
+                ? window.AKEUI.entryLink({ plugin: 'v3_activity', id: game.activityId, label: game.activityId, content: game.activityId })
+                : null,
             subtitle: getCurrentShowHidden()
                 ? t('detail.subtitle', { activity: game.activityId, groups: groupCount, terms: tagCount })
                 : ''

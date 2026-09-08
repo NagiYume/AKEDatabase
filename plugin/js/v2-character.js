@@ -1412,19 +1412,24 @@
 
         function materialItem(item, itemInfoMap) {
             const info = itemInfoMap?.[item.id] || {};
+            const name = info.name || item.id;
             return {
                 icon: `${ITEM_ICON_BASE}${info.iconId || item.id}.png`,
-                name: info.name || item.id,
+                name,
                 count: Number(item.count) > 0 ? item.count : undefined,
-                description: info.description
+                description: info.description,
+                element: 'a',
+                attributes: window.__akeRouter?.entryAttributes?.('v3_item', item.id, name)
             };
         }
 
-        function itemCardHtml(item, itemInfoMap, subtitle = '') {
+        function itemCardHtml(item, itemInfoMap, subtitle = '', plugin = 'v3_item') {
             const displayItem = materialItem(item, itemInfoMap);
             const count = Number(item.count) > 0 ? `×${item.count}` : '';
             const cardSubtitle = [subtitle, count].filter(Boolean).join(' · ');
             return window.AKEUI.card({
+                element: 'a',
+                attributes: window.__akeRouter?.entryAttributes?.(plugin, item.id, displayItem.name),
                 media: { src: displayItem.icon, alt: displayItem.name },
                 header: { title: displayItem.name, subtitle: cardSubtitle }
             }).outerHTML;
@@ -1667,6 +1672,10 @@
                 const prefixIndex = SKILL_GROUP_ORDER[group.groupType] ?? group.groupType;
                 const prefix = skillTypePrefix[prefixIndex] || t('sections.skills');
                 const displayName = `${prefix}·${group.name}`;
+                const skillId = (group.skillIds || []).find(Boolean);
+                const skillTitle = skillId && window.AKEUI?.entryLinkHtml
+                    ? window.AKEUI.entryLinkHtml({ plugin: 'v3_skill', id: skillId, label: displayName, className: 'ake-ui-card__title' })
+                    : `<div class="ake-ui-card__title">${displayName}</div>`;
 
                 const isExpanded = globalSkillExpand ? true : (skillExpandMap[group.skillKey] || false);
                 const matrixHtml = renderSkillMatrix(skillDetail, isExpanded);
@@ -1717,7 +1726,7 @@
                         <div class="ake-ui-card__header character-skill-header">
                             <div class="ake-ui-card__header-start">
                                 <img class="skill-icon" src="${group.icon}" alt="">
-                                <div class="ake-ui-card__title">${displayName}</div>
+                                ${skillTitle}
                             </div>
                             <div class="character-card-cost">
                                 ${materialPopoverHtml({ rows: skCostRows, iconIds: ['item_gold', ...new Set(skCosts.flatMap(c => c.items.map(it => it.id)))] }, itemInfoMap)}
@@ -1809,7 +1818,7 @@
                             <div class="ake-ui-card__header"><div class="ake-ui-card__title">${t('weaponRecommendations.skillAdaptation')}</div></div>
                             <div class="ake-ui-card__body">
                                 ${data.weaponRecommendations?.skillAdaptation?.length
-                                    ? `<div class="ake-ui-card-grid" data-size="regular">${data.weaponRecommendations.skillAdaptation.map(item => itemCardHtml(item, itemInfoMap)).join('')}</div>`
+                                    ? `<div class="ake-ui-card-grid" data-size="regular">${data.weaponRecommendations.skillAdaptation.map(item => itemCardHtml(item, itemInfoMap, '', 'v3_weapon')).join('')}</div>`
                                     : `<p>${t('none')}</p>`}
                             </div>
                         </div>
@@ -1817,7 +1826,7 @@
                             <div class="ake-ui-card__header"><div class="ake-ui-card__title">${t('weaponRecommendations.attributeAdaptation')}</div></div>
                             <div class="ake-ui-card__body">
                                 ${data.weaponRecommendations?.attributeAdaptation?.length
-                                    ? `<div class="ake-ui-card-grid" data-size="regular">${data.weaponRecommendations.attributeAdaptation.map(item => itemCardHtml(item, itemInfoMap)).join('')}</div>`
+                                    ? `<div class="ake-ui-card-grid" data-size="regular">${data.weaponRecommendations.attributeAdaptation.map(item => itemCardHtml(item, itemInfoMap, '', 'v3_weapon')).join('')}</div>`
                                     : `<p>${t('none')}</p>`}
                             </div>
                         </div>
@@ -1880,6 +1889,7 @@
                             </button>
                         </div>
                         <div class="collapse-content">
+                            ${(data.profileVoice?.length || data.specialVoices?.length) && window.AKEVoicePlayer?.languageControlHtml ? window.AKEVoicePlayer.languageControlHtml() : ''}
                             ${voiceHtml}
                             <h4 class="ake-ui-section__title">${t('specialVoices', null, '特殊台词')}</h4>
                             ${specialVoiceHtml}

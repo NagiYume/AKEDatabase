@@ -318,6 +318,7 @@
             if (!bundle.length) return null;
             return {
                 name: bundle[0]?.skillName?.text || skillId,
+                id: skillId,
                 bundle
             };
         }).filter(Boolean);
@@ -357,7 +358,7 @@
                         <thead>
                             <tr>
                                 <th scope="col">Rank</th>
-                                ${skills.map(skill => `<th scope="col">${escapeHtml(skill.name)}</th>`).join('')}
+                                ${skills.map(skill => `<th scope="col">${window.AKEUI.entryLinkHtml({ plugin: 'v3_skill', id: skill.id, label: skill.name })}</th>`).join('')}
                             </tr>
                         </thead>
                         <tbody>${rankRows}</tbody>
@@ -367,15 +368,18 @@
         `;
     }
 
-    function weaponMaterialItem(item, itemTable, overrides = {}) {
-        const itemData = itemTable[item.id] || {};
-        return {
-            icon: `/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/${itemData.iconId || item.id}.png`,
-            name: overrides.name || itemData.name?.text || item.id,
-            count: overrides.count ?? item.count,
-            description: itemData.desc?.text || ''
-        };
-    }
+        function weaponMaterialItem(item, itemTable, overrides = {}) {
+            const itemData = itemTable[item.id] || {};
+            const name = overrides.name || itemData.name?.text || item.id;
+            return {
+                icon: `/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/${itemData.iconId || item.id}.png`,
+                name,
+                count: overrides.count ?? item.count,
+                description: itemData.desc?.text || '',
+                element: 'a',
+                attributes: window.__akeRouter?.entryAttributes?.('v3_item', item.id, name)
+            };
+        }
 
     function weaponMaterialPopover(costs, itemTable) {
         const items = costs.map(cost => weaponMaterialItem(cost, itemTable, cost.overrides));

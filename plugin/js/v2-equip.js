@@ -342,11 +342,14 @@
         function equipMaterialItem(itemId, count, itemTable) {
             if (!itemId) return null;
             const item = itemTable[itemId] || {};
+            const name = item.name?.text || itemId;
             return {
                 icon: `/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/${item.iconId || itemId}.png`,
-                name: item.name?.text || itemId,
+                name,
                 count: Number(count || 0).toLocaleString(),
-                description: item.desc?.text || ''
+                description: item.desc?.text || '',
+                element: 'a',
+                attributes: window.__akeRouter?.entryAttributes?.('v3_item', itemId, name)
             };
         }
 
@@ -480,7 +483,13 @@
                 const value = Number(mod.attrValue);
                 const candidates = pool.filter(candidate => candidate.itemId !== itemId && candidate.partType === partType && (candidate.displayAttrModifiers || []).some(other => equipmentAttrKey(other) === key && Number(other.attrValue) > value))
                     .sort((a, b) => Number((b.displayAttrModifiers || []).find(other => equipmentAttrKey(other) === key)?.attrValue || 0) - Number((a.displayAttrModifiers || []).find(other => equipmentAttrKey(other) === key)?.attrValue || 0) || a.itemId.localeCompare(b.itemId)).slice(0, 2);
-                const rows = (candidates.length ? candidates : [{ ...equipData, itemId, name, icon: iconSrc }]).map(candidate => `<div class="v2eq-recommend-item"><img src="${candidate.icon || getEquipIconSrc(candidate.itemId, candidate.iconId)}" alt=""><span>${escapeHtml(candidate.name || itemTable[candidate.itemId]?.name?.text || candidate.itemId)}</span></div>`).join('');
+                const rows = (candidates.length ? candidates : [{ ...equipData, itemId, name, icon: iconSrc }]).map(candidate => {
+                    const candidateName = candidate.name || itemTable[candidate.itemId]?.name?.text || candidate.itemId;
+                    return window.AKEUI.entryLinkHtml({
+                        plugin: 'v3_item', id: candidate.itemId, label: candidateName, className: 'v2eq-recommend-item',
+                        contentHtml: `<img src="${candidate.icon || getEquipIconSrc(candidate.itemId, candidate.iconId)}" alt=""><span>${escapeHtml(candidateName)}</span>`
+                    });
+                }).join('');
                 return `<div class="v2eq-recommend-row${candidates.length ? ' is-better-match' : ''}"><b>${escapeHtml(getAttrName(mod.attrType, mod.compositeAttr))}</b>${rows}</div>`;
             }).join('');
             const recommendationBtn = recommendationRows ? window.AKEUI.popover({ label: t('refiningRecommendation'), placement: 'bottom', className: 'v2eq-recommend-popover', panelElement: 'div', content: window.AKEUI.fragment(recommendationRows) })?.outerHTML || '' : '';
@@ -493,7 +502,7 @@
                         <header class="ake-ui-card__header">
                             <div class="ake-ui-card__media"><img src="${iconSrc}" alt=""></div>
                             <div class="ake-ui-card__heading">
-                                <h3 class="ake-ui-card__title">${escapeHtml(name)}</h3>
+                                ${window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: itemId, label: name, className: 'ake-ui-card__title', contentHtml: escapeHtml(name) })}
                                 ${showHidden ? `<span class="ake-ui-card__id">${escapeHtml(itemId)}</span>` : ''}
                             </div>
                             ${hasActions ? `<div class="ake-ui-card__header-actions">${formulaBtnHtml}${guaranteeBtnHtml}${recommendationBtn}</div>` : ''}
@@ -501,7 +510,7 @@
                         <div class="ake-ui-card__badges">
                             <span class="ake-ui-badge">${partName}</span>
                             <span class="ake-ui-badge">${t('levelAbbreviation', { level: minWearLv })}</span>
-                            ${domainName ? `<span class="ake-ui-badge"${showHidden ? ` title="${escapeHtml(domainId)}"` : ''}>${escapeHtml(domainName)}</span>` : ''}
+                            ${domainName ? window.AKEUI.entryLinkHtml({ plugin: 'region', id: domainId, label: domainName, className: 'ake-ui-badge', title: showHidden ? domainId : '' , contentHtml: escapeHtml(domainName) }) : ''}
                         </div>
                         <div class="v2eq-mainstat">
                             <span class="v2eq-mainstat-desc">${escapeHtml(mainName)}</span>
@@ -527,7 +536,7 @@
             for (const [skillId, skillData] of Object.entries(skillTable)) {
                 const bundle = skillData.SkillPatchDataBundle;
                 if (!bundle) continue;
-                bundle.forEach(skill => {
+                bundle.forEach((skill, skillIndex) => {
                     const desc = skill.description?.text || '';
                     if (!desc) return;
                     const blackboard = skill.blackboard || [];
@@ -539,7 +548,11 @@
                     processedDesc = parseText(processedDesc);
                     processedDesc = processedDesc.replace(/\n/g, '<br>');
 
-                    html += `<div class="v2eq-skill-desc">${processedDesc}</div>`;
+                    const skillName = skill.skillName?.text || skillId;
+                    const skillLink = skillIndex === 0
+                        ? window.AKEUI.entryLinkHtml({ plugin: 'v3_skill', id: skillId, label: skillName, className: 'ake-ui-card__title', contentHtml: escapeHtml(skillName) })
+                        : '';
+                    html += `${skillLink}<div class="v2eq-skill-desc">${processedDesc}</div>`;
 
                     if (showHidden && blackboard.length > 0) {
                         html += `<div class="v2eq-blackboard-params">`;

@@ -66,7 +66,7 @@
                 const item = items[bundle.id] || {};
                 const name = text(item.name, showHidden() ? bundle.id : t('unnamedItem', null, '未命名物品'));
                 const icon = item.iconId || (showHidden() ? bundle.id : '');
-                return `<span class="misc-reward"${showHidden() ? ` title="${escape(bundle.id)}"` : ''}>${icon ? `<img src="/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/${escape(icon)}.png" alt="">` : ''}<span>${escape(name)}</span><b>x${Number(bundle.count || 0).toLocaleString()}</b></span>`;
+                return window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: bundle.id, label: name, className: 'misc-reward', title: showHidden() ? bundle.id : '', contentHtml: `${icon ? `<img src="/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/${escape(icon)}.png" alt="">` : ''}<span>${escape(name)}</span><b>x${Number(bundle.count || 0).toLocaleString()}</b>` });
             }).join('');
         }
 

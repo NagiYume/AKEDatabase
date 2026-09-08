@@ -113,6 +113,8 @@
                 document.getElementById('homeTipButton')?.addEventListener('click', showTip);
                 document.querySelectorAll('.module-item').forEach(item => item.classList.remove('active'));
                 activeModuleId = null;
+                currentTitleRoute = { plugin: '', id: '' };
+                scheduleDocumentTitleRefresh();
                 if (window.__akeRouter && !preserveUrl) window.__akeRouter.clearUrl();
                 if (checkTip !== false) showUpdatedTip();
             }
@@ -140,6 +142,8 @@
                 window.akeI18n?.translateDOM(contentArea);
                 document.querySelectorAll('.module-item').forEach(item => item.classList.remove('active'));
                 activeModuleId = null;
+                currentTitleRoute = { plugin: '', id: '' };
+                document.title = '404 · AKEData';
                 const btn = document.getElementById('notFoundHomeBtn');
                 if (btn) btn.addEventListener('click', showHomePage);
             }
@@ -150,6 +154,7 @@
                 showHidden: false,
                 showExportButton: true,
                 showVersionChanges: storage.get('akedata-showVersionChanges', 'false') === 'true',
+                openEntriesInNewTab: storage.get('akedata-openEntriesInNewTab', 'true') === 'true',
                 levelSettings: {
                     enabled: true,
                     characterLevels: '1,20,40,60,80,90',
@@ -164,6 +169,8 @@
             let allModules = [];
             let modulesReady = false;
             let activeModuleId = null;
+            let currentTitleRoute = { plugin: '', id: '' };
+            let titleRefreshFrame = 0;
 
             const moduleListEl = document.getElementById('moduleListContainer');
             const contentArea = document.getElementById('contentArea');
@@ -178,6 +185,7 @@
             const modalLanguageSelect = document.getElementById('modalLanguageSelect');
             const modalShowHiddenCheck = document.getElementById('modalShowHiddenCheck');
             const modalShowVersionChanges = document.getElementById('modalShowVersionChanges');
+            const modalOpenEntriesInNewTab = document.getElementById('modalOpenEntriesInNewTab');
             const modalDataVersionSelect = document.getElementById('modalDataVersionSelect');
             const modalDataBaseUrl = document.getElementById('modalDataBaseUrl');
             const dataSourceStatus = document.getElementById('dataSourceStatus');
@@ -190,6 +198,41 @@
             const tipModal = document.getElementById('tipModal');
             const tipModalBody = document.getElementById('tipModalBody');
             const closeTipModal = document.getElementById('closeTipModal');
+
+            function moduleTitle(moduleId) {
+                const module = allModules.find(item => item.id === moduleId);
+                return module ? translateModuleField(module, 'title') : '';
+            }
+
+            function entryTitleFromView(id) {
+                const escapedId = CSS.escape(String(id || ''));
+                const explicit = contentArea.querySelector(`[data-ake-entry-id="${escapedId}"]`);
+                const explicitLabel = explicit?.dataset.akeEntryLabel?.trim();
+                if (explicitLabel) return explicitLabel;
+                const selectors = ['char', 'weapon', 'enemy', 'suit', 'item', 'series', 'cat', 'activity', 'game', 'group', 'mission', 'buff', 'skill', 'region', 'season']
+                    .map(key => `[data-${key}-id="${escapedId}"]`).join(',');
+                const selected = contentArea.querySelector(selectors)
+                    || contentArea.querySelector(`[data-baker-chat="${escapedId}"]`);
+                const selectedTitle = selected?.querySelector?.('.ake-ui-directory__item-title, .ake-ui-card__title, strong')?.textContent?.trim();
+                if (selectedTitle) return selectedTitle;
+                return contentArea.querySelector('.ake-ui-detail-title')?.textContent?.trim() || '';
+            }
+
+            function refreshDocumentTitle() {
+                titleRefreshFrame = 0;
+                const plugin = normalizeModuleRouteId(currentTitleRoute.plugin || activeModuleId);
+                if (!plugin) {
+                    document.title = tr('app.title', null, 'AKEData · 终末地数据库');
+                    return;
+                }
+                const label = currentTitleRoute.id ? entryTitleFromView(currentTitleRoute.id) : moduleTitle(plugin);
+                document.title = `${label || moduleTitle(plugin) || 'AKEData'} · AKEData`;
+            }
+
+            function scheduleDocumentTitleRefresh() {
+                if (titleRefreshFrame) cancelAnimationFrame(titleRefreshFrame);
+                titleRefreshFrame = requestAnimationFrame(refreshDocumentTitle);
+            }
 
             // 移动端模块菜单
             const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
@@ -932,6 +975,7 @@
                 const modalShowExportCheck = document.getElementById('modalShowExportCheck');
                 if (modalShowExportCheck) modalShowExportCheck.checked = config.showExportButton;
                 if (modalShowVersionChanges) modalShowVersionChanges.checked = config.showVersionChanges;
+                if (modalOpenEntriesInNewTab) modalOpenEntriesInNewTab.checked = config.openEntriesInNewTab;
                 const modalKeepUrlSync = document.getElementById('modalKeepUrlSync');
                 if (modalKeepUrlSync) modalKeepUrlSync.checked = config.keepUrlSync;
                 modalLevelsEnabled.checked = config.levelSettings.enabled;
@@ -994,6 +1038,11 @@
                     config.showVersionChanges = modalShowVersionChanges.checked;
                     storage.set('akedata-showVersionChanges', config.showVersionChanges);
                     requiresReload = wasShowingVersionChanges !== config.showVersionChanges;
+                }
+
+                if (modalOpenEntriesInNewTab) {
+                    config.openEntriesInNewTab = modalOpenEntriesInNewTab.checked;
+                    storage.set('akedata-openEntriesInNewTab', config.openEntriesInNewTab);
                 }
 
                 const modalKeepUrlSync = document.getElementById('modalKeepUrlSync');
@@ -1190,12 +1239,55 @@
                 });
             }
 
+            const ENTRY_MODULE_ALIASES = Object.freeze({
+                archive: 'v3_archive', shop: 'v3_shop', mission: 'v3_mission',
+                region: 'region', misc: 'misc', baker: 'baker',
+                'season-tower': 'season_tower'
+            });
+            function entryUrl(plugin, id) {
+                const url = new URL(window.location.href);
+                url.search = '';
+                url.hash = '';
+                url.searchParams.set('plugin', normalizeModuleRouteId(plugin));
+                url.searchParams.set('id', String(id));
+                return url.href;
+            }
+
+            function entryAttributes(plugin, id, label) {
+                const attributes = {
+                    href: entryUrl(plugin, id),
+                    'data-ake-entry-plugin': normalizeModuleRouteId(plugin),
+                    'data-ake-entry-id': String(id)
+                };
+                if (label) attributes['data-ake-entry-label'] = String(label);
+                return attributes;
+            }
+
+            function entryRouteFromTarget(target) {
+                if (!(target instanceof Element)) return null;
+                const explicit = target.closest('[data-ake-entry-plugin][data-ake-entry-id]');
+                if (!explicit) return null;
+                const nestedControl = target.closest([
+                    'a[href]', 'button', 'input', 'select', 'textarea', 'summary', 'audio', 'video',
+                    '[role="button"]', '[contenteditable="true"]', '[data-action]',
+                    '[data-ake-popover-trigger]', '[data-ake-popover-pinnable]', '.ake-ui-popover'
+                ].join(','));
+                if (nestedControl && nestedControl !== explicit && explicit.contains(nestedControl)) return null;
+                return {
+                    plugin: normalizeModuleRouteId(explicit.dataset.akeEntryPlugin),
+                    id: explicit.dataset.akeEntryId
+                };
+            }
+
             window.__akeRouter = {
                 updateUrl(plugin, id) {
-                    moduleViewState?.route(plugin, id);
+                    const normalizedPlugin = normalizeModuleRouteId(plugin);
+                    currentTitleRoute = { plugin: normalizedPlugin, id: id ? String(id) : '' };
+                    scheduleDocumentTitleRefresh();
+                    moduleViewState?.route(normalizedPlugin, id);
                     if (!config.keepUrlSync) return;
                     const params = new URLSearchParams();
-                    if (plugin) params.set('plugin', plugin);
+                    if (normalizedPlugin) params.set('plugin', normalizedPlugin);
                     if (id) params.set('id', id);
                     const qs = params.toString();
                     const newUrl = window.location.pathname + (qs ? '?' + qs : '');
@@ -1208,7 +1300,10 @@
                 },
                 stripUrl() {
                     history.replaceState(null, '', window.location.pathname);
-                }
+                },
+                normalizeModuleId: normalizeModuleRouteId,
+                entryUrl,
+                entryAttributes
             };
 
             const MODULE_ROUTE_ALIASES = Object.freeze({
@@ -1235,8 +1330,24 @@
 
             function normalizeModuleRouteId(moduleId) {
                 const normalized = String(moduleId || '');
-                return MODULE_ROUTE_ALIASES[normalized] || normalized;
+                return MODULE_ROUTE_ALIASES[normalized] || ENTRY_MODULE_ALIASES[normalized] || normalized;
             }
+
+            document.addEventListener('click', event => {
+                if (!event.isTrusted || !config.openEntriesInNewTab) return;
+                const route = entryRouteFromTarget(event.target);
+                if (!route?.plugin || !route.id) return;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                const opened = window.open(entryUrl(route.plugin, route.id), '_blank', 'noopener');
+                if (opened) opened.opener = null;
+            }, true);
+
+            new MutationObserver(scheduleDocumentTitleRefresh).observe(contentArea, {
+                childList: true,
+                subtree: true,
+                characterData: true
+            });
 
             function replaceRouteQuery(urlParams) {
                 const query = urlParams.toString();
@@ -1796,7 +1907,8 @@
                 } else if (deepPlugin) {
                     const module = allModules.find(m => m.id === deepPlugin);
                     if (module) {
-                        if ((module.hidden && !config.showHidden) || (module.token && !isModuleUnlocked(module))) {
+                        const hiddenOverviewBlocked = module.hidden && !config.showHidden && !deepId;
+                        if (hiddenOverviewBlocked || (module.token && !isModuleUnlocked(module))) {
                             show404Page(false);
                         } else {
                             window.__deepLinkId = deepId || null;
@@ -1840,6 +1952,7 @@
                         document.getElementById('modalShowHiddenCheck').checked = false;
                         document.getElementById('modalShowExportCheck').checked = true;
                         document.getElementById('modalShowVersionChanges').checked = false;
+                        document.getElementById('modalOpenEntriesInNewTab').checked = true;
                         document.getElementById('modalKeepUrlSync').checked = true;
                         const currentDataSource = window.akeDataSource?.getState?.();
                         if (modalDataBaseUrl && currentDataSource) modalDataBaseUrl.value = currentDataSource.defaultBaseUrl;

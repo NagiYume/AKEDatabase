@@ -54,11 +54,28 @@
         const description = options.descriptionHtml
             ? `<div class="v2d-enemy-desc">${options.descriptionHtml}</div>`
             : '';
+        const {
+            akeEntryPlugin: entryPlugin,
+            akeEntryId: entryId,
+            akeEntryLabel: entryLabel,
+            ...cardDataAttributes
+        } = options.dataAttributes || {};
+        const iconHtml = `<img src="${escapeHtml(options.iconSrc || '')}" alt="">`;
+        const mediaHtml = entryPlugin && entryId
+            ? window.AKEUI?.entryLinkHtml({
+                plugin: entryPlugin,
+                id: entryId,
+                label: entryLabel || options.name,
+                className: 'ake-ui-card__media',
+                title: entryLabel || options.name,
+                contentHtml: iconHtml
+            }) || `<div class="ake-ui-card__media">${iconHtml}</div>`
+            : `<div class="ake-ui-card__media">${iconHtml}</div>`;
         return `
-            <div class="ake-ui-card has-media" data-ake-component="card" data-card-kind="enemy" data-density="regular"${dataAttributes(options.dataAttributes)}>
+            <div class="ake-ui-card has-media" data-ake-component="card" data-card-kind="enemy" data-density="regular"${dataAttributes(cardDataAttributes)}>
                 <div class="ake-ui-card__content">
                     <header class="ake-ui-card__header">
-                        <div class="ake-ui-card__media"><img src="${escapeHtml(options.iconSrc || '')}" alt=""></div>
+                        ${mediaHtml}
                         <div class="ake-ui-card__heading"><strong class="ake-ui-card__title">${escapeHtml(options.name)}</strong>${nickname ? `<span class="ake-ui-card__subtitle">${escapeHtml(nickname)}</span>` : ''}</div>
                         <span class="ake-ui-badge">Lv.${escapeHtml(options.level)}</span>
                     </header>

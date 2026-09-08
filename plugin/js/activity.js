@@ -549,12 +549,11 @@
                 const countHtml = reward.count === null || reward.count === undefined
                     ? ''
                     : `<span class="ake-ui-item__meta">${t('rewards.count', { count: reward.count })}</span>`;
-                html += `
-                    <div class="ake-ui-item">
+                const contentHtml = `
                         ${iconSrc ? `<img class="ake-ui-item__media" src="${iconSrc}" alt="">` : ''}
                         <div class="ake-ui-item__copy"><span class="ake-ui-item__title">${reward.name}</span>${countHtml}</div>
-                    </div>
                 `;
+                html += window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: reward.id, label: reward.name, className: 'ake-ui-item', contentHtml });
             });
             html += '</div>';
             return html;
@@ -581,8 +580,11 @@
             let html = `<section class="ake-ui-section"><header class="ake-ui-section__header"><h3 class="ake-ui-section__title">${t('sections.rewardDetails')}</h3></header><div class="ake-ui-card-grid" data-size="regular">`;
             groups.forEach((group, index) => {
                 const keyReward = group.keyReward ? `<div class="ake-ui-card__meta"><span class="ake-ui-badge">${t('rewards.keyReward')}</span></div>` : '';
+                const groupTitle = group.relatedCharId
+                    ? window.AKEUI.entryLinkHtml({ plugin: 'v3_character', id: group.relatedCharId, label: rewardGroupTitle(group, index), className: 'ake-ui-card__title', contentHtml: parseText(rewardGroupTitle(group, index)) })
+                    : `<div class="ake-ui-card__title">${parseText(rewardGroupTitle(group, index))}</div>`;
                 html += '<article class="ake-ui-card" data-card-kind="activity-reward" data-density="regular">' +
-                    `<div class="ake-ui-card__title">${parseText(rewardGroupTitle(group, index))}</div>` +
+                    groupTitle +
                     (group.desc ? `<div class="ake-ui-card__body">${parseText(group.desc)}</div>` : '') +
                     keyReward +
                     '<div class="ake-ui-card__footer"><div class="stage-rewards">' +
@@ -609,8 +611,11 @@
                         : t('dates.stageOpenTime', { time: startTimeStr });
                     stageTimeHtml = `<div class="ake-ui-card__meta">${stageTime}</div>`;
                 }
+                const stageTitle = stage.dungeonSeriesId
+                    ? window.AKEUI.entryLinkHtml({ plugin: 'v3_dungeon', id: stage.dungeonSeriesId, label: stage.name, className: 'ake-ui-card__title', contentHtml: stage.name })
+                    : `<div class="ake-ui-card__title">${stage.name}</div>`;
                 html += '<article class="ake-ui-card" data-card-kind="activity-stage" data-density="regular">' +
-                    '<div class="ake-ui-card__title">' + stage.name + '</div>' +
+                    stageTitle +
                     '<div class="ake-ui-card__body">' + parseText(stage.desc || '') + '</div>' +
                     stageTimeHtml +
                     '<div class="ake-ui-card__footer"><div class="stage-rewards">' +
