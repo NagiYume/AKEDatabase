@@ -119,7 +119,7 @@
                             const item = items?.[bundle.id] || {};
                             const name = text(item.name, showHidden ? bundle.id : '未命名物品');
                             const icon = item.iconId ? `/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/${encodeURIComponent(item.iconId)}.png` : '';
-                            return `<li>${icon ? `<img class="misc-reward-icon" src="${escape(icon)}" alt="" loading="lazy">` : ''}<span>${escape(name)}</span><strong>×${escape(bundle.count ?? '?')}</strong>${bundle.probabilistic ? '<small>概率奖励</small>' : ''}</li>`;
+                            return `<li>${window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: bundle.id, label: name, contentHtml: `${icon ? `<img class="misc-reward-icon" src="${escape(icon)}" alt="" loading="lazy">` : ''}<span>${escape(name)}</span><strong>×${escape(bundle.count ?? '?')}</strong>${bundle.probabilistic ? '<small>概率奖励</small>' : ''}` })}</li>`;
                         }).join('')}</ul>` : '<p class="misc-reward-empty">奖励包为空</p>';
                     }
 

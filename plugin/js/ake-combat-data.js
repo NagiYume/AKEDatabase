@@ -132,26 +132,24 @@
         if (!sceneId) return {};
         if (!sceneScriptCache.has(sceneId)) {
             sceneScriptCache.set(sceneId, (async () => {
-                try {
-                    const manifest = await window.akeAssetIndex.listJsonFiles(`LevelScriptData/${sceneId}`);
-                    const scripts = await Promise.all(manifest.filter(entry => !entry.hidden).map(async entry => {
-                        try {
-                            const scriptResponse = await (window.akeFetch || fetch)(entry.contentFile || `${base}/${entry.id}.json`);
-                            return scriptResponse.ok ? scriptResponse.json() : null;
-                        } catch { return null; }
-                    }));
-                    const validScripts = scripts.filter(Boolean);
-                    return {
-                        scriptBuffs: indexScriptBuffs(sceneId, validScripts),
-                        enemies: validScripts.flatMap(extractScriptEnemies)
-                    };
-                } catch { return { scriptBuffs: {}, enemies: [] }; }
-            })());
+                const manifest = await window.akeAssetIndex.listJsonFiles(`LevelScriptData/${sceneId}`);
+                const scripts = await Promise.all(manifest.filter(entry => !entry.hidden).map(async entry => {
+                    if (window.akeDataLoader?.loadJson) return window.akeDataLoader.loadJson(entry.contentFile, { priority: 'dependency' });
+                    const response = await (window.akeFetch || fetch)(entry.contentFile);
+                    if (!response.ok) throw new Error(`LevelScript ${entry.id}: HTTP ${response.status}`);
+                    return response.json();
+                }));
+                return { scriptBuffs: indexScriptBuffs(sceneId, scripts), enemies: scripts.flatMap(extractScriptEnemies) };
+            })().catch(error => {
+                sceneScriptCache.delete(sceneId);
+                throw error;
+            }));
         }
         return (await sceneScriptCache.get(sceneId)).scriptBuffs;
     }
 
     async function loadSceneScriptEnemies(sceneId) {
+        if (!sceneId) return [];
         await loadSceneScriptBuffs(sceneId);
         return (await sceneScriptCache.get(sceneId)).enemies;
     }

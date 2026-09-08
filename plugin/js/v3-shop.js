@@ -18,6 +18,7 @@
     const DAILY_REFRESH_OFFSET = 4 * 60 * 60 * 1000;
     const WEEKLY_REFRESH_OFFSET = 12 * 60 * 60 * 1000;
 
+    // Legacy observed schedule, not derivable from ShopGoodsTable order. See data-contracts.md.
     const DAILY_ROTATION = [
         ['wpn_claym_0011', 'wpn_pistol_0004'], ['wpn_sword_0007', 'wpn_pistol_0006'],
         ['wpn_claym_0014', 'wpn_sword_0018'], ['wpn_funnel_0014', 'wpn_lance_0006'],
@@ -451,7 +452,7 @@
         if (additional) {
             const activity = state.tables.activities[additional.activityId] || {};
             const range = state.tables.times[activity.timeId]?.timeRangeList?.[0] || {};
-            rows.push({ label: t('context.activity'), value: gameText(activity.name, additional.activityId) });
+            rows.push({ label: t('context.activity'), value: gameText(activity.name, additional.activityId), route: { plugin: 'v3_activity', id: additional.activityId } });
             if (range.openTime || range.closeTime) rows.push({
                 label: t('context.openTime'),
                 value: `${formatDate(range.openTime) || t('unknown')} - ${formatDate(range.closeTime) || t('permanent')}`
@@ -460,7 +461,7 @@
         const domain = state.tables.groupDomains[group.shopGroupId];
         if (domain) {
             const domainRow = Object.values(state.tables.domains).find(row => row.domainShopGroupId === group.shopGroupId);
-            rows.push({ label: t('context.domain'), value: gameText(domainRow?.domainName, domain.domainId) });
+            rows.push({ label: t('context.domain'), value: gameText(domainRow?.domainName, domain.domainId), route: { plugin: 'region', id: domain.domainId } });
         }
         const channels = Object.values(state.tables.channels).filter(row => row.shopGroupId === group.shopGroupId);
         if (channels.length) rows.push({
@@ -512,7 +513,8 @@
                 .map(([level, levelRow]) => {
                     const costs = (levelRow.costItemIdList || []).map((itemId, index) => {
                         const item = itemInfo(itemId);
-                        return `${gameText(item.name, itemId)} x${formatNumber(levelRow.costItemNumList?.[index])}`;
+                        const name = gameText(item.name, itemId);
+                        return window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: itemId, label: name, contentHtml: `${escapeHtml(name)} x${formatNumber(levelRow.costItemNumList?.[index])}` });
                     });
                     const channelName = gameText(channel.channelName, channel.levelId || channelId);
                     return `<tr><td><b>${escapeHtml(channelName)}</b><small class="akeshop-shop-id">${escapeHtml(channelId)}</small></td>
@@ -598,10 +600,10 @@
         if (!items.length) return '';
         return `<div class="akeshop-rewards ${className || ''}">${items.map(entry => {
             const name = gameText(entry.item.name, entry.id);
-            return `<div class="akeshop-reward">
+            return window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: entry.id, label: name, className: 'akeshop-reward', contentHtml: `
                 ${entry.item.iconId ? `<img src="/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/${escapeHtml(entry.item.iconId)}.png" alt="">` : ''}
                 <span>${escapeHtml(name)}</span><b>×${formatNumber(entry.count)}</b>
-            </div>`;
+            ` });
         }).join('')}</div>`;
     }
 
@@ -625,11 +627,11 @@
             current = Math.ceil(current * discount);
         }
         const currencyName = gameText(product.currency.name, goods.moneyId);
-        return `<div class="akeshop-price">
+        return window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: goods.moneyId, label: currencyName, className: 'akeshop-price', contentHtml: `
             ${product.currency.iconId ? `<img src="/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/${escapeHtml(product.currency.iconId)}.png" alt="">` : ''}
             ${original ? `<del>${formatNumber(original)}</del>` : ''}<strong>${formatNumber(current)}</strong><span>${escapeHtml(currencyName)}</span>
             ${discount < 1 ? `<em>-${Math.round((1 - discount) * 100)}%</em>` : ''}
-        </div>`;
+        ` });
     }
 
     function cashPrice(product) {
@@ -686,10 +688,15 @@
         if (product.hidden) badges.push(t('hidden'));
         if (product.pool) badges.push(t('weaponClaim'));
         const changeHtml = changeTag(product.changeType);
+        const targetId = product.weapon ? (product.pool?.upWeaponIds?.[0] || '') : (product.rewards.length === 1 ? product.rewards[0].id : '');
+        const targetPlugin = targetId && state.tables.weapons[targetId] ? 'v3_weapon' : 'v3_item';
+        const productTitle = targetId
+            ? window.AKEUI.entryLinkHtml({ plugin: targetPlugin, id: targetId, label: product.name, className: 'ake-ui-card__title', contentHtml: escapeHtml(product.name) })
+            : `<h3 class="ake-ui-card__title">${escapeHtml(product.name)}</h3>`;
         return `<article class="ake-ui-card has-media${product.hidden ? ' is-hidden' : ''}" data-ake-component="card" data-card-kind="shop-product" data-density="regular"${product.rarity ? ` data-accent="rarity" data-accent-value="${product.rarity}"` : ''}>
             ${changeHtml}
             <div class="ake-ui-card__content">
-                <header class="ake-ui-card__header"><div class="ake-ui-card__media">${icon ? `<img src="${escapeHtml(icon)}" alt="">` : '<span class="is-placeholder" aria-hidden="true">◇</span>'}</div><div class="ake-ui-card__heading"><h3 class="ake-ui-card__title">${escapeHtml(product.name)}</h3><small class="ake-ui-card__id">${escapeHtml(product.id)}</small></div></header>
+                <header class="ake-ui-card__header"><div class="ake-ui-card__media">${icon ? `<img src="${escapeHtml(icon)}" alt="">` : '<span class="is-placeholder" aria-hidden="true">◇</span>'}</div><div class="ake-ui-card__heading">${productTitle}<small class="ake-ui-card__id">${escapeHtml(product.id)}</small></div></header>
                 ${badges.length ? `<div class="ake-ui-card__badges">${badges.map(value => `<span class="ake-ui-badge">${escapeHtml(value)}</span>`).join('')}</div>` : ''}
                 ${product.kind === 'cash' ? cashPrice(product) : normalPrice(product)}
                 ${rewardRows(product.rewards)}
@@ -796,7 +803,7 @@
         const name = weaponName(weaponId);
         const item = state.tables.items[weaponId];
         const iconId = item?.iconId || weaponId;
-        return `<a href="/?plugin=v3_weapon&id=${escapeHtml(weaponId)}" class="akeshop-rot-weapon" title="${escapeHtml(name)}"><img src="/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/${escapeHtml(iconId)}.png" alt="${escapeHtml(name)}"></a>`;
+        return window.AKEUI.entryLinkHtml({ plugin: 'v3_weapon', id: weaponId, label: name, className: 'akeshop-rot-weapon', title: name, contentHtml: `<img src="/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/${escapeHtml(iconId)}.png" alt="${escapeHtml(name)}">` });
     }
 
     function renderRotationCombinedTable() {
@@ -874,7 +881,7 @@
             <div><span>${escapeHtml(groupType(group))}</span><h1>${escapeHtml(gameText(group.shopGroupName, group.shopGroupId))}</h1><small class="akeshop-group-id">${escapeHtml(group.shopGroupId)}</small></div>
             <div class="akeshop-group-actions"><strong>${escapeHtml(t('goodsCount', { count: total }))}</strong>${packageValueLink}</div>
         </section>
-        ${contextRows.length ? `<dl class="akeshop-context">${contextRows.map(row => `<div><dt>${escapeHtml(row.label)}</dt><dd>${escapeHtml(row.value)}</dd></div>`).join('')}</dl>` : ''}
+        ${contextRows.length ? `<dl class="akeshop-context">${contextRows.map(row => `<div><dt>${escapeHtml(row.label)}</dt><dd>${row.route ? window.AKEUI.entryLinkHtml({ ...row.route, label: row.value, contentHtml: escapeHtml(row.value) }) : escapeHtml(row.value)}</dd></div>`).join('')}</dl>` : ''}
         ${renderUnlockRequirements(group, 'group')}
         ${renderChannelTimeline(group)}
         ${shops.length > 1 ? `<div class="ake-ui-tabs" data-variant="underline" role="tablist">${shops.map(shop => `<button type="button" role="tab" aria-selected="${shop.id === state.activeShopId}" class="ake-ui-tabs__button${shop.id === state.activeShopId ? ' is-active' : ''}" data-shop-id="${escapeHtml(shop.id)}"><span>${escapeHtml(shop.name)}</span><b>${shop.products.length}</b>${changeTabBadge(shop.changeType)}</button>`).join('')}</div>` : ''}
@@ -1004,6 +1011,18 @@
     window.addEventListener('ake:module-activate', onModuleActivate);
     window.addEventListener('ake:module-deactivate', onModuleDeactivate);
     window.__akeShopController = {
+        getRotationDiagnostics() {
+            if (!state.tables) return { state: 'not-loaded' };
+            const known = new Set(DAILY_ROTATION.flat());
+            const goodsIds = state.tables.shops.shop_pay_weapon_daily?.shopGoodsIds || [];
+            const offered = new Set(goodsIds.flatMap(id => {
+                const rewardId = state.tables.goods[id]?.rewardId;
+                return (state.tables.rewards[rewardId]?.itemBundles || []).filter(row => state.tables.weapons[row.id]).map(row => row.id);
+            }));
+            return { source: 'legacy-observed-schedule', start: new Date(ROTATION_START).toISOString(),
+                unscheduledWeapons: [...offered].filter(id => !known.has(id)),
+                unavailableWeapons: [...known].filter(id => !offered.has(id)) };
+        },
         destroy() {
             window.removeEventListener('globalConfigChanged', onConfigChanged);
             window.removeEventListener('ake:module-activate', onModuleActivate);

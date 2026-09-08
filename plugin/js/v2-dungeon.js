@@ -497,7 +497,8 @@
                     icon: `/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/${iconId}.png`,
                     name,
                     count: bundle.count > 0 ? bundle.count : null,
-                    attributes: rarity > 0 ? { 'data-rarity': rarity } : null
+                    element: 'a',
+                    attributes: { ...(rarity > 0 ? { 'data-rarity': rarity } : {}), ...window.__akeRouter?.entryAttributes?.('v3_item', bundle.id, name) }
                 });
                 if (!rewardItem) return;
                 if (rarity > 0) {
@@ -618,12 +619,12 @@
                             rows.push(`${escH(b.key)}: ${valueHtml}`);
                         }
                     });
-                    if (rows.length === 0) return `<span class="v2d-buff-tag">${id}</span>`;
+                    if (rows.length === 0) return window.AKEUI.entryLinkHtml({ plugin: 'v3_buff', id, label: id, className: 'v2d-buff-tag', contentHtml: escH(id) });
                     const tipHtml = rows.map(r => `<div>${r}</div>`).join('');
-                    return `<span class="v2d-buff-tag v2d-has-tip ake-ui-popover-anchor">${id}<span class="v2d-buff-tip ake-ui-popover" data-placement="top">${tipHtml}</span></span>`;
+                    return window.AKEUI.entryLinkHtml({ plugin: 'v3_buff', id, label: id, className: 'v2d-buff-tag v2d-has-tip ake-ui-popover-anchor', contentHtml: `${escH(id)}<span class="v2d-buff-tip ake-ui-popover" data-placement="top">${tipHtml}</span>` });
                 }).join('')}</div>` : '';
 
-            const scriptBuffTagsHtml = showHidden && (scriptedBuffs || []).length ? `<div class="v2d-enemy-buffs">${scriptedBuffs.map(row => `<span class="v2d-buff-tag v2d-script-buff v2d-has-tip ake-ui-popover-anchor">${escH(row.buffId)}<small>脚本</small><span class="v2d-buff-tip ake-ui-popover" data-placement="top"><div>条件性脚本 Buff · LevelScript ${escH(row.scriptId)}</div></span></span>`).join('')}</div>` : '';
+            const scriptBuffTagsHtml = showHidden && (scriptedBuffs || []).length ? `<div class="v2d-enemy-buffs">${scriptedBuffs.map(row => window.AKEUI.entryLinkHtml({ plugin: 'v3_buff', id: row.buffId, label: row.buffId, className: 'v2d-buff-tag v2d-script-buff v2d-has-tip ake-ui-popover-anchor', contentHtml: `${escH(row.buffId)}<small>脚本</small><span class="v2d-buff-tip ake-ui-popover" data-placement="top"><div>条件性脚本 Buff · LevelScript ${escH(row.scriptId)}</div></span>` })).join('')}</div>` : '';
             const statState = window.AKEEnemyRenderer.calculateStats({
                 attrData,
                 level: enemyLevel,
@@ -632,6 +633,7 @@
                 getDetails: getEnemyStatDetailsAtLevel
             });
             return window.AKEEnemyRenderer.renderCard({
+                dataAttributes: { akeEntryPlugin: 'v3_enemy', akeEntryId: templateId, akeEntryLabel: name },
                 iconSrc,
                 name,
                 nickname,

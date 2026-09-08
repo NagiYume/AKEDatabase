@@ -491,6 +491,7 @@
         node.dataset.akeComponent = 'card';
         if (tag === 'button') node.type = 'button';
         enhanceCard(node, options);
+        applyAttributes(node, options.attributes);
 
         let media = null;
         if (options.media?.src || isNode(options.media)) {
@@ -907,6 +908,28 @@
         return item;
     }
 
+    function entryLink(options = {}) {
+        const plugin = String(options.plugin || '').trim();
+        const id = String(options.id || '').trim();
+        if (!plugin || !id) return null;
+        const link = element('a', options.className || '');
+        const attributes = window.__akeRouter?.entryAttributes?.(plugin, id, options.label) || {
+            href: `/?plugin=${encodeURIComponent(plugin)}&id=${encodeURIComponent(id)}`,
+            'data-ake-entry-plugin': plugin,
+            'data-ake-entry-id': id
+        };
+        applyAttributes(link, { ...attributes, ...(options.attributes || {}) });
+        if (options.title) link.title = String(options.title);
+        if (isPresent(options.contentHtml)) link.appendChild(fragment(options.contentHtml));
+        else if (isPresent(options.content)) appendContent(link, options.content);
+        else if (isPresent(options.label)) appendContent(link, options.label);
+        return link;
+    }
+
+    function entryLinkHtml(options = {}) {
+        return entryLink(options)?.outerHTML || String(options.fallbackHtml || options.contentHtml || options.content || '');
+    }
+
     function materialItems(items, className = 'ake-ui-material__items') {
         const list = element('span', className);
         (items || []).forEach(data => {
@@ -1157,6 +1180,8 @@
         directory,
         popover,
         materialItem,
+        entryLink,
+        entryLinkHtml,
         materialItems,
         materialPopover,
         progressionStat,

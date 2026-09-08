@@ -1970,9 +1970,15 @@
         ].filter(Boolean);
         const code = window.AKEUI.element('code', 'ake-ui-detail-id', owner.item.id);
         code.title = owner.item.id;
+        const ownerPlugin = owner.character.entityKind === 'character' ? 'v3_character'
+            : (owner.character.entityKind === 'enemy' ? 'v3_enemy' : '');
+        const ownerLink = ownerPlugin
+            ? window.AKEUI.entryLink({ plugin: ownerPlugin, id: owner.character.id, label: owner.character.name, content: owner.character.name })
+            : null;
         const detailHeader = window.AKEUI.detailHeader({
             icon: icon ? { src: icon } : null,
-            eyebrow: `${owner.character.name}${isEnemy ? '' : ` · ${owner.group.displayName}`}`,
+            beforeTitle: ownerLink,
+            eyebrow: isEnemy ? entityLabel : owner.group.displayName,
             title,
             subtitle: raw.skillId || owner.item.id,
             after: code

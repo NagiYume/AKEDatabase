@@ -8827,6 +8827,17 @@ body[data-ake-module="misc"] :is(#miscWeeklyPrevious, #miscWeeklyNext) {
     gap: 4px;
 }
 
+[data-ake-entry-plugin][data-ake-entry-id],
+[data-ake-entry-plugin][data-ake-entry-id]:is(:link, :visited, :hover, :active) {
+    color: inherit;
+    text-decoration: none;
+}
+[data-ake-entry-plugin][data-ake-entry-id] { cursor: pointer; }
+[data-ake-entry-plugin][data-ake-entry-id]:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
 @media (max-width: 720px) {
     .v2eq-recommend-popover > .ake-ui-popover__panel {
         width: min(330px, calc(100vw - 16px));

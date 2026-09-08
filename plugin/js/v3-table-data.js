@@ -4,6 +4,7 @@
     const TABLE_ROOT = '/public/TableCfg/';
     const tableCache = new Map();
     const i18nPromises = new Map();
+    const tableDiagnostics = new Map();
     const itemT = window.akeI18n.scope('modules.item');
     const dungeonT = window.akeI18n.scope('modules.dungeon');
     let originalAkeFetch = window.akeFetch || window.fetch.bind(window);
@@ -21,6 +22,36 @@
         3: '8325730894015926297',
         4: '3873336576577928485'
     };
+    // Explicit display exceptions; FactoryEnvDisplayTable has no text/color fields.
+    const FACTORY_ENVIRONMENT_COLORS = { 1: '#32c0ff', 2: '#ffffff', 3: '#ffba00', 4: '#1ec89a' };
+
+    function factoryEnvironment(value, environments, i18n) {
+        const gasEnv = Number(value || 0);
+        if (!gasEnv) return null;
+        const row = environments?.[String(gasEnv)];
+        const id = Number(row?.GenEnv ?? gasEnv);
+        const textId = FACTORY_ENVIRONMENT_TEXT_IDS[id];
+        return {
+            id,
+            name: (textId && (i18n?.localized?.[textId] || i18n?.chinese?.[textId])) || `gasEnv ${id}`,
+            color: FACTORY_ENVIRONMENT_COLORS[id] || '#ffffff',
+            icon: row?.EnvIconAtlas || '',
+            unmapped: !textId
+        };
+    }
+
+    function equipmentRecipeVariants(formulaId, row, chains) {
+        if (!row.outcomeEquipId) return [];
+        return (chains?.[String(row.level)]?.chainList || []).map((chain, index) => {
+            const inputs = (chain.costItemId || []).map((id, i) => ({ id: String(id), count: Number(chain.costItemNum?.[i] || 0) }))
+                .filter(entry => entry.count > 0);
+            if (chain.costGoldId && Number(chain.costGoldNum) > 0) {
+                inputs.unshift({ id: String(chain.costGoldId), count: Number(chain.costGoldNum) });
+            }
+            return { recipeId: `${formulaId}:${chain.chainId ?? index}`, chainId: chain.chainId ?? index + 1,
+                inputs, outputs: [{ id: String(row.outcomeEquipId), count: 1 }] };
+        });
+    }
 
     const POINT_TOKEN_ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
     const POINT_TOKEN_MOD = 1n << 36n;
@@ -97,7 +128,7 @@
 
     async function fetchText(url) {
         const response = await originalAkeFetch(url);
-        if (!response.ok) throw new Error(`无法加载 ${url} (HTTP ${response.status})`);
+        if (!response.ok) throw Object.assign(new Error(`无法加载 ${url} (HTTP ${response.status})`), { status: response.status, url });
         return response.text();
     }
 
@@ -140,18 +171,31 @@
     }
 
     async function loadTableInternal(name, version, options = {}) {
-        const cacheKey = `${version?.id || 'current'}:${languageInfo().table}:${name}:${options?.hydrate === false ? 'raw' : 'hydrated'}`;
+        const cacheKey = `${version?.id || 'current'}:${languageInfo().table}:${name}:${options?.hydrate === false ? 'raw' : 'hydrated'}:${options.optional === true ? 'optional' : 'required'}`;
         if (!tableCache.has(cacheKey)) {
             const raw = (window.akeDataLoader?.loadJson
                 ? window.akeDataLoader.loadJson(versionTableUrl(name, version), { priority: 'foreground' })
                 : fetchText(versionTableUrl(name, version)).then(losslessParse))
-                .catch(error => {
-                    console.warn(`Table ${name} not found${version ? ` in version ${version.id}` : ''}, treating as empty`, error.message || error);
-                    return {};
+                .then(data => {
+                    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+                        throw new Error(`Table ${name}: expected an object`);
+                    }
+                    tableDiagnostics.set(cacheKey, { name, version: version?.id || 'current', state: 'loaded', count: Object.keys(data).length });
+                    return data;
+                }).catch(error => {
+                    const missing = options.optional === true && error.status === 404;
+                    tableDiagnostics.set(cacheKey, { name, version: version?.id || 'current', state: missing ? 'optional-missing' : 'error', message: error.message });
+                    if (missing) return {};
+                    throw error;
                 });
-            tableCache.set(cacheKey, options?.hydrate === false
+            const promise = (options?.hydrate === false
                 ? raw
-                : Promise.all([raw, loadI18n()]).then(([data, i18n]) => hydrate(data, i18n)));
+                : Promise.all([raw, loadI18n()]).then(([data, i18n]) => hydrate(structuredClone(data), i18n)))
+                .catch(error => {
+                    tableCache.delete(cacheKey);
+                    throw error;
+                });
+            tableCache.set(cacheKey, promise);
         }
         return tableCache.get(cacheKey);
     }
@@ -708,22 +752,15 @@
     async function itemDetail(id, version) {
         const [items, types, jumps, composites, showing, useItems, equipItems, machineCrafts, machineCraftGroups,
             manualCrafts, hubCrafts, buildings, equipFormulas, growFormulas, seedFormulas, spaceshipFormulas,
-            factoryEnvironments, i18n] = await Promise.all([
+            factoryEnvironments, i18n, equipChains] = await Promise.all([
             table('ItemTable', version), table('ItemTypeTable', version), table('SystemJumpTable', version), table('ItemIconCompositeTable', version), table('ItemShowingTypeTable', version),
             table('UseItemTable', version), table('EquipItemTable', version), table('FactoryMachineCraftTable', version), table('FactoryMachineCraftGroupTable', version),
             table('FactoryManualCraftTable', version), table('FactoryHubCraftTable', version), table('FactoryBuildingTable', version), table('EquipFormulaTable', version),
             table('SpaceshipGrowCabinFormulaTable', version), table('SpaceshipGrowCabinSeedFormulaTable', version), table('SpaceshipManufactureFormulaTable', version),
-            table('FactoryEnvDisplayTable', version), loadI18n()
+            table('FactoryEnvDisplayTable', version), loadI18n(), table('EquipFormulaChainTable', version)
         ]);
         const item = items[id] || {};
         const flattenGroups = rows => (rows || []).flatMap(row => row.group || []);
-        const factoryEnvironment = value => {
-            const gasEnv = Number(value || 0);
-            if (!gasEnv) return null;
-            const environmentId = Number(factoryEnvironments[String(gasEnv)]?.GenEnv || gasEnv);
-            const textId = FACTORY_ENVIRONMENT_TEXT_IDS[environmentId];
-            return { id: environmentId, name: (textId && (i18n.localized?.[textId] || i18n.chinese?.[textId])) || `gasEnv ${environmentId}` };
-        };
         const recipeRows = [];
         const addRecipe = (recipeId, kind, name, inputs, outputs, meta, durationMs, environment) => {
             const normalizedInputs = (inputs || []).filter(row => row?.id);
@@ -736,7 +773,7 @@
             const building = buildings[row.machineId] || {};
             const msPerRound = machineCraftGroups[row.formulaGroupId]?.msPerRound || 0;
             addRecipe(recipeId, itemT('recipeKinds.integratedIndustry'), text(row.formulaDesc, recipeId), flattenGroups(row.ingredients), flattenGroups(row.outcomes),
-                text(building.name, row.machineId), row.progressRound * msPerRound, factoryEnvironment(row.gasEnv));
+                text(building.name, row.machineId), row.progressRound * msPerRound, factoryEnvironment(row.gasEnv, factoryEnvironments, i18n));
         });
         Object.entries(manualCrafts).forEach(([recipeId, row]) => {
             addRecipe(recipeId, itemT('recipeKinds.manualCrafting'), text(row.name, recipeId), row.ingredients, row.outcomes, '');
@@ -745,9 +782,8 @@
             addRecipe(recipeId, itemT('recipeKinds.hubManufacturing'), recipeId, row.ingredients, row.outcomes, row.usableLevel ? itemT('craft.usableLevel', { level: row.usableLevel }) : '');
         });
         Object.entries(equipFormulas).forEach(([recipeId, row]) => {
-            const inputs = (row.costItemId || []).map((itemId, index) => ({ id: itemId, count: row.costItemNum?.[index] || 0 }));
-            if (row.costGoldId && row.costGoldNum) inputs.unshift({ id: row.costGoldId, count: row.costGoldNum });
-            addRecipe(recipeId, itemT('recipeKinds.equipmentManufacturing'), recipeId, inputs, [{ id: row.outcomeEquipId, count: 1 }], '');
+            equipmentRecipeVariants(recipeId, row, equipChains).forEach(variant =>
+                addRecipe(variant.recipeId, itemT('recipeKinds.equipmentManufacturing'), variant.recipeId, variant.inputs, variant.outputs, ''));
         });
         Object.entries(growFormulas).forEach(([recipeId, row]) => {
             addRecipe(recipeId, itemT('recipeKinds.growCabinPlanting'), recipeId, [{ id: row.seedItemId, count: row.seedItemCount }],
@@ -872,6 +908,7 @@
                 canBeUpgraded: achievement.canBeUpgraded,
                 canBePlated: achievement.canBePlated,
                 applyRareEffect: achievement.applyRareEffect,
+                plateConditions: (achievement.plateConditions || []).map(condition => pick(condition, ['desc', 'progressToCompare'])),
                 levels: Object.values(achievement.levelInfos || {}).map(level => ({
                     achieveLevel: level.achieveLevel,
                     completeDesc: level.completeDesc,
@@ -903,12 +940,19 @@
             if (!(row.groupId in groupNames)) return;
             const groupName = groupNames[row.groupId] || 'default';
             if (!group[groupName]) group[groupName] = {};
+            const levels = Object.values(row.levelInfos || {}).sort((a, b) => Number(a.achieveLevel || 0) - Number(b.achieveLevel || 0));
+            const platingLevel = levels[levels.length - 1]?.achieveLevel;
             group[groupName][achieveId] = { name: text(row.name, achieveId), order: row.order, canBeUpgraded: row.canBeUpgraded,
                 canBePlated: row.canBePlated, applyRareEffect: row.applyRareEffect, noObtainCanView: category.noObtainCanView,
-                level: Object.values(row.levelInfos || {}).map(level => ({ level: level.achieveLevel,
+                level: levels.map(level => ({ level: level.achieveLevel,
                     icon: `/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/medaliconbig/${achieveId}_lv${String(level.achieveLevel).padStart(2, '0')}.png`,
                     desc: text(level.completeDesc), conditions: (level.conditions || []).map(cond => text(cond.desc)),
-                    progressToCompare: (level.conditions || []).map(cond => cond.progressToCompare) })) };
+                    progressToCompare: (level.conditions || []).map(cond => cond.progressToCompare) })),
+                plating: row.canBePlated && platingLevel !== undefined ? {
+                    icon: `/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/medaliconbig/${achieveId}_lv${String(platingLevel).padStart(2, '0')}_plating.png`,
+                    conditions: (row.plateConditions || []).map(condition => text(condition.desc)),
+                    progressToCompare: (row.plateConditions || []).map(condition => condition.progressToCompare)
+                } : null };
         });
         return { categoryId: id, categoryName: text(category.categoryName, id), group };
     }
@@ -927,20 +971,18 @@
         });
     }
 
-    const ACTIVITY_CONDITIONAL_STAGE_PANELS = new Set([
-        'ActivityArknightsBirth', 'ActivityCleaning', 'ActivityCoin', 'ActivityContingencyContract',
-        'ActivityDevelopReturn', 'ActivityDoubleAssault', 'ActivityDungeonActMonster', 'ActivityHighDifficulty',
-        'ActivityLimitedFormulaAssistRegion', 'ActivityMaterialSupply', 'ActivityPhotoTaking',
-        'ActivityPhotoTakingUniverse', 'ActivitySimulationTrainingTask', 'ActivityStaminaDiscount', 'ActivityVersionGuide'
-    ]);
-    const ACTIVITY_CHECKIN_PANELS = new Set([
-        'ActivityCharSignCommon', 'ActivityRewardRegistration', 'ActivityFreeMonthlyPass', 'ActivityReflowFormal'
-    ]);
-    const ACTIVITY_LEVEL_REWARD_PANELS = new Set(['ActivityGachaBeginner', 'ActivityLevelRewards', 'ActivityMissionReward']);
-    const ACTIVITY_TASK_REWARD_PANELS = new Set([
-        'ActivityContingencyContract', 'ActivityCoin', 'ActivityReflowFormal',
-        'ActivitySimulationTrainingTask', 'ActivityDoubleAssault'
-    ]);
+    // These tables join on activity ID, independently of the game's panel implementation.
+    const ACTIVITY_DETAIL_TABLES = {
+        conditionalStages: 'ActivityConditionalMultiStageTable',
+        checkins: 'CheckInRewardTable',
+        levelRewards: 'ActivityLevelRewardsTable',
+        taskRewards: 'ActivityConditionalMultiStageTaskConfigTable',
+        racingMilestones: 'ActivityRacingDungeonMilestoneTable',
+        weeklyMilestones: 'ActivityWeeklyTaskMileStoneTable',
+        reflowRewards: 'ActivityReflowTable',
+        charTrials: 'ActivityCharTrial',
+        benefits: 'ActivityBenefitsTable'
+    };
 
     async function activityManifest(version) {
         const [activities, tags, times] = await Promise.all([
@@ -974,25 +1016,17 @@
         const panelId = row.panelId || '';
         const detailTables = {};
         const detailLoads = [];
-        const loadDetailTable = (key, tableName) => {
-            detailLoads.push(table(tableName, version).then(value => { detailTables[key] = value; }));
+        const loadDetailTable = (key, tableName, optional = false) => {
+            detailLoads.push(table(tableName, version, { optional }).then(value => { detailTables[key] = value; }));
         };
 
         if (row.instructionId) loadDetailTable('instructions', 'InstructionBook');
-        if (ACTIVITY_CONDITIONAL_STAGE_PANELS.has(panelId)) loadDetailTable('conditionalStages', 'ActivityConditionalMultiStageTable');
+        Object.entries(ACTIVITY_DETAIL_TABLES).forEach(([key, name]) => loadDetailTable(key, name, true));
         if (id === 'dungeon_fighting') {
             loadDetailTable('fightingStages', 'ActivityDungeonFightingStageTable');
             loadDetailTable('dungeons', 'DungeonTable');
         }
-        if (ACTIVITY_CHECKIN_PANELS.has(panelId)) loadDetailTable('checkins', 'CheckInRewardTable');
-        if (ACTIVITY_LEVEL_REWARD_PANELS.has(panelId)) loadDetailTable('levelRewards', 'ActivityLevelRewardsTable');
-        if (ACTIVITY_TASK_REWARD_PANELS.has(panelId)) loadDetailTable('taskRewards', 'ActivityConditionalMultiStageTaskConfigTable');
-        if (panelId === 'ActivityCoin') loadDetailTable('racingMilestones', 'ActivityRacingDungeonMilestoneTable');
-        if (panelId === 'ActivityWeeklyTask') loadDetailTable('weeklyMilestones', 'ActivityWeeklyTaskMileStoneTable');
-        if (panelId === 'ActivityReflowFormal') loadDetailTable('reflowRewards', 'ActivityReflowTable');
-        if (panelId === 'ActivityCharacterTrial') loadDetailTable('charTrials', 'ActivityCharTrial');
         if (panelId === 'ActivityArknightsBirth') loadDetailTable('birthStages', 'ActivityArknightsBirthMultiStageTable');
-        if (panelId === 'ActivityBenefits') loadDetailTable('benefits', 'ActivityBenefitsTable');
         await Promise.all(detailLoads);
 
         const rewardIds = new Set();
@@ -1056,7 +1090,7 @@
 
         Object.entries(detailTables.charTrials || {}).filter(([, trial]) => trial.activityId === id).forEach(([trialId, trial], index) => addRewardGroup({
             id: trialId, kind: 'trial', index: index + 1, desc: text(trial.desc), sortId: 1000 + (trial.sortId ?? index + 1),
-            rewardId: trial.rewardId
+            rewardId: trial.rewardId, relatedCharId: trial.relatedCharId
         }));
         Object.entries(detailTables.birthStages || {}).forEach(([stageId, stage], index) => {
             if (!stage.rewardItemId || stage.isVisible === false) return;
@@ -1080,6 +1114,7 @@
         stageRows.forEach(({ stageId, stage, dungeon, source }) => {
             if (source === 'dungeon') {
                 stageList[stageId] = { name: text(dungeon.dungeonName, stageId), desc: text(dungeon.dungeonDesc), sortId: dungeon.sortId,
+                    dungeonSeriesId: dungeon.dungeonSeriesId,
                     opentime: times[row.timeId]?.timeRangeList?.[0]?.openTime || '', rewarddetail: rewardsToView(dungeon.rewardId, rewards, items) };
                 return;
             }
@@ -1191,6 +1226,63 @@
             : loadTableInternal(name, version, options);
     }
 
+    // Explicitly invoked by maintainers; never run during normal module loading.
+    async function auditCoverage(modules = Object.keys(adapters)) {
+        const sources = { character: 'CharacterTable', weapon: 'WeaponBasicTable', enemy: 'EnemyTemplateDisplayInfoTable',
+            equip: 'EquipTable', item: 'ItemTable', dungeon: 'DungeonSeriesTable', achievement: 'AchievementTypeTable',
+            activity: 'ActivityTable', cc: 'ActivityContingencyContractTable' };
+        const report = { generatedAt: new Date().toISOString(), dataSource: window.akeDataSource?.getState?.(), modules: {}, tables: [] };
+        for (const module of modules) {
+            if (!adapters[module]) throw new Error(`Unknown module: ${module}`);
+            try {
+                const source = await table(sources[module]);
+                const rows = await adapters[module][0]();
+                const included = new Set(module === 'equip'
+                    ? rows.flatMap(row => (row.equipmentIndex || []).map(item => item.itemId))
+                    : rows.map(row => manifestId(module, row)));
+                const expected = Object.entries(source).map(([id, row]) => module === 'cc' ? String(row.gameId) : id);
+                const excluded = module === 'dungeon'
+                    ? Object.entries(source).filter(([, row]) => !row.gameCategory).map(([id]) => ({ id, reason: 'Missing gameCategory in DungeonSeriesTable' })) : [];
+                const excludedIds = new Set(excluded.map(row => row.id));
+                const missing = expected.filter(id => !included.has(id) && !excludedIds.has(id));
+                const extra = [...included].filter(id => !expected.includes(id));
+                const result = { source: sources[module], sourceCount: expected.length, includedCount: included.size, excluded, missing, extra };
+                if (module === 'activity') {
+                    const stages = await table('ActivityConditionalMultiStageTable', undefined, { optional: true });
+                    result.stages = [];
+                    for (const [id, row] of Object.entries(stages)) {
+                        const ids = Object.keys(row.stageList || {});
+                        if (!source[id]) {
+                            result.stages.push({ id, sourceCount: ids.length, missing: ids, reason: 'Missing ActivityTable record' });
+                            continue;
+                        }
+                        const detail = await activityDetail(id);
+                        result.stages.push({ id, panelId: source[id].panelId, sourceCount: ids.length,
+                            includedCount: ids.filter(stageId => detail.stageList[stageId]).length,
+                            missing: ids.filter(stageId => !detail.stageList[stageId]) });
+                    }
+                }
+                if (module === 'item') {
+                    const [formulas, chains] = await Promise.all([table('EquipFormulaTable'), table('EquipFormulaChainTable')]);
+                    result.brokenRecipeReferences = Object.entries(formulas).flatMap(([id, row]) => {
+                        const issues = [];
+                        if (!chains[row.level]?.chainList?.length) issues.push({ id, field: 'level', target: row.level, reason: 'Missing recipe chain' });
+                        if (!source[row.outcomeEquipId]) issues.push({ id, field: 'outcomeEquipId', target: row.outcomeEquipId, reason: 'Missing item' });
+                        equipmentRecipeVariants(id, row, chains).forEach(variant => variant.inputs.forEach(input => {
+                            if (!source[input.id]) issues.push({ id: variant.recipeId, field: 'inputs', target: input.id, reason: 'Missing item' });
+                        }));
+                        return issues;
+                    });
+                }
+                report.modules[module] = result;
+            } catch (error) {
+                report.modules[module] = { source: sources[module], state: 'error', message: error.message };
+            }
+        }
+        report.tables = [...tableDiagnostics.values()];
+        return report;
+    }
+
     window.akeDataLoader?.registerTableLoader(({ name, version, options }) =>
         loadTableInternal(name, version, options));
     window.akeDataLoader?.registerI18nLoader(() => loadI18n());
@@ -1210,6 +1302,10 @@
                 : Promise.all((entries || []).map(entry => table(entry.name, entry.version, { ...options, ...entry })));
         },
         text,
+        factoryEnvironment,
+        equipmentRecipeVariants,
+        auditCoverage,
+        getTableDiagnostics: () => [...tableDiagnostics.values()].map(row => ({ ...row })),
         pointShareUrl,
         async equipTemplateShareUrl(rewardIds) {
             for (const rewardId of rewardIds || []) {

@@ -44,6 +44,7 @@
     const requested = String(storage.get('akedata-language', 'CH')).toUpperCase();
     let language = LANGUAGES[requested] ? requested : 'CH';
     let messages = {};
+    let fallbackMessages = {};
     let observer = null;
 
     function getPath(source, path) {
@@ -55,12 +56,12 @@
     }
 
     function t(key, params, fallback) {
-        const value = getPath(messages, key);
+        const value = getPath(messages, key) ?? getPath(fallbackMessages, key);
         return format(value === undefined ? (fallback === undefined ? key : fallback) : value, params);
     }
 
     function getValue(key, fallback = null) {
-        const value = getPath(messages, key);
+        const value = getPath(messages, key) ?? getPath(fallbackMessages, key);
         return value === undefined ? fallback : value;
     }
 
@@ -95,13 +96,22 @@
         document.documentElement.lang = info.htmlLang;
         try {
             const forceRefresh = Boolean(window.__akeForceRefreshTimestamp);
-            const response = await fetch(buildI18nUrl(info.directory), {
-                cache: forceRefresh ? 'no-store' : 'force-cache',
-                headers: forceRefresh ? { 'X-AKE-Page-Cache': '1' } : undefined
-            });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const data = await response.json();
-            messages = data.messages || {};
+            const loadMessages = async directory => {
+                const response = await fetch(buildI18nUrl(directory), {
+                    cache: forceRefresh ? 'no-store' : 'force-cache',
+                    headers: forceRefresh ? { 'X-AKE-Page-Cache': '1' } : undefined
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                return data.messages || {};
+            };
+            [messages, fallbackMessages] = await Promise.all([
+                loadMessages(info.directory),
+                info.directory === 'CH' ? Promise.resolve({}) : loadMessages('CH').catch(error => {
+                    console.warn('Unable to load Chinese interface fallbacks.', error);
+                    return {};
+                })
+            ]);
         } catch (error) {
             console.warn(`Unable to load ${language} interface translations.`, error);
             if (language !== 'CH') {

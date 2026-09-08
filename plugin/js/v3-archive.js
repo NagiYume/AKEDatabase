@@ -1355,13 +1355,19 @@
                 ${detailChange}
             </div>`),
             title: window.AKEUI.fragment(gameHtml(groupName)),
-            subtitle: window.AKEUI.fragment(gameHtml(description))
+            subtitle: window.AKEUI.fragment(gameHtml(description)),
+            after: window.AKEVoicePlayer?.languageControlHtml
+                ? window.AKEUI.fragment(window.AKEVoicePlayer.languageControlHtml())
+                : null
         });
         elements.content.innerHTML = `<article class="ake-ui-detail" data-detail-kind="archive">
             ${detailHeader?.outerHTML || ''}
             ${renderEntryTabs(group, item)}
             ${item.type === 'map_text' ? renderMapText(item) : item.type === 'multi_media' ? renderTranscript(item, popup) : renderDocument(item, popup)}
         </article>`;
+        if (!elements.content.querySelector('[data-ake-voice-id]')) {
+            elements.content.querySelector('[data-ake-voice-language-control]')?.remove();
+        }
     }
 
     function renderEmptyGroup(group) {

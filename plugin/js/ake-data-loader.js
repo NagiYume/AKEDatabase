@@ -71,7 +71,7 @@
                     akeProgress: options.akeProgress !== false,
                     cache: options.cache
                 });
-                if (!response.ok) throw new Error(`无法加载 ${url} (HTTP ${response.status})`);
+                if (!response.ok) throw Object.assign(new Error(`无法加载 ${url} (HTTP ${response.status})`), { status: response.status, url });
                 const text = await response.text();
                 stats.bytes += text.length;
                 if (text.length >= 128 * 1024 && window.akeDataWorker?.parse) return window.akeDataWorker.parse(text);
@@ -88,7 +88,7 @@
     function loadTable(name, version, options = {}) {
         if (!tableLoader) return Promise.reject(new Error('Table 加载器尚未注册'));
         const language = window.akeI18n?.getLanguageInfo?.().table || 'CN';
-        const key = `table:${version?.id || 'current'}:${language}:${name}:${options.hydrate === false ? 'raw' : 'hydrated'}`;
+        const key = `table:${version?.id || 'current'}:${language}:${name}:${options.hydrate === false ? 'raw' : 'hydrated'}:${options.optional === true ? 'optional' : 'required'}`;
         if (!shared.has(key)) {
             shared.set(key, Promise.resolve().then(() => tableLoader({ name, version, options }))
                 .catch(error => { shared.delete(key); throw error; }));

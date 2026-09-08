@@ -143,7 +143,7 @@ http://localhost:5501/
 
 ### 界面文本与富文本
 
-网站界面文案统一放在各语言目录的 `i18n.json`，HTML 使用 `data-i18n` 和 `data-i18n-placeholder`。游戏文本通过 `I18nTextTable_*` 加载，非中文语言缺失时回退到中文文本。
+网站界面文案统一放在各语言目录的 `i18n.json`，HTML 使用 `data-i18n` 和 `data-i18n-placeholder`。缺少单个界面翻译键时回退到简体中文，不改写用户选择的语言。游戏文本通过 `I18nTextTable_*` 加载，非中文语言缺失时回退到中文文本。
 
 可能包含游戏标签的内容应使用：
 
@@ -155,13 +155,17 @@ window.parseText(text, imageBasePath)
 
 ## 数据发布
 
-生产数据由 `https://data.akedata.wiki` 提供，发布脚本为 `tools/sync-r2.ps1`。凭据只应保存在本机 rclone 配置中，不得写入仓库。
+生产数据由 `https://data.akedata.wiki` 提供，维护入口为 `tools/ake-data-tool/run-gui.bat`，命令行入口为 `tools/ake-data-tool/ake_tool/cli.py`。发布边界见 [工具规则](tools/ake-data-tool/AGENTS.md)。凭据只应保存在本机配置中，不得写入仓库。
 
 完整的数据获取、TableCfg/Json/图片解析、资产差异同步和 R2 管理说明位于 [tools/ake-data-tool/README.md](./tools/ake-data-tool/README.md)。该目录中的独立说明应与工具实现保持一致。
 
-PowerShell 发布脚本支持交互式和参数式运行。修改 Json 或 images 时使用共享数据模式；发布前先确认 dry-run 计划，再执行正式上传。TableCfg 历史版本目录默认不允许覆盖，回滚通过重新发布版本清单完成。
+使用 AKE Data Tool 生成范围明确的同步计划，再执行获授权的上传。索引更新与 Json/images 内容同步分别确认范围。TableCfg 历史版本目录默认不允许覆盖，回滚通过重新发布版本清单完成。
 
 ## 提交前检查
+
+本节是用户手动验证说明，不要求代理自动执行。代理遵循根 [AGENTS.md](AGENTS.md) 与 [开发 skill](skills/akedatabase-development/SKILL.md)：默认只读复查，不运行验证；用户明确授权后才执行相应检查。
+
+新增同结构数据应由表关联自动收录。手动收录报告、数据契约和仍需人工维护的映射见 [数据契约](skills/akedatabase-development/references/data-contracts.md)。报告检查实际适配器结果，不能替代页面与业务语义验证。
 
 仓库没有自动测试、lint、打包工具或 CI。提交前可按改动范围进行以下检查：
 

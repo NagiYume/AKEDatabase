@@ -221,6 +221,27 @@
                     </div>
                 `;
             });
+            const plating = achv.plating;
+            if (plating) {
+                const conditions = plating.conditions || [];
+                const progress = plating.progressToCompare || [];
+                const conditionsHtml = conditions.map((condition, index) => {
+                    const value = progress[index];
+                    const progressHtml = value === undefined || value === null || value === ''
+                        ? ''
+                        : ` <span class="progress-value">(${value})</span>`;
+                    return `<div class="condition-item">${parseText(condition)}${progressHtml}</div>`;
+                }).join('');
+                levelsHtml += `
+                    <div class="level-item">
+                        <div class="level-icon"><img src="${plating.icon || ''}"></div>
+                        <div class="level-info">
+                            <div class="level-desc"><strong>${t('detail.plating')}</strong></div>
+                            <div class="level-conditions">${conditionsHtml || `<div class="condition-item">${t('detail.platingConditionUnavailable')}</div>`}</div>
+                        </div>
+                    </div>
+                `;
+            }
             return levelsHtml;
         }
 
