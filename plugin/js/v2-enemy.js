@@ -649,7 +649,7 @@
                 const modifierHtml = renderModifierSummary(variant.attrModifiersStr);
                 const showHidden = getCurrentShowHidden();
                 const buffHtml = showHidden
-                    ? (variant.bornBuffs.length > 0 ? `<div class="v2e-buffs">${variant.bornBuffs.map(b => window.AKEUI.entryLinkHtml({ plugin: 'v3_buff', id: b, label: b, className: 'ake-ui-badge ake-ui-badge--technical', contentHtml: escapeHtml(b) })).join('')}</div>` : '')
+                    ? (variant.bornBuffs.length > 0 ? `<div class="v2e-buffs">${variant.bornBuffs.map(b => window.AKEUI.entryLinkHtml({ plugin: 'v3_buff', id: b, label: b, className: 'ake-ui-badge ake-ui-badge--technical' })).join('')}</div>` : '')
                     : renderModifierSummary(variant.buffModifiersStr, t('modifierLabels.buffBonus', null, 'Buff Bonus'));
 
                 const flags = [];
