@@ -9,6 +9,7 @@
     <link rel="stylesheet" id="base-style">
     <link rel="stylesheet" id="theme-style">
     <link rel="stylesheet" id="guide-image-generator-style">
+    <link rel="stylesheet" id="asset-style">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
@@ -383,6 +384,8 @@
             }
             const guideImageLink = document.getElementById('guide-image-generator-style');
             if (guideImageLink) guideImageLink.href = resourceUrl('/theme/guide-image-generator.css');
+            const assetLink = document.getElementById('asset-style');
+            if (assetLink) assetLink.href = resourceUrl('/theme/asset.css');
             const scriptSources = new Map();
             const prefetchScript = async src => {
                 const key = resourceKey(src);

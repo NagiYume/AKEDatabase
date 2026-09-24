@@ -69,7 +69,7 @@
         if (!(element instanceof Element)) return;
         const textKey = element.dataset.i18n;
         if (textKey) element.textContent = t(textKey, null, element.textContent);
-        ['title', 'placeholder', 'aria-label'].forEach(attribute => {
+        ['title', 'placeholder', 'aria-label', 'alt'].forEach(attribute => {
             const dataName = `i18n${attribute.split('-').map(part => part[0].toUpperCase() + part.slice(1)).join('')}`;
             const key = element.dataset[dataName];
             if (key) element.setAttribute(attribute, t(key, null, element.getAttribute(attribute) || ''));
