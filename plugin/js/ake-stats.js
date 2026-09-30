@@ -22,6 +22,11 @@
         const relevant = (modifiers || []).filter(modifier => modifier.attrType === attrType && Number.isFinite(Number(modifier.attrValue)));
         let expression = compactNumber(baseValue);
         let value = baseValue;
+        relevant.filter(modifier => modifier.modifierType === 9).forEach(modifier => {
+            const operand = Number(modifier.attrValue);
+            expression = `override(${compactNumber(operand)})`;
+            value = operand;
+        });
         const stages = [
             { type: 5, operator: '+', wrap: false },
             { type: 6, operator: '×', onePlus: true },
@@ -63,7 +68,9 @@
             if (!groups.has(key)) groups.set(key, { ...modifier, attrValue: value });
             else {
                 const current = groups.get(key);
-                if (modifier.modifierType === 1 || modifier.modifierType === 6) {
+                if (modifier.modifierType === 9) {
+                    current.attrValue = value;
+                } else if (modifier.modifierType === 1 || modifier.modifierType === 6) {
                     current.attrValue = (1 + current.attrValue) * (1 + value) - 1;
                 } else if (modifier.modifierType === 4 || modifier.modifierType === 8) {
                     current.attrValue *= value;

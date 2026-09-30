@@ -90,21 +90,31 @@
 
         function getBuffModifiers(buffId, blackboardOverrides) {
             const buff = buffCache[buffId];
-            if (!buff?.attributeModifier?.attributeModifiers?.length) return [];
+            if (!buff) return [];
             const bb = {};
             (buff.blackboard || []).forEach(b => { bb[b.key] = b.valueDouble; });
             (blackboardOverrides || []).forEach(b => { bb[b.key] = b.valueFloat ?? b.valueDouble ?? 0; });
-            return buff.attributeModifier.attributeModifiers.map(mod => {
+            const resolveAttrValue = param => param?.useBlackboardKey && param.blackboardKey
+                ? (bb[param.blackboardKey] ?? param.value)
+                : param?.value;
+            const modifiers = (buff.attributeModifier?.attributeModifiers || []).map(mod => {
                 const attrType = attrNameToId[mod.attributeType];
                 if (attrType === undefined) return null;
                 const mt = FORMULA_TO_MODTYPE[mod.formulaItem];
                 if (mt === undefined) return null;
-                let val;
-                if (mod.param.useBlackboardKey && mod.param.blackboardKey) {
-                    val = bb[mod.param.blackboardKey] ?? mod.param.value;
-                } else { val = mod.param.value; }
-                return { attrType, attrValue: val, modifierType: mt };
+                return { attrType, attrValue: resolveAttrValue(mod.param), modifierType: mt };
             }).filter(Boolean);
+            (buff.buffEventAction || []).forEach(event => (event.actions || []).forEach(action => {
+                (action.actionData || []).forEach(actionData => {
+                    if (!String(actionData.$type || '').includes('OverrideRawAttributeAction')) return;
+                    (actionData.attributeOverrides || []).forEach(override => {
+                        const attrType = attrNameToId[override.attributeType];
+                        if (attrType === undefined) return;
+                        modifiers.push({ attrType, attrValue: resolveAttrValue(override.overrideValue), modifierType: 9 });
+                    });
+                });
+            }));
+            return modifiers;
         }
 
         function findTemplateId(instanceId, table) {
