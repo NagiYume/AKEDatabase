@@ -4,26 +4,30 @@
     const MODULE_ID = 'guide_image_generator';
     const IMAGE_ROOT = '/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites';
     const PROFESSION_NAMES = { 0: '近卫', 2: '重装', 4: '辅助', 5: '术师', 7: '先锋', 8: '突击' };
-    const ELEMENT_NAMES = { 0: '物理', 1: '灼热', 2: '寒冷', 3: '自然', 4: '电磁', 5: '物理', Pulse: '电磁', Fire: '灼热', Cold: '寒冷', Natural: '自然', Physical: '物理', Cryst: '寒冷' };
+    const ELEMENT_NAMES = { 0: '物理', 1: '灼热', 2: '寒冷', 3: '自然', 4: '电磁', 5: '物理', 39: '物理', 40: '灼热', 41: '寒冷', 42: '自然', 43: '电磁', Pulse: '电磁', Fire: '灼热', Cold: '寒冷', Natural: '自然', Physical: '物理', Cryst: '寒冷' };
     const SKILL_NAMES = ['普通攻击', '战技', '连携技', '终结技'];
-    const COLORS = ['#f4b400', '#f28c28', '#70a94b', '#d86b53', '#7b6bc7', '#4f92c6'];
+    const REFERENCE_ASSETS = '/plugin/js/guide-reference';
+    const REFERENCE_ELEMENT = { 0: 'Physical', 1: 'Fire', 2: 'Cold', 3: 'Natural', 4: 'Pulse', 39: 'Physical', 40: 'Fire', 41: 'Cold', 42: 'Natural', 43: 'Pulse' };
+    const ELEMENT_ICONS = { Natural: 'nature', Physical: 'physical', Pulse: 'pulse', Fire: 'fire', Cold: 'cold' };
     const DEFAULT_LAYOUTS = {
         horizontal: {
             portrait: { x: 30, y: 20, w: 300, h: 340, label: '角色立绘' },
             skills: { x: 340, y: 20, w: 610, h: 340, label: '技能加点' },
             potential: { x: 966, y: 20, w: 924, h: 504, label: '潜能收益' },
             weapons: { x: 30, y: 372, w: 320, h: 504, label: '武器建议' },
-            equips: { x: 366, y: 372, w: 588, h: 504, label: '装备建议' },
+            equipments: { x: 366, y: 372, w: 588, h: 504, label: '装备建议' },
             ratio: { x: 966, y: 540, w: 462, h: 338, label: '倍率分布' },
-            damage: { x: 1444, y: 540, w: 446, h: 338, label: '伤害分布' }
+            dmg: { x: 1444, y: 540, w: 446, h: 338, label: '伤害分布' }
         },
         vertical: {
-            header: { x: 35, y: 115, w: 1850, h: 220, label: '干员信息' },
-            recommendations: { x: 35, y: 359, w: 1850, h: 420, label: '技能与推荐' },
-            equipments: { x: 35, y: 803, w: 1850, h: 600, label: '武器与装备推荐' },
-            timeline: { x: 35, y: 1427, w: 1850, h: 210, label: '排轴展示' },
-            potential: { x: 35, y: 1671, w: 1850, h: 592, label: '潜能收益' },
-            team: { x: 35, y: 2287, w: 1850, h: 680, label: '队伍配装' }
+            header: { x: 44, y: 45, w: 1832, h: 565, label: '干员信息' },
+            recommendations: { x: 44, y: 659, w: 906, h: 684, label: '武器推荐' },
+            equipments: { x: 969, y: 659, w: 907, h: 684, label: '装备推荐' },
+            skills: { x: 44, y: 1374, w: 906, h: 1001, label: '技能加点' },
+            rotation: { x: 969, y: 1374, w: 907, h: 1001, label: '推荐手法' },
+            potential: { x: 44, y: 2398, w: 1832, h: 1052, label: '潜能收益' },
+            comparison: { x: 44, y: 3470, w: 1832, h: 1960, label: '配置分析' },
+            team: { x: 44, y: 5486, w: 1832, h: 804, label: '队伍搭配' }
         }
     };
     const root = document.querySelector('[data-misc-module="guide_image_generator"]');
@@ -35,6 +39,7 @@
     const status = $('#guideImageGeneratorStatus');
     const dimensions = $('#guideImageDimensions');
     const imageCache = new Map();
+    const referenceImages = new Map();
     let disposed = false;
     let characters = [];
     let characterTable = {};
@@ -49,7 +54,7 @@
         skills: SKILL_NAMES.map(name => ({ name, rank: '9' })), weapons: Array.from({ length: 4 }, () => ({ id: '', note: '' })),
         equips: Array.from({ length: 8 }, () => ({ id: '', note: '' })), team: Array.from({ length: 4 }, () => ''),
         potentialLabels: '0潜,1潜,2潜,3潜,4潜,5潜,5+6潜', potentialValues: '100,110,115,115,119,134,163',
-        potentialNote: '数值可按实际攻略内容修改', teamNote: '可在这里补充队伍循环、装备选择和使用说明。',
+        potentialNote: '', teamNote: '', buildNote: '', rotationNote: '', ratioTitle: '倍率分布(无buff)', damageTitle: '伤害分布(有buff)',
         ratio: '大招:0,战技:54.3,连携:16.55,普攻:29.15', damage: '大招:0,战技:65.87,连携:13.2,普攻:20.93',
         layout: { horizontal: {}, vertical: {} }, layoutMode: false
     };
@@ -63,7 +68,7 @@
     function layoutSize(mode) {
         if (mode === 'horizontal') return { width: 1920, height: 1080 };
         const last = layoutRect('vertical', 'team');
-        return { width: 1920, height: Math.max(2967, last.y + last.h + 35) };
+        return { width: 1920, height: Math.max(6349, last.y + last.h + 59) };
     }
 
     function setStatus(message, kind) {
@@ -81,12 +86,16 @@
     }
 
     function characterName(id, row) {
-        const fallback = id === 'chr_0002_endminm' ? '管理员（男）' : id === 'chr_0003_endminf' ? '管理员（女）' : id;
+        const fallback = id === 'chr_0002_endminm' ? '管理员（男）' : id === 'chr_0003_endminf' ? '管理员（女）' : '未命名干员';
         return text(row?.name, fallback);
     }
 
     function itemName(id) {
-        return text(itemTable[id]?.name, id);
+        return text(itemTable[id]?.name || weaponTable[id]?.name, id ? '未命名物品' : '');
+    }
+
+    function assetEntryName(id, kind) {
+        return text(kind === 'weapon' ? weaponTable[id]?.name || itemTable[id]?.name : itemTable[id]?.name, id ? '未命名物品' : '');
     }
 
     function image(path) {
@@ -96,10 +105,30 @@
         const request = new Promise(resolve => {
             const img = new Image();
             img.onload = () => resolve(img);
-            img.onerror = () => resolve(null);
+            img.onerror = () => {
+                imageCache.delete(url);
+                resolve(null);
+            };
             img.src = url;
         });
         imageCache.set(url, request);
+        return request;
+    }
+
+    function referenceImage(name) {
+        if (referenceImages.has(name)) return referenceImages.get(name);
+        const request = new Promise(resolve => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => {
+                referenceImages.delete(name);
+                resolve(null);
+            };
+            const url = new URL(`${REFERENCE_ASSETS}/${name}`, window.location.href);
+            url.searchParams.set('v', window.__akeBootstrapVersion?.jsversion?.['plugin/js/misc-guide-image-generator.js'] || '1.2.21-pre1');
+            img.src = url.href;
+        });
+        referenceImages.set(name, request);
         return request;
     }
 
@@ -140,6 +169,7 @@
 
     function syncAutoEntry(entry, kind) {
         entry.note = autoEntryLabels(entry.id, kind).join(',');
+        entry.name = assetEntryName(entry.id, kind);
     }
 
     function normalizeNumber(value, fallback = 0) {
@@ -274,19 +304,20 @@
             skills.append(createRow(`${skill.label}名称`, name), createRow('等级', rank));
         });
 
-        const weaponValues = Object.entries(weaponTable).map(([id]) => ({ value: id, label: itemName(id) }));
+        const weaponValues = Object.entries(weaponTable).map(([id]) => ({ value: id, label: assetEntryName(id, 'weapon') }));
         const weapons = $('#guideImageWeapons');
         weapons.replaceChildren();
         state.weapons.forEach((entry, index) => {
             const picker = createAssetPicker(weaponValues, entry.id, `武器${index + 1}`, id => {
                 entry.id = id;
                 syncAutoEntry(entry, 'weapon');
-                render();
+                renderDynamicControls(); render();
             });
-            const tags = document.createElement('div');
-            tags.className = 'guide-image-picker__tags';
-            tags.textContent = entry.note || '选择武器后自动填充词条';
-            weapons.append(createRow(`武器${index + 1}`, picker), tags);
+            const name = createInput(entry.name || '', `武器${index + 1}名称`);
+            const note = createInput(entry.note || '', `武器${index + 1}词条`);
+            name.addEventListener('input', () => { entry.name = name.value; render(); });
+            note.addEventListener('input', () => { entry.note = note.value; render(); });
+            weapons.append(createRow(`武器${index + 1}`, picker), createRow('名称', name), createRow('词条', note));
         });
 
         const equipValues = Object.entries(equipTable).map(([id]) => ({ value: id, label: itemName(id) }));
@@ -296,12 +327,13 @@
             const picker = createAssetPicker(equipValues, entry.id, `装备${index + 1}`, id => {
                 entry.id = id;
                 syncAutoEntry(entry, 'equip');
-                render();
+                renderDynamicControls(); render();
             });
-            const tags = document.createElement('div');
-            tags.className = 'guide-image-picker__tags';
-            tags.textContent = entry.note || '选择装备后自动填充词条';
-            equips.append(createRow(`装备${index + 1}`, picker), tags);
+            const name = createInput(entry.name || '', `装备${index + 1}名称`);
+            const note = createInput(entry.note || '', `装备${index + 1}词条`);
+            name.addEventListener('input', () => { entry.name = name.value; render(); });
+            note.addEventListener('input', () => { entry.note = note.value; render(); });
+            equips.append(createRow(`装备${index + 1}`, picker), createRow('名称', name), createRow('词条', note));
         });
 
         const team = $('#guideImageTeam');
@@ -357,6 +389,10 @@
         $('#guideImageCharacter').value = state.characterId;
         $('#guideImageCharacterName').value = state.characterName;
         $('#guideImageDescription').value = state.description;
+        $('#guideImageBuildNote').value = state.buildNote;
+        $('#guideImageRotationNote').value = state.rotationNote;
+        $('#guideImageRatioTitle').value = state.ratioTitle;
+        $('#guideImageDamageTitle').value = state.damageTitle;
         $('#guideImagePotentialLabels').value = state.potentialLabels;
         $('#guideImagePotentialValues').value = state.potentialValues;
         $('#guideImagePotentialNote').value = state.potentialNote;
@@ -408,7 +444,12 @@
         if (!img) return;
         const scale = Math.max(w / img.width, h / img.height);
         const dw = img.width * scale, dh = img.height * scale;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x, y, w, h);
+        ctx.clip();
         ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+        ctx.restore();
     }
 
     function drawImageContain(img, x, y, w, h) {
@@ -470,6 +511,7 @@
     function drawDonut(x, y, radius, value) {
         const segments = segmentList(value);
         const total = segments.reduce((sum, item) => sum + Math.max(0, item.value), 0) || 1;
+        const colors = window.AKEGuideReference?.DONUT_COLORS || ['#ef822f', '#76bd43', '#f2ba03', '#4874cb'];
         let angle = -Math.PI / 2;
         segments.forEach((item, index) => {
             const next = angle + Math.PI * 2 * Math.max(0, item.value) / total;
@@ -477,193 +519,169 @@
             ctx.moveTo(x, y);
             ctx.arc(x, y, radius, angle, next);
             ctx.closePath();
-            ctx.fillStyle = COLORS[index % COLORS.length];
+            ctx.fillStyle = colors[index % colors.length];
             ctx.fill();
             angle = next;
         });
         segments.forEach((item, index) => {
             const ly = y - (Math.min(segments.length, 5) - 1) * 20 + index * 40;
             if (index >= 5) return;
-            ctx.fillStyle = COLORS[index % COLORS.length];
-            roundRect(ctx, x + radius + 28, ly - 7, 28, 14, 4, COLORS[index % COLORS.length], null);
+            ctx.fillStyle = colors[index % colors.length];
+            roundRect(ctx, x + radius + 28, ly - 7, 28, 14, 4, colors[index % colors.length], null);
             drawText(item.label, x + radius + 66, ly, 19, '#d0d0d0');
             drawText(`${item.value.toFixed(2)}%`, x + radius + 66 + 125, ly, 20, '#fff', 'right', 700);
         });
     }
 
-    function drawSkillIconFrame(icon, x, y, size, rank) {
-        ctx.save();
-        ctx.shadowColor = 'rgba(255,178,40,.35)';
-        ctx.shadowBlur = 14;
-        roundRect(ctx, x, y, size, size, 12, '#262626', '#d8d8d8');
-        ctx.restore();
-        drawImageContain(icon, x + 6, y + 6, size - 12, size - 12);
-        ctx.strokeStyle = '#ffb228';
-        ctx.lineWidth = 5;
-        roundRect(ctx, x, y, size, size, 12, null, '#ffb228');
-        roundRect(ctx, x + 8, y + 8, 34, 28, 5, 'rgba(20,16,4,.85)', null);
-        drawText(`Lv.${rank}`, x + 25, y + 22, 13, '#ffd873', 'center', 800);
-    }
-
-    function drawFooterLogo(width, height) {
-        const baseY = height - 58;
-        ctx.fillStyle = '#181818';
-        ctx.fillRect(0, baseY, width, 58);
-        ctx.fillStyle = '#ffb228';
-        ctx.beginPath();
-        ctx.moveTo(42, baseY + 43); ctx.lineTo(42, baseY + 19);
-        ctx.lineTo(52, baseY + 28); ctx.lineTo(62, baseY + 19);
-        ctx.lineTo(62, baseY + 43); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.arc(52, baseY + 34, 7, 0, Math.PI * 2); ctx.fill();
-        drawText('兔头攻略', 78, baseY + 30, 25, '#fff', 'left', 800);
-        drawText('Endfield Guide', 78, baseY + 48, 13, '#ffb228', 'left', 600);
-    }
 
     async function renderHorizontal() {
-        const W = 1920, H = 1080;
-        canvas.width = W; canvas.height = H;
-        ctx.fillStyle = state.background; ctx.fillRect(0, 0, W, H);
-        ctx.fillStyle = '#252525'; ctx.fillRect(0, 0, W, 70);
+        const template = window.AKEGuideTemplate;
+        if (!template) throw new Error('参考横版模板未加载');
         const char = characterTable[state.characterId] || {};
-        const portrait = await portraitImage(state.characterId);
-        const p = layoutRect('horizontal', 'portrait');
-        const cardW = 250, cardH = 340;
-        const cardX = p.x + (p.w - cardW) / 2;
-        roundRect(ctx, cardX, p.y, cardW, cardH, 6, '#d9d9d9', '#c2c2c2');
-        ctx.save();
-        roundRect(ctx, cardX, p.y, cardW, cardH, 6, null, null);
-        ctx.clip();
-        drawImageCover(portrait, cardX, p.y, cardW, cardH);
-        ctx.restore();
-        ctx.fillStyle = '#fff'; ctx.fillRect(cardX, p.y + cardH - 50, cardW, 50);
-        roundRect(ctx, cardX + 6, p.y + 4, 34, 34, 5, '#3a3a3a', 'rgba(255,255,255,.75)');
-        roundRect(ctx, cardX + 6, p.y + 44, 34, 34, 5, '#3a3a3a', 'rgba(255,255,255,.75)');
-        drawText(PROFESSION_NAMES[char.profession] || '?', cardX + 23, p.y + 21, 11, '#fff', 'center', 700);
-        drawText(ELEMENT_NAMES[char.mainAttrType] || ELEMENT_NAMES[char.subAttrType] || '?', cardX + 23, p.y + 61, 10, '#fff', 'center', 700);
-        drawText(fitText(state.characterName, cardW - 55, 32), cardX + 14, p.y + 310, 32, '#1a1a1a', 'left', 700);
-        ctx.fillStyle = '#ffcc00'; ctx.fillRect(cardX, p.y + cardH - 5, cardW, 5);
+        const element = REFERENCE_ELEMENT[char.mainAttrType] || REFERENCE_ELEMENT[char.subAttrType] || '';
+        const skills = characterSkillOptions(state.characterId);
+        const [bg, subtitle, blank, portrait, ...icons] = await Promise.all([
+            referenceImage('bg.jpg'), referenceImage('subtitle.png'), referenceImage('blank.png'),
+            portraitImage(state.characterId),
+            ...skills.map(skill => skillImage(skill.icon)),
+            ...state.weapons.map(entry => entry.id ? itemImage(entry.id) : Promise.resolve(null)),
+            ...state.equips.map(entry => entry.id ? itemImage(entry.id) : Promise.resolve(null)),
+            image(`charprofessionicon/icon_profession_${char.profession}.png`),
+            element ? image(`elementicon/icon_charattrtype_${ELEMENT_ICONS[element]}.png`) : Promise.resolve(null),
+            ...[1, 2, 3].map(n => referenceImage(`spec${n}.svg`))
+        ]);
+        const assets = { vicon: portrait, profIcon: icons[16], elemIcon: icons[17] };
+        skills.forEach((skill, i) => { assets[`skills.${i}.icon`] = icons[i]; });
+        state.weapons.forEach((entry, i) => { assets[`weapons.${i}.icon`] = icons[4 + i]; });
+        state.equips.forEach((entry, i) => { assets[`equipments.${i}.icon`] = icons[8 + i]; });
+        const oldLayout = state.layout.horizontal || {};
+        const fields = {
+            characterName: state.characterName, profession: String(char.profession ?? ''), element,
+            rarity: char.rarity, bgColor: state.background, skills: state.skills.map((entry, index) => ({ name: entry?.name || skills[index]?.label, rank: entry?.rank || '9' })),
+            skillsTitle: '技能加点',
+            weapons: state.weapons.map(entry => ({ name: entry.id ? entry.name || assetEntryName(entry.id, 'weapon') : '', stars: weaponTable[entry.id]?.rarity || itemTable[entry.id]?.rarity, stats: entry.note })),
+            equipments: state.equips.map(entry => ({ name: entry.id ? entry.name || itemName(entry.id) : '', stars: itemTable[entry.id]?.rarity, stats: entry.note })),
+            potLabels: state.potentialLabels, potValues: state.potentialValues, potNote: state.potentialNote,
+            ratioTitle: state.ratioTitle, dmgTitle: state.damageTitle,
+            ratioSegments: segmentList(state.ratio), dmgSegments: segmentList(state.damage),
+            layout: Object.fromEntries(Object.keys(DEFAULT_LAYOUTS.horizontal).map(id => [id, oldLayout[id] || oldLayout[id === 'equipments' ? 'equips' : id === 'dmg' ? 'damage' : id] || {}]))
+        };
+        canvas.width = template.width;
+        canvas.height = template.height;
+        template.draw(ctx, fields, assets, { bg, subtitle, blank, specs: { 1: icons[18], 2: icons[19], 3: icons[20] } });
+        dimensions.textContent = `${canvas.width} × ${canvas.height}`;
+    }
 
-        const s = layoutRect('horizontal', 'skills');
-        drawPanel(s.x, s.y, s.w, s.h, '技能加点', true);
-        const skillRows = characterSkillOptions(state.characterId);
-        await Promise.all(skillRows.map(async (skill, index) => {
-            const icon = await skillImage(skill.icon);
-            const slotW = s.w / skillRows.length;
-            const x = s.x + slotW * index + slotW / 2;
-            const size = Math.min(105, slotW - 28, s.h - 150);
-            drawSkillIconFrame(icon, x - size / 2, s.y + 70, size, state.skills[index]?.rank || '9');
-            drawText(fitText(state.skills[index]?.name || skill.label, slotW - 20, 18), x, s.y + s.h - 40, 18, '#fff', 'center', 700);
-        }));
+    function verticalSection(rect, title) {
+        ctx.fillStyle = '#202326';
+        ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+        ctx.strokeStyle = '#555a60';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+        ctx.fillStyle = '#34383c';
+        ctx.fillRect(rect.x, rect.y, rect.w, 65);
+        ctx.fillStyle = '#ffc247';
+        ctx.fillRect(rect.x + 26, rect.y + 15, 7, 35);
+        drawText(title, rect.x + 51, rect.y + 34, 32, '#fff', 'left', 800);
+    }
 
-        const pot = layoutRect('horizontal', 'potential');
-        drawPanel(pot.x, pot.y, pot.w, pot.h, '潜能收益', true);
-        drawBarChart(pot.x + 35, pot.y + 70, pot.w - 70, pot.h - 135);
-        drawText(state.potentialNote, pot.x + 35, pot.y + pot.h - 25, 18, '#8c6500');
-
-        const weapons = layoutRect('horizontal', 'weapons');
-        drawPanel(weapons.x, weapons.y, weapons.w, weapons.h, '武器建议', true);
-        await Promise.all(state.weapons.map(async (entry, index) => {
-            if (!entry.id) return;
-            const colW = weapons.w / 2;
-            const x = weapons.x + colW * (index % 2) + (colW - 115) / 2;
-            const y = weapons.y + 65 + Math.floor(index / 2) * Math.max(160, (weapons.h - 85) / 2);
-            roundRect(ctx, x, y, 115, 115, 10, '#262626', 'rgba(255,255,255,.26)');
-            drawImageContain(await itemImage(entry.id), x + 4, y + 4, 107, 107);
-            ctx.fillStyle = '#ffcc00'; ctx.fillRect(x, y + 110, 115, 5);
-            drawText(fitText(itemName(entry.id), colW - 12, 17), x + 57, y + 140, 17, '#fff', 'center', 700);
-            const stats = String(entry.note || '').split(/[,，]/).map(item => item.trim()).filter(Boolean).slice(0, 3);
-            stats.forEach((stat, statIndex) => {
-                roundRect(ctx, x + 57 - 61, y + 152 + statIndex * 28, 122, 24, 12, '#3a3a3a', 'rgba(255,255,255,.12)');
-                drawText(stat, x + 57, y + 164 + statIndex * 28, 15, '#e8e8e8', 'center', 600);
-            });
-        }));
-
-        const equips = layoutRect('horizontal', 'equips');
-        drawPanel(equips.x, equips.y, equips.w, equips.h, '装备建议', true);
-        await Promise.all(state.equips.map(async (entry, index) => {
-            if (!entry.id) return;
-            const colW = equips.w / 4;
-            const x = equips.x + colW * (index % 4) + (colW - 100) / 2;
-            const y = equips.y + 65 + Math.floor(index / 4) * Math.max(160, (equips.h - 85) / 2);
-            roundRect(ctx, x, y, 100, 100, 10, '#262626', 'rgba(255,255,255,.26)');
-            drawImageContain(await itemImage(entry.id), x + 4, y + 4, 92, 92);
-            ctx.fillStyle = '#ffcc00'; ctx.fillRect(x, y + 95, 100, 5);
-            drawText(fitText(itemName(entry.id), colW - 8, 14), x + 50, y + 123, 14, '#fff', 'center', 700);
-            String(entry.note || '').split(/[,，]/).map(item => item.trim()).filter(Boolean).slice(0, 2).forEach((stat, statIndex) => {
-                roundRect(ctx, x + 50 - 50, y + 134 + statIndex * 25, 100, 21, 10, '#3a3a3a', 'rgba(255,255,255,.12)');
-                drawText(stat, x + 50, y + 144 + statIndex * 25, 12, '#e8e8e8', 'center', 600);
-            });
-        }));
-        const ratio = layoutRect('horizontal', 'ratio');
-        drawPanel(ratio.x, ratio.y, ratio.w, ratio.h, '倍率分布', true);
-        drawDonut(ratio.x + ratio.w * .30, ratio.y + 54 + (ratio.h - 54) / 2, Math.min(92, ratio.w * .22), state.ratio);
-        const damage = layoutRect('horizontal', 'damage');
-        drawPanel(damage.x, damage.y, damage.w, damage.h, '伤害分布', true);
-        drawDonut(damage.x + damage.w * .30, damage.y + 54 + (damage.h - 54) / 2, Math.min(92, damage.w * .22), state.damage);
-        drawFooterLogo(W, H);
-        dimensions.textContent = `${W} × ${H}`;
+    function verticalLines(value, x, y, maxWidth, lineHeight, size, color = '#eee') {
+        const paragraphs = String(value || '').split(/\n/);
+        let row = 0;
+        ctx.font = `600 ${size}px "Microsoft YaHei", sans-serif`;
+        for (const paragraph of paragraphs) {
+            let line = '';
+            for (const character of paragraph) {
+                if (line && ctx.measureText(line + character).width > maxWidth) {
+                    drawText(line, x, y + row++ * lineHeight, size, color);
+                    line = '';
+                }
+                line += character;
+            }
+            drawText(line, x, y + row++ * lineHeight, size, color);
+        }
     }
 
     async function renderVertical() {
         const W = 1920, H = layoutSize('vertical').height;
+        const skills = characterSkillOptions(state.characterId);
+        const [portrait, ...images] = await Promise.all([
+            portraitImage(state.characterId),
+            ...skills.map(skill => skillImage(skill.icon)),
+            ...state.weapons.map(entry => entry.id ? itemImage(entry.id) : Promise.resolve(null)),
+            ...state.equips.map(entry => entry.id ? itemImage(entry.id) : Promise.resolve(null)),
+            ...state.team.map(id => id ? characterImage(id) : Promise.resolve(null))
+        ]);
         canvas.width = W; canvas.height = H;
-        ctx.fillStyle = state.background; ctx.fillRect(0, 0, W, H);
-        ctx.fillStyle = '#252525'; ctx.fillRect(0, 0, W, 86);
-        drawText(state.title, 40, 43, 34, '#fff', 'left', 800);
-        const portrait = await portraitImage(state.characterId);
+        ctx.fillStyle = '#13171a'; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#30363a'; ctx.fillRect(0, 0, W, 46);
+        ctx.fillStyle = '#f5be45'; ctx.fillRect(44, 44, 14, H - 88);
+        ctx.fillRect(W - 58, 44, 14, H - 88);
         const header = layoutRect('vertical', 'header');
-        drawPanel(header.x, header.y, header.w, header.h, '干员信息', true);
-        drawImageContain(portrait, header.x + 35, header.y + 20, 170, Math.max(80, header.h - 50));
-        drawText(state.characterName, header.x + 245, header.y + 70, 38, '#fff', 'left', 800);
-        drawText(state.description, header.x + 245, header.y + 125, 23, '#eee');
-        drawText('可编辑的攻略正文区域', header.x + 245, header.y + 177, 18, '#ffca28');
+        verticalSection(header, state.title || '干员攻略');
+        drawImageCover(portrait, header.x + 35, header.y + 95, 290, 420);
+        drawText(state.characterName, header.x + 370, header.y + 160, 68, '#fff', 'left', 800);
+        const char = characterTable[state.characterId] || {};
+        const profession = PROFESSION_NAMES[char.profession] || '未分类';
+        const element = ELEMENT_NAMES[char.mainAttrType] || ELEMENT_NAMES[char.subAttrType] || '未知属性';
+        drawText(`${profession}  ·  ${element}`, header.x + 375, header.y + 240, 32, '#ffc247');
+        verticalLines(state.description, header.x + 375, header.y + 335, header.w - 430, 51, 30);
 
         const recommendations = layoutRect('vertical', 'recommendations');
-        drawPanel(recommendations.x, recommendations.y, recommendations.w, recommendations.h, '技能与推荐', false);
-        const skills = characterSkillOptions(state.characterId);
-        await Promise.all(skills.map(async (skill, index) => {
-            const slotW = recommendations.w / 4;
-            const x = recommendations.x + slotW * index + (slotW - 140) / 2;
-            drawImageContain(await skillImage(skill.icon), x, recommendations.y + 78, 140, 140);
-            drawText(state.skills[index]?.name || skill.label, x + 70, recommendations.y + 245, 22, '#222', 'center', 800);
-            drawText(`等级 ${state.skills[index]?.rank || '9'}`, x + 70, recommendations.y + 285, 20, '#9a6500', 'center', 700);
-        }));
-        drawText('武器 / 装备推荐可由下方选择并自动填充图标与名称。', recommendations.x + 50, recommendations.y + recommendations.h - 55, 20, '#555');
-
-        const equipments = layoutRect('vertical', 'equipments');
-        drawPanel(equipments.x, equipments.y, equipments.w, equipments.h, '武器与装备推荐', false);
-        await Promise.all([...state.weapons, ...state.equips].map(async (entry, index) => {
+        verticalSection(recommendations, '武器推荐');
+        state.weapons.forEach((entry, index) => {
             if (!entry.id) return;
-            const colW = equipments.w / 8;
-            const x = equipments.x + colW * (index % 8) + (colW - 150) / 2;
-            const iy = equipments.y + 78 + Math.floor(index / 8) * 235;
-            drawImageContain(await itemImage(entry.id), x, iy, 150, 150);
-            drawText(fitText(itemName(entry.id), colW - 12, 18), x + 75, iy + 180, 18, '#222', 'center', 700);
-            drawText(fitText(entry.note, colW - 12, 16), x + 75, iy + 211, 16, '#666', 'center');
-        }));
-
-        const timeline = layoutRect('vertical', 'timeline');
-        drawPanel(timeline.x, timeline.y, timeline.w, timeline.h, '排轴展示（后续补充）', true);
-        drawText('本版本先保留排轴区域，后续将接入节点、连线和多角色轴编辑。', timeline.x + 50, timeline.y + timeline.h / 2, 25, '#fff');
+            const col = index % 2, row = Math.floor(index / 2);
+            const x = recommendations.x + 45 + col * (recommendations.w / 2);
+            const y = recommendations.y + 110 + row * 265;
+            drawImageContain(images[4 + index], x, y, 165, 165);
+            drawText(fitText(entry.name || assetEntryName(entry.id, 'weapon'), 220, 29), x + 180, y + 32, 29, '#fff', 'left', 800);
+            verticalLines(entry.note, x + 180, y + 94, 240, 32, 19, '#d6d8db');
+        });
+        const equipments = layoutRect('vertical', 'equipments');
+        verticalSection(equipments, '装备推荐');
+        state.equips.forEach((entry, index) => {
+            if (!entry.id) return;
+            const x = equipments.x + 35 + index % 4 * 218;
+            const y = equipments.y + 104 + Math.floor(index / 4) * 270;
+            drawImageContain(images[8 + index], x + 20, y, 135, 135);
+            drawText(fitText(entry.name || itemName(entry.id), 200, 22), x + 100, y + 165, 22, '#fff', 'center', 700);
+            verticalLines(String(entry.note || '').replace(/[,，]/g, '\n'), x + 16, y + 197, 190, 24, 16, '#d6d8db');
+        });
+        const skillPanel = layoutRect('vertical', 'skills');
+        verticalSection(skillPanel, '技能加点');
+        skills.forEach((skill, index) => {
+            const x = skillPanel.x + 64 + (index % 2) * 445;
+            const y = skillPanel.y + 135 + Math.floor(index / 2) * 245;
+            drawImageContain(images[index], x, y, 140, 140);
+            drawText(state.skills[index]?.name || skill.label, x + 165, y + 43, 30, '#fff', 'left', 800);
+            drawText(`RANK ${state.skills[index]?.rank || '9'}`, x + 165, y + 102, 24, '#ffc247');
+        });
+        verticalLines(state.buildNote, skillPanel.x + 75, skillPanel.y + 750, skillPanel.w - 150, 43, 25);
+        const rotation = layoutRect('vertical', 'rotation');
+        verticalSection(rotation, '推荐手法');
+        verticalLines(state.rotationNote, rotation.x + 68, rotation.y + 130, rotation.w - 136, 53, 28);
 
         const potential = layoutRect('vertical', 'potential');
-        drawPanel(potential.x, potential.y, potential.w, potential.h, '潜能收益', false);
-        drawBarChart(potential.x + 75, potential.y + 75, potential.w - 150, potential.h - 115);
-        drawText(state.potentialNote, potential.x + 75, potential.y + potential.h - 24, 20, '#8c6500');
-
+        verticalSection(potential, '潜能收益');
+        drawBarChart(potential.x + 110, potential.y + 125, potential.w - 220, potential.h - 290);
+        verticalLines(state.potentialNote, potential.x + 95, potential.y + potential.h - 100, potential.w - 190, 37, 24, '#ffc247');
+        const comparison = layoutRect('vertical', 'comparison');
+        verticalSection(comparison, '配置分析');
+        drawText(state.ratioTitle, comparison.x + 85, comparison.y + 180, 38, '#fff', 'left', 800);
+        drawDonut(comparison.x + comparison.w * .31, comparison.y + 510, 235, state.ratio);
+        drawText(state.damageTitle, comparison.x + 85, comparison.y + 1060, 38, '#fff', 'left', 800);
+        drawDonut(comparison.x + comparison.w * .31, comparison.y + 1400, 235, state.damage);
         const team = layoutRect('vertical', 'team');
-        drawPanel(team.x, team.y, team.w, team.h, '队伍配装', false);
-        await Promise.all(state.team.map(async (id, index) => {
+        verticalSection(team, '队伍搭配');
+        state.team.forEach((id, index) => {
             if (!id) return;
-            const colW = team.w / 4;
-            const x = team.x + colW * index + 55;
-            drawImageContain(await characterImage(id), x, team.y + 75, 130, 130);
-            drawText(characterName(id, characterTable[id]), x + 160, team.y + 110, 25, '#222', 'left', 800);
-            drawText('技能、装备与循环说明', x + 160, team.y + 155, 19, '#666');
-        }));
-        drawText(state.teamNote, team.x + 55, team.y + team.h - 100, 22, '#444');
-        dimensions.textContent = `${W} × ${canvas.height}`;
+            const x = team.x + 40 + index * (team.w / 4);
+            drawImageContain(images[16 + index], x + 35, team.y + 130, 220, 220);
+            drawText(characterName(id, characterTable[id]), x + 150, team.y + 420, 29, '#fff', 'center', 800);
+        });
+        verticalLines(state.teamNote, team.x + 65, team.y + team.h - 150, team.w - 130, 45, 25);
+        dimensions.textContent = `${W} × ${H}`;
     }
 
     function layoutModules() {
@@ -728,7 +746,7 @@
             w = Math.max(140, Math.min(layoutDrag.size.width - original.x, original.w + dx));
             h = Math.max(120, Math.min(layoutDrag.size.height - original.y, original.h + dy));
         }
-        if (!state.layout[ state.mode ]) state.layout[state.mode] = {};
+        if (!state.layout[state.mode]) state.layout[state.mode] = {};
         state.layout[state.mode][layoutDrag.id] = { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) };
         void render();
     }
@@ -778,6 +796,10 @@
         $('#guideImageCharacter').addEventListener('change', event => selectCharacter(event.target.value));
         $('#guideImageCharacterName').addEventListener('input', event => { state.characterName = event.target.value; render(); });
         $('#guideImageDescription').addEventListener('input', event => { state.description = event.target.value; render(); });
+        $('#guideImageBuildNote').addEventListener('input', event => { state.buildNote = event.target.value; render(); });
+        $('#guideImageRotationNote').addEventListener('input', event => { state.rotationNote = event.target.value; render(); });
+        $('#guideImageRatioTitle').addEventListener('input', event => { state.ratioTitle = event.target.value; render(); });
+        $('#guideImageDamageTitle').addEventListener('input', event => { state.damageTitle = event.target.value; render(); });
         $('#guideImagePotentialLabels').addEventListener('input', event => { state.potentialLabels = event.target.value; render(); });
         $('#guideImagePotentialValues').addEventListener('input', event => { state.potentialValues = event.target.value; render(); });
         $('#guideImagePotentialNote').addEventListener('input', event => { state.potentialNote = event.target.value; render(); });
@@ -807,6 +829,7 @@
     async function exportPng() {
         try {
             await render();
+            if (status.dataset.state === 'error') throw new Error(status.textContent);
             const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
             if (!blob) throw new Error('浏览器未生成 PNG 数据');
             downloadBlob(blob, `${safeName(state.characterName || state.title || '兔头攻略')}-${state.mode}.png`);
@@ -854,8 +877,8 @@
         characterTable = chars || {}; growthTable = growth || {}; skillPatchTable = skills || {};
         itemTable = items || {}; weaponTable = weapons || {}; equipTable = equips || {};
         buildAttributeNames(attributeFilters, attributeShows);
-        state.weapons.forEach(entry => { if (entry.id) syncAutoEntry(entry, 'weapon'); });
-        state.equips.forEach(entry => { if (entry.id) syncAutoEntry(entry, 'equip'); });
+        state.weapons.forEach(entry => { if (entry.id && !entry.name && !entry.note) syncAutoEntry(entry, 'weapon'); });
+        state.equips.forEach(entry => { if (entry.id && !entry.name && !entry.note) syncAutoEntry(entry, 'equip'); });
         characters = Object.entries(characterTable).map(([id, row]) => ({ id, name: characterName(id, row), order: Number(row.sortOrder || 9999) }))
             .filter(row => growthTable[row.id]).sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
         if (!characters.length) throw new Error('没有可用干员数据');
@@ -867,7 +890,7 @@
         syncBaseControls();
         await render();
         return {
-            destroy() { disposed = true; imageCache.clear(); canvas.width = 0; canvas.height = 0; }
+            destroy() { disposed = true; imageCache.clear(); referenceImages.clear(); canvas.width = 0; canvas.height = 0; }
         };
     }
 
