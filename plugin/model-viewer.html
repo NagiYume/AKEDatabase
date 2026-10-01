@@ -7,6 +7,7 @@
                 <span class="model-viewer__label" data-i18n="modules.modelViewer.character">角色</span>
                 <select class="ake-ui-control model-viewer__select" id="modelViewerCharacter"></select>
             </label>
+            <button class="ake-ui-button ake-ui-button--primary model-viewer__load" id="modelViewerLoad" type="button" data-i18n="modules.modelViewer.load">加载</button>
             <label class="model-viewer__field">
                 <span class="model-viewer__label" data-i18n="modules.modelViewer.category">动画分类</span>
                 <select class="ake-ui-control model-viewer__select" id="modelViewerCategory">
@@ -38,6 +39,9 @@
     </header>
     <section class="ake-ui-section model-viewer__stage">
         <endfield-viewer id="modelViewerViewport" bucket="/endfield-bundles/"></endfield-viewer>
+        <div class="model-viewer__progress" id="modelViewerProgress" hidden>
+            <div class="model-viewer__progress-bar" id="modelViewerProgressBar"></div>
+        </div>
         <div class="ake-ui-state" id="modelViewerStatus" data-state="loading" role="status">
             <strong class="ake-ui-state__title" data-i18n="modules.modelViewer.loading">正在初始化模型预览</strong>
             <p class="ake-ui-state__message" data-i18n="modules.modelViewer.webgpuHint">需要支持 WebGPU 的浏览器</p>

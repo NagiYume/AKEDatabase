@@ -10,6 +10,7 @@
 
     const viewer = root.querySelector('#modelViewerViewport');
     const character = root.querySelector('#modelViewerCharacter');
+    const loadButton = root.querySelector('#modelViewerLoad');
     const category = root.querySelector('#modelViewerCategory');
     const animation = root.querySelector('#modelViewerAnimation');
     const state = root.querySelector('#modelViewerState');
@@ -18,6 +19,8 @@
     const timeline = root.querySelector('#modelViewerTimeline');
     const timeOutput = root.querySelector('#modelViewerTime');
     const status = root.querySelector('#modelViewerStatus');
+    const progress = root.querySelector('#modelViewerProgress');
+    const progressBar = root.querySelector('#modelViewerProgressBar');
     let clips = [];
     let scrubbing = false;
     let renderer = null;
@@ -54,6 +57,33 @@
         status.dataset.state = state;
         status.querySelector('.ake-ui-state__title').textContent = title;
         status.querySelector('.ake-ui-state__message').textContent = message || '';
+    }
+
+    function resetAnimationControls() {
+        clips = [];
+        renderer = null;
+        pending = null;
+        loadButton.disabled = false;
+        category.replaceChildren(new Option(t('allAnimations', null, '全部动画'), ''));
+        animation.replaceChildren(new Option(t('defaultPose', null, '默认姿态'), ''));
+        updateStates();
+        showStatus('loading', t('selectCharacter', null, '请选择角色'),
+            t('selectCharacterHint', null, '从列表中选择一个角色，然后点击加载。'));
+    }
+
+    function showProgress(loaded, total) {
+        if (!progress || !progressBar) return;
+        const value = total > 0 ? Math.max(0, Math.min(1, loaded / total)) : 0;
+        progressBar.style.width = `${(value * 100).toFixed(1)}%`;
+        progress.classList.toggle('is-indeterminate', total <= 0);
+        progress.hidden = false;
+    }
+
+    function hideProgress() {
+        if (!progress || !progressBar) return;
+        progress.hidden = true;
+        progressBar.style.width = '0%';
+        progress.classList.remove('is-indeterminate');
     }
 
     function filterAnimations() {
@@ -126,26 +156,58 @@
         requestAnimationFrame(updatePlayback);
     }
 
+    viewer.addEventListener('catalog-loaded', event => {
+        const ids = event.detail?.characters || [];
+        character.replaceChildren(new Option(t('selectCharacter', null, '请选择角色'), ''),
+            ...ids.map(id => new Option(id, id)));
+        character.disabled = ids.length === 0;
+        loadButton.disabled = ids.length === 0;
+        resetAnimationControls();
+        showStatus('ready', t('selectCharacter', null, '请选择角色'),
+            t('selectCharacterHint', null, '从列表中选择一个角色，然后点击加载。'));
+    });
+
     viewer.addEventListener('character-loaded', event => {
         renderer = event.detail.renderer || null;
         clips = event.detail.animations || [];
         pending = null;
-        character.replaceChildren(...(event.detail.characters || []).map(id => new Option(id, id)));
+        if (character.options.length <= 1) {
+            character.replaceChildren(...(event.detail.characters || []).map(id => new Option(id, id)));
+        }
         character.value = event.detail.characterId;
+        character.disabled = false;
+        loadButton.disabled = false;
         category.replaceChildren(new Option(t('allAnimations', null, '全部动画'), ''),
             ...['battle', 'interaction', 'dialogue', 'ui', 'locomotion', 'expression', 'cinematic', 'uncategorized']
                 .filter(value => clips.some(clip => (clip.category || 'uncategorized') === value))
                 .map(value => new Option(t(`categories.${value}`, null, value), value)));
         filterAnimations();
         updateStates();
+        hideProgress();
         showStatus('ready', event.detail.characterId, localizedStatus() || event.detail.characterId);
     });
 
     viewer.addEventListener('character-error', event => {
         showStatus('error', t('loadFailed', null, '加载失败'), event.detail?.error?.message || '');
+        hideProgress();
     });
 
-    character.onchange = () => viewer.setAttribute('character', character.value);
+    loadButton.onclick = async () => {
+        const characterId = character.value;
+        if (!characterId || typeof viewer?.loadCharacter !== 'function') return;
+        loadButton.disabled = true;
+        resetAnimationControls();
+        showStatus('loading', t('loadingModel', null, '正在加载模型...'), characterId);
+        showProgress(0, 0);
+        try {
+            await viewer.loadCharacter(characterId);
+        } catch (error) {
+            console.error(error);
+            showStatus('error', t('loadFailed', null, '加载失败'), error?.message || '');
+            hideProgress();
+            loadButton.disabled = false;
+        }
+    };
     category.onchange = filterAnimations;
     animation.onchange = () => {
         updateStates();

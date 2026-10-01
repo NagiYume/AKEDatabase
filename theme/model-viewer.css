@@ -1,6 +1,7 @@
 .model-viewer { display: grid; gap: 18px; }
 .model-viewer__header { display: grid; gap: 15px; }
 .model-viewer__title-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.model-viewer__load { align-self: end; min-height: 38px; }
 .model-viewer__field { display: grid; gap: 6px; min-width: 0; }
 .model-viewer__field--wide { grid-column: span 2; }
 .model-viewer__label { font-size: .78rem; color: var(--text-secondary); }
@@ -11,10 +12,14 @@
 .model-viewer__time { font-family: Consolas, monospace; font-size: .82rem; color: var(--text-secondary); white-space: nowrap; }
 .model-viewer__stage { position: relative; min-height: max(480px, 62vh); border: 1px solid var(--border-color); border-radius: 16px; overflow: hidden; background: #0b1017; }
 .model-viewer__stage endfield-viewer { position: absolute; inset: 0; min-height: 100%; }
+.model-viewer__progress { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; overflow: hidden; background: rgba(148, 163, 184, .22); z-index: 2; }
+.model-viewer__progress-bar { width: 0; height: 100%; background: var(--primary, #4fd1c5); transition: width .16s ease; }
+.model-viewer__progress.is-indeterminate .model-viewer__progress-bar { width: 34%; animation: model-viewer-progress 1.2s ease-in-out infinite; }
 .model-viewer__stage .ake-ui-state { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 8px; pointer-events: none; }
 .model-viewer__stage .ake-ui-state[data-state="error"] .ake-ui-state__message { pointer-events: auto; }
 .model-viewer__stage .ake-ui-state[data-state="ready"] { background: transparent; }
 @media (max-width: 720px) {
     .model-viewer__field--wide { grid-column: auto; }
+    .model-viewer__load { width: 100%; }
     .model-viewer__stage { min-height: 68vh; border-radius: 12px; }
 }
