@@ -5,6 +5,9 @@
     const root = document.getElementById('modelViewerModule');
     if (!root) return;
 
+    const MODEL_BUCKET_PATH = '/endfield-bundles/';
+    const FALLBACK_DATA_BASE_URL = 'https://data.akedata.wiki';
+
     const viewer = root.querySelector('#modelViewerViewport');
     const character = root.querySelector('#modelViewerCharacter');
     const category = root.querySelector('#modelViewerCategory');
@@ -19,6 +22,27 @@
     let scrubbing = false;
     let renderer = null;
     let pending = null;
+
+    function resolveBucketUrl() {
+        const state = window.akeDataSource?.getState?.();
+        const rawBaseUrl = state?.defaultBaseUrl ||
+            window.__akeBootstrapVersion?.dataBaseUrl ||
+            FALLBACK_DATA_BASE_URL;
+        try {
+            return new URL(MODEL_BUCKET_PATH, new URL(rawBaseUrl, window.location.href)).href;
+        } catch (error) {
+            console.error('Invalid model bucket base URL:', rawBaseUrl, error);
+            viewer.setAttribute('bucket', '');
+            return '';
+        }
+    }
+
+    if (viewer) {
+        const bucketUrl = resolveBucketUrl();
+        if (viewer.getAttribute('bucket') !== bucketUrl) {
+            viewer.setAttribute('bucket', bucketUrl);
+        }
+    }
 
     function localizedStatus() {
         if (!customElements.get('endfield-viewer')) return '';
