@@ -21,6 +21,9 @@
     const status = root.querySelector('#modelViewerStatus');
     const progress = root.querySelector('#modelViewerProgress');
     const progressBar = root.querySelector('#modelViewerProgressBar');
+    const progressTitle = root.querySelector('#modelViewerProgressTitle');
+    const progressValue = root.querySelector('#modelViewerProgressValue');
+    const progressDetail = root.querySelector('#modelViewerProgressDetail');
     let clips = [];
     let scrubbing = false;
     let renderer = null;
@@ -71,11 +74,32 @@
             t('selectCharacterHint', null, '从列表中选择一个角色，然后点击加载。'));
     }
 
-    function showProgress(loaded, total) {
+    function formatBytes(value) {
+        const bytes = Math.max(0, Number(value) || 0);
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KiB';
+        if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MiB';
+        return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GiB';
+    }
+
+    function showProgress(stage, loaded = 0, total = 0) {
         if (!progress || !progressBar) return;
-        const value = total > 0 ? Math.max(0, Math.min(1, loaded / total)) : 0;
-        progressBar.style.width = `${(value * 100).toFixed(1)}%`;
-        progress.classList.toggle('is-indeterminate', total <= 0);
+        const finiteTotal = Number(total) > 0 ? Number(total) : 0;
+        const finiteLoaded = Math.max(0, Number(loaded) || 0);
+        const value = finiteTotal > 0 ? Math.max(0, Math.min(1, finiteLoaded / finiteTotal)) : 0;
+        const percent = finiteTotal > 0 ? Math.round(value * 100) : 0;
+        progressBar.style.width = (value * 100).toFixed(1) + '%';
+        progress.classList.toggle('is-indeterminate', finiteTotal <= 0);
+        progress.dataset.stage = stage;
+        if (finiteTotal > 0) progress.setAttribute('aria-valuenow', String(percent));
+        else progress.removeAttribute('aria-valuenow');
+        if (progressTitle) progressTitle.textContent = stage === 'animation'
+            ? t('loadingAnimation', null, '正在加载动画')
+            : t('loadingModel', null, '正在加载模型...');
+        if (progressValue) progressValue.textContent = finiteTotal > 0 ? percent + '%' : '...';
+        if (progressDetail) progressDetail.textContent = finiteTotal > 0
+            ? formatBytes(finiteLoaded) + ' / ' + formatBytes(finiteTotal)
+            : formatBytes(finiteLoaded);
         progress.hidden = false;
     }
 
@@ -84,6 +108,11 @@
         progress.hidden = true;
         progressBar.style.width = '0%';
         progress.classList.remove('is-indeterminate');
+        progress.removeAttribute('data-stage');
+        progress.removeAttribute('aria-valuenow');
+        if (progressTitle) progressTitle.textContent = t('loadingModel', null, '正在加载模型...');
+        if (progressValue) progressValue.textContent = '0%';
+        if (progressDetail) progressDetail.textContent = '';
     }
 
     function filterAnimations() {
@@ -129,6 +158,7 @@
             return;
         }
         if (pending) return;
+        showProgress('animation', 0, 0);
         pending = viewer.ensureAnimation(animationId).then(() => {
             renderer.playAnimation(animationId, true, stateId);
             timeline.disabled = false;
@@ -139,6 +169,7 @@
             timeline.disabled = true;
         }).finally(() => {
             pending = null;
+            hideProgress();
         });
     }
 
@@ -192,13 +223,23 @@
         hideProgress();
     });
 
+    viewer.addEventListener('load-progress', event => {
+        if (!progress || progress.hidden) return;
+        const detail = event.detail || {};
+        showProgress(
+            progress.dataset.stage || 'model',
+            Number(detail.loaded) || 0,
+            Number(detail.total) || 0,
+        );
+    });
+
     loadButton.onclick = async () => {
         const characterId = character.value;
         if (!characterId || typeof viewer?.loadCharacter !== 'function') return;
         loadButton.disabled = true;
         resetAnimationControls();
         showStatus('loading', t('loadingModel', null, '正在加载模型...'), characterId);
-        showProgress(0, 0);
+        showProgress('model', 0, 0);
         try {
             await viewer.loadCharacter(characterId);
         } catch (error) {

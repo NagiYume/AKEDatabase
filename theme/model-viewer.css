@@ -12,9 +12,16 @@
 .model-viewer__time { font-family: Consolas, monospace; font-size: .82rem; color: var(--text-secondary); white-space: nowrap; }
 .model-viewer__stage { position: relative; min-height: max(480px, 62vh); border: 1px solid var(--border-color); border-radius: 16px; overflow: hidden; background: #0b1017; }
 .model-viewer__stage endfield-viewer { position: absolute; inset: 0; min-height: 100%; }
-.model-viewer__progress { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; overflow: hidden; background: rgba(148, 163, 184, .22); z-index: 2; }
-.model-viewer__progress-bar { width: 0; height: 100%; background: var(--primary, #4fd1c5); transition: width .16s ease; }
+.model-viewer__progress { position: absolute; left: 16px; right: 16px; bottom: 16px; z-index: 3; display: grid; gap: 7px; padding: 11px 13px 12px; color: var(--text-color); border: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--module-bg, #111923) 88%, transparent); box-shadow: 0 8px 24px rgba(2, 8, 20, .28); backdrop-filter: blur(9px); }
+.model-viewer__progress[hidden] { display: none; }
+.model-viewer__progress-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.model-viewer__progress-title { overflow: hidden; font-size: .82rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.model-viewer__progress-value { flex: 0 0 auto; color: var(--accent-color); font-family: Consolas, "Cascadia Mono", monospace; font-size: .82rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.model-viewer__progress-track { height: 7px; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--border-color) 72%, transparent); }
+.model-viewer__progress-bar { width: 0; height: 100%; border-radius: inherit; background: var(--accent-color); box-shadow: 0 0 12px color-mix(in srgb, var(--accent-color) 58%, transparent); transition: width .16s ease; }
+.model-viewer__progress-detail { overflow: hidden; color: var(--desc-color); font-size: .72rem; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
 .model-viewer__progress.is-indeterminate .model-viewer__progress-bar { width: 34%; animation: model-viewer-progress 1.2s ease-in-out infinite; }
+@keyframes model-viewer-progress { 0% { transform: translateX(-115%); } 55% { transform: translateX(150%); } 100% { transform: translateX(310%); } }
 .model-viewer__stage .ake-ui-state { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 8px; pointer-events: none; }
 .model-viewer__stage .ake-ui-state[data-state="error"] .ake-ui-state__message { pointer-events: auto; }
 .model-viewer__stage .ake-ui-state[data-state="ready"] { background: transparent; }

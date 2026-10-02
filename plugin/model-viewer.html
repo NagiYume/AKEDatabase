@@ -39,8 +39,13 @@
     </header>
     <section class="ake-ui-section model-viewer__stage">
         <endfield-viewer id="modelViewerViewport" bucket="/endfield-bundles/"></endfield-viewer>
-        <div class="model-viewer__progress" id="modelViewerProgress" hidden>
-            <div class="model-viewer__progress-bar" id="modelViewerProgressBar"></div>
+        <div class="model-viewer__progress" id="modelViewerProgress" data-state="loading" role="progressbar" aria-valuemin="0" aria-valuemax="100" hidden>
+            <div class="model-viewer__progress-head">
+                <strong class="model-viewer__progress-title" id="modelViewerProgressTitle">正在加载模型</strong>
+                <span class="model-viewer__progress-value" id="modelViewerProgressValue">0%</span>
+            </div>
+            <div class="model-viewer__progress-track"><div class="model-viewer__progress-bar" id="modelViewerProgressBar"></div></div>
+            <div class="model-viewer__progress-detail" id="modelViewerProgressDetail"></div>
         </div>
         <div class="ake-ui-state" id="modelViewerStatus" data-state="loading" role="status">
             <strong class="ake-ui-state__title" data-i18n="modules.modelViewer.loading">正在初始化模型预览</strong>
