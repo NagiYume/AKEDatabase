@@ -28,6 +28,7 @@
     let scrubbing = false;
     let renderer = null;
     let pending = null;
+    let pausedBeforeScrub = false;
 
     function resolveBucketUrl() {
         const state = window.akeDataSource?.getState?.();
@@ -82,11 +83,11 @@
         return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GiB';
     }
 
-    function showProgress(stage, loaded = 0, total = 0) {
+    function showProgress(stage, completed = 0, total = 0, loaded = 0, totalBytes = 0) {
         if (!progress || !progressBar) return;
         const finiteTotal = Number(total) > 0 ? Number(total) : 0;
-        const finiteLoaded = Math.max(0, Number(loaded) || 0);
-        const value = finiteTotal > 0 ? Math.max(0, Math.min(1, finiteLoaded / finiteTotal)) : 0;
+        const finiteCompleted = Math.max(0, Number(completed) || 0);
+        const value = finiteTotal > 0 ? Math.max(0, Math.min(1, finiteCompleted / finiteTotal)) : 0;
         const percent = finiteTotal > 0 ? Math.round(value * 100) : 0;
         progressBar.style.width = (value * 100).toFixed(1) + '%';
         progress.classList.toggle('is-indeterminate', finiteTotal <= 0);
@@ -98,8 +99,8 @@
             : t('loadingModel', null, '正在加载模型...');
         if (progressValue) progressValue.textContent = finiteTotal > 0 ? percent + '%' : '...';
         if (progressDetail) progressDetail.textContent = finiteTotal > 0
-            ? formatBytes(finiteLoaded) + ' / ' + formatBytes(finiteTotal)
-            : formatBytes(finiteLoaded);
+            ? `${finiteCompleted} / ${finiteTotal} 文件 · ${formatBytes(loaded)} / ${formatBytes(totalBytes)}`
+            : formatBytes(loaded);
         progress.hidden = false;
     }
 
@@ -158,7 +159,7 @@
             return;
         }
         if (pending) return;
-        showProgress('animation', 0, 0);
+        showProgress('animation', 0, 0, 0, 0);
         pending = viewer.ensureAnimation(animationId).then(() => {
             renderer.playAnimation(animationId, true, stateId);
             timeline.disabled = false;
@@ -228,6 +229,8 @@
         const detail = event.detail || {};
         showProgress(
             progress.dataset.stage || 'model',
+            Number(detail.completedFiles) || 0,
+            Number(detail.totalFiles) || 0,
             Number(detail.loaded) || 0,
             Number(detail.total) || 0,
         );
@@ -239,7 +242,7 @@
         loadButton.disabled = true;
         resetAnimationControls();
         showStatus('loading', t('loadingModel', null, '正在加载模型...'), characterId);
-        showProgress('model', 0, 0);
+        showProgress('model', 0, 0, 0, 0);
         try {
             await viewer.loadCharacter(characterId);
         } catch (error) {
@@ -261,12 +264,16 @@
     };
     pause.onclick = () => renderer?.pauseAnimation();
     timeline.oninput = () => {
+        if (!scrubbing) {
+            pausedBeforeScrub = !renderer?.getPlaybackState().playing;
+        }
         scrubbing = true;
         renderer?.seekAnimation(Number(timeline.value));
     };
     timeline.onchange = () => {
         scrubbing = false;
-        playSelection();
+        renderer?.seekAnimation(Number(timeline.value));
+        if (!pausedBeforeScrub) renderer?.resumeAnimation();
     };
     requestAnimationFrame(updatePlayback);
 })();
