@@ -8,7 +8,19 @@
     const MODEL_BUCKET_PATH = '/endfield-bundles/';
     const FALLBACK_DATA_BASE_URL = 'https://data.akedata.wiki';
 
+    const CHARACTER_DISPLAY_NAMES = {
+        chr_0034_typhoea: '提弗洛斯',
+        chr_0013_aglina: '洁尔佩塔',
+        chr_0005_chen: '陈千语',
+        chr_0016_laevat: '莱万汀',
+        chr_0031_mifu: '弭弗',
+    };
+
+    function characterLabel(id) {
+        return CHARACTER_DISPLAY_NAMES[id] || id;
+    }
     const viewer = root.querySelector('#modelViewerViewport');
+
     const character = root.querySelector('#modelViewerCharacter');
     const loadButton = root.querySelector('#modelViewerLoad');
     const category = root.querySelector('#modelViewerCategory');
@@ -36,7 +48,9 @@
             window.__akeBootstrapVersion?.dataBaseUrl ||
             FALLBACK_DATA_BASE_URL;
         try {
-            return new URL(MODEL_BUCKET_PATH, new URL(rawBaseUrl, window.location.href)).href;
+            const url = new URL(MODEL_BUCKET_PATH, new URL(rawBaseUrl, window.location.href));
+            url.searchParams.set('v', window.__akeBootstrapVersion?.appversion || '1');
+            return url.href;
         } catch (error) {
             console.error('Invalid model bucket base URL:', rawBaseUrl, error);
             viewer.setAttribute('bucket', '');
@@ -191,7 +205,7 @@
     viewer.addEventListener('catalog-loaded', event => {
         const ids = event.detail?.characters || [];
         character.replaceChildren(new Option(t('selectCharacter', null, '请选择角色'), ''),
-            ...ids.map(id => new Option(id, id)));
+            ...ids.map(id => new Option(characterLabel(id), id)));
         character.disabled = ids.length === 0;
         loadButton.disabled = ids.length === 0;
         resetAnimationControls();
@@ -204,7 +218,7 @@
         clips = event.detail.animations || [];
         pending = null;
         if (character.options.length <= 1) {
-            character.replaceChildren(...(event.detail.characters || []).map(id => new Option(id, id)));
+            character.replaceChildren(...(event.detail.characters || []).map(id => new Option(characterLabel(id), id)));
         }
         character.value = event.detail.characterId;
         character.disabled = false;
