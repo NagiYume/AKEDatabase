@@ -23,6 +23,11 @@
         achievement: 'v3_achievement'
     });
     const ENTRY_ROOT_IDS = Object.freeze({
+        tech_tree: 'tech_treeDetail',
+        spaceship: 'spaceshipDetail',
+        tutorial: 'tutorialDetail',
+        adventure: 'adventureDetail',
+        factory: 'factoryDetail',
         v3_weapon: 'v2wpnDetail',
         v3_character: 'v2characterDetail',
         v3_enemy: 'v2enemyDetail',
@@ -41,6 +46,11 @@
         misc: 'miscContent'
     });
     const MODULE_SCROLL_ROOT_IDS = Object.freeze({
+        tech_tree: 'tech_treeList',
+        spaceship: 'spaceshipList',
+        tutorial: 'tutorialList',
+        adventure: 'adventureList',
+        factory: 'factoryList',
         v3_weapon: 'v2wpnListItems',
         v3_character: 'v2characterList',
         v3_enemy: 'v2enemyList',
