@@ -186,6 +186,7 @@ class ImageAssetPipeline:
             appcode=config.appcode,
         )
         self.downloader = downloader or DownloadManager(
+            concurrency=config.download_concurrency,
             timeout=config.request_timeout,
             retries=config.retries,
             verify_md5=True,

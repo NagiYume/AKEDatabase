@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AKE TableCfg 服务状态</title>
+<script src="/app.js" defer></script>
+<main>
+  <h1>AKE TableCfg 服务状态 / Service status</h1>
+  <form id="login">
+    <label>访问口令 / Access token <input id="token" type="password" required autocomplete="current-password"></label>
+    <button>登录 / Sign in</button>
+  </form>
+  <p id="connection" role="status">等待连接 / Waiting for connection</p>
+  <section id="controls" hidden>
+    <h2>监听控制 / Watch controls</h2>
+    <button id="start" type="button">启动监听 / Start</button>
+    <button id="stop" type="button">停止监听 / Stop</button>
+    <form id="interval-form">
+      <label>检查间隔（秒） / Interval (seconds)
+        <input id="interval" type="number" min="1" max="86400" step="1" required>
+      </label>
+      <button id="save-interval">保存 / Save</button>
+    </form>
+    <form id="concurrency-form">
+      <label>上传并发数 / Upload concurrency
+        <input id="concurrency" type="number" min="1" max="64" step="1" required>
+      </label>
+      <button id="save-concurrency">保存 / Save</button>
+      <p>1–64；下一次上传任务生效 / Applies to the next upload batch.</p>
+    </form>
+    <form id="download-concurrency-form">
+      <label>下载并发数 / Download concurrency
+        <input id="download-concurrency" type="number" min="1" max="64" step="1" required>
+      </label>
+      <button id="save-download-concurrency">保存 / Save</button>
+      <p>1–64；下一次下载任务生效 / Applies to the next download task.</p>
+    </form>
+    <p id="control-message" role="status"></p>
+  </section>
+  <section id="dashboard" hidden>
+    <h2>当前状态 / Current status</h2>
+    <section aria-label="任务进度 / Task progress">
+      <p id="task-progress" role="status"></p>
+      <progress id="stage-progress" max="100" aria-label="阶段进度 / Stage progress"></progress>
+      <p id="byte-progress-label"></p>
+      <progress id="byte-progress" max="100" aria-label="字节进度 / Byte progress" hidden></progress>
+      <ul id="active-files" aria-label="正在传输的文件 / Active transfers"></ul>
+    </section>
+    <dl id="fields"></dl>
+    <section id="event-panel" hidden>
+      <h2>近期事件（UTC+8） / Recent events</h2>
+      <pre id="events"></pre>
+    </section>
+  </section>
+</main>
+</html>

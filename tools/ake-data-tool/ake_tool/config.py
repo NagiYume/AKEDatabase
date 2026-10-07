@@ -101,6 +101,8 @@ class AppConfig:
     blocks: list[str] = field(default_factory=lambda: ["TableCfg"])
     request_timeout: int = 60
     retries: int = 3
+    download_concurrency: int = 32
+    upload_concurrency: int = 32
     verify_md5: bool = True
     keep_job_files: bool = True
     watch_interval: int = 60
@@ -168,6 +170,7 @@ class AppConfig:
         return Path(self.image_work_dir).expanduser().resolve()
 
     def validate(self, require_tool: bool = False) -> None:
+        self.validate_transfer_concurrency()
         if not self.appcode.strip() or any(character.isspace() for character in self.appcode):
             raise ValueError("appcode 不能为空或包含空白字符")
         if self.request_timeout <= 0:
@@ -222,6 +225,7 @@ class AppConfig:
         require_sources: bool = True,
         profile: str | None = None,
     ) -> None:
+        self.validate_transfer_concurrency()
         if not self.java_path.strip():
             raise ValueError("Java 命令不能为空")
         if not self.image_verify_md5:
@@ -233,6 +237,12 @@ class AppConfig:
         if require_sources:
             if not self.image_sdk.is_file():
                 raise FileNotFoundError(f"beyond-sdk.jar 不存在：{self.image_sdk}")
+
+    def validate_transfer_concurrency(self) -> None:
+        for name in ("download_concurrency", "upload_concurrency"):
+            value = getattr(self, name)
+            if type(value) is not int or not 1 <= value <= 64:
+                raise ValueError(f"{name} 必须为 1–64 的整数")
 
     def _validate_work_root(self) -> None:
         work_root = self.work_root

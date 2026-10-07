@@ -898,6 +898,16 @@ class MainWindow(QMainWindow):
         runtime_options.addSpacing(12)
         runtime_options.addWidget(QLabel("重试"))
         runtime_options.addWidget(self.retry_spin)
+        self.download_concurrency_spin = QSpinBox()
+        self.upload_concurrency_spin = QSpinBox()
+        for label, spin in (("下载并发", self.download_concurrency_spin),
+                            ("上传并发", self.upload_concurrency_spin)):
+            spin.setRange(1, 64)
+            spin.setMinimumHeight(36)
+            spin.setToolTip("TableCfg、图片和 Json 共用；默认 32，最高 64；保存后用于下一任务")
+            runtime_options.addSpacing(12)
+            runtime_options.addWidget(QLabel(label))
+            runtime_options.addWidget(spin)
         runtime_options.addStretch()
         settings_layout.addLayout(runtime_options, 3, 0, 1, 3)
         config_root.addWidget(settings_group)
@@ -2185,6 +2195,8 @@ class MainWindow(QMainWindow):
         self.keep_check.setChecked(self.config.keep_job_files)
         self.timeout_spin.setValue(self.config.request_timeout)
         self.retry_spin.setValue(self.config.retries)
+        self.download_concurrency_spin.setValue(self.config.download_concurrency)
+        self.upload_concurrency_spin.setValue(self.config.upload_concurrency)
         self.watch_interval_spin.setValue(self.config.watch_interval)
         self.watch_update_on_start_check.setChecked(self.config.watch_update_on_start)
         self.watch_upload_r2_check.setChecked(self.config.watch_upload_r2)
@@ -2266,6 +2278,8 @@ class MainWindow(QMainWindow):
             blocks=blocks,
             request_timeout=self.timeout_spin.value(),
             retries=self.retry_spin.value(),
+            download_concurrency=self.download_concurrency_spin.value(),
+            upload_concurrency=self.upload_concurrency_spin.value(),
             verify_md5=self.md5_check.isChecked(),
             keep_job_files=self.keep_check.isChecked(),
             watch_interval=self.watch_interval_spin.value(),
@@ -3507,6 +3521,8 @@ class MainWindow(QMainWindow):
         self.watch_interval_spin.setEnabled(available)
         self.watch_update_on_start_check.setEnabled(available)
         self.watch_upload_r2_check.setEnabled(available)
+        self.download_concurrency_spin.setEnabled(available)
+        self.upload_concurrency_spin.setEnabled(available)
         for profile, controls in self.image_controls.items():
             for key in (
                 "run_all_button",

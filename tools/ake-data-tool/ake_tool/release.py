@@ -52,17 +52,12 @@ from .public_http import public_download_headers
 COMMON_RCLONE_ARGS = [
     "--s3-no-check-bucket",
     "--fast-list",
-    "--checkers",
-    "32",
-    "--transfers",
-    "16",
     "--stats",
     "10s",
 ]
 R2_STORAGE_WARNING_BYTES = 10_000_000_000
 ASSET_BATCH_MAX_FILES = 500
 ASSET_BATCH_MAX_BYTES = 512 * 1024 * 1024
-ASSET_UPLOAD_CONCURRENCIES = (8, 4, 2)
 ASSET_UPLOAD_BACKOFFS = (15, 60, 180)
 ASSET_PROBE_WORKERS = 32
 ASSET_PROBE_REPEATS = 2
@@ -168,6 +163,12 @@ class ReleaseManager:
         before_index_upload: Callable[[], None] | None = None,
     ) -> None:
         self.config = config
+        config.validate_transfer_concurrency()
+        self.rclone_args = [*COMMON_RCLONE_ARGS,
+                            "--checkers", str(config.upload_concurrency),
+                            "--transfers", str(config.upload_concurrency)]
+        self.upload_concurrencies = tuple(max(1, config.upload_concurrency // divisor)
+                                         for divisor in (1, 2, 4))
         self.token = token
         self.progress = progress
         self.client = client or HotfixClient(
@@ -441,7 +442,7 @@ class ReleaseManager:
                     "copyto",
                     str(temporary),
                     self.asset_index_remote,
-                    *COMMON_RCLONE_ARGS,
+                    *self.rclone_args,
                     "--no-check-dest",
                     "--header-upload",
                     "Cache-Control: no-cache, max-age=0",
@@ -520,7 +521,7 @@ class ReleaseManager:
                     "copyto",
                     str(temporary),
                     self.map_manifest_remote,
-                    *COMMON_RCLONE_ARGS,
+                    *self.rclone_args,
                     "--no-check-dest",
                     "--header-upload",
                     "Cache-Control: no-cache, max-age=0",
@@ -627,7 +628,7 @@ class ReleaseManager:
                 "copyto",
                 str(pending_map),
                 remote_map,
-                *COMMON_RCLONE_ARGS,
+                *self.rclone_args,
                 "--no-check-dest",
                 "--header-upload",
                 "Cache-Control: public, max-age=31536000, immutable",
@@ -1680,7 +1681,7 @@ class ReleaseManager:
             stream.write("\n".join(paths) + "\n")
         retries = 0
         try:
-            for attempt, concurrency in enumerate(ASSET_UPLOAD_CONCURRENCIES):
+            for attempt, concurrency in enumerate(self.upload_concurrencies):
                 self.token.raise_if_cancelled()
                 arguments = [
                     "copy",
@@ -1724,14 +1725,14 @@ class ReleaseManager:
                 if result.returncode == 0:
                     return retries
                 failure_kind = self._rclone_failure_kind(result.returncode, output)
-                if failure_kind != "retryable" or attempt >= len(ASSET_UPLOAD_BACKOFFS):
+                if failure_kind != "retryable" or attempt + 1 >= len(self.upload_concurrencies):
                     raise AkeToolError(
                         f"图片批次 {batch_number} 上传失败，退出码 {result.returncode}；"
                         f"完整 rclone 输出见 {log_path}"
                     )
                 retries += 1
                 delay = ASSET_UPLOAD_BACKOFFS[attempt]
-                next_concurrency = ASSET_UPLOAD_CONCURRENCIES[min(attempt + 1, len(ASSET_UPLOAD_CONCURRENCIES) - 1)]
+                next_concurrency = self.upload_concurrencies[attempt + 1]
                 self.progress(
                     ProgressEvent(
                         "asset_upload",
@@ -1908,7 +1909,7 @@ class ReleaseManager:
                         "copy",
                         str(dataset["source"]),
                         str(dataset["remote"]),
-                        *COMMON_RCLONE_ARGS,
+                        *self.rclone_args,
                         "--files-from-raw",
                         str(transfer_file),
                         "--no-check-dest",
@@ -2069,7 +2070,7 @@ class ReleaseManager:
                     "copyto",
                     str(temporary_path),
                     f"{self.remote_base}/manifest.json",
-                    *COMMON_RCLONE_ARGS,
+                    *self.rclone_args,
                     "--header-upload",
                     "Cache-Control: no-cache, max-age=0",
                 ],
@@ -2135,7 +2136,7 @@ class ReleaseManager:
                     "copy",
                     str(table_root),
                     table_remote,
-                    *COMMON_RCLONE_ARGS,
+                    *self.rclone_args,
                     "--immutable",
                     "--header-upload",
                     "Cache-Control: public, max-age=31536000, immutable",
@@ -2178,7 +2179,7 @@ class ReleaseManager:
                     "copyto",
                     str(temporary_path),
                     f"{remote_base}/manifest.json",
-                    *COMMON_RCLONE_ARGS,
+                    *self.rclone_args,
                     "--header-upload",
                     "Cache-Control: no-cache, max-age=0",
                 ],
