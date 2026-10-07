@@ -370,7 +370,9 @@ class ImageConfigWorker(QObject):
         try:
             if self.action == "load":
                 local = {profile: self.config.image_config(profile) for profile in IMAGE_PROFILES}
-                result = CloudImageConfigLoader(self.config.request_timeout).load(local)
+                result = CloudImageConfigLoader(
+                    self.config.request_timeout, retries=self.config.retries
+                ).load(local)
             elif self.action == "sync":
                 if self.image_config is None:
                     raise ValidationError("当前页面图片配置为空")
@@ -2112,6 +2114,10 @@ class MainWindow(QMainWindow):
                 for profile in IMAGE_PROFILES
                 if isinstance(result.get(profile), ImageConfigResolution)
             }
+            if any(resolution.source in {"local_network_failure", "local_index_invalid"}
+                   for resolution in self._cloud_image_resolutions_cache.values()):
+                # A failed read must not prevent a later explicit retry.
+                self._cloud_image_resolutions_cache = None
             for profile in IMAGE_PROFILES:
                 resolution = result.get(profile)
                 if isinstance(resolution, ImageConfigResolution):
@@ -2144,7 +2150,7 @@ class MainWindow(QMainWindow):
                     local, "local_network_failure", f"云端配置读取失败：{message}"
                 )
                 self._apply_image_config_resolution(profile, fallback[profile])
-            self._cloud_image_resolutions_cache = fallback
+            self._cloud_image_resolutions_cache = None
         else:
             QMessageBox.critical(self, "配置同步失败", message)
 

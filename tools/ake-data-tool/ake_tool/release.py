@@ -10,6 +10,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
 from datetime import datetime, timezone
+from http.client import HTTPException
 from pathlib import Path
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
@@ -46,7 +47,7 @@ from .image_paths import (
     normalize_image_profile,
 )
 from .models import CancellationToken, LatestInfo, ProgressCallback, ProgressEvent
-from .public_http import public_download_headers
+from .public_http import public_download_headers, read_public_bytes
 
 
 COMMON_RCLONE_ARGS = [
@@ -395,39 +396,27 @@ class ReleaseManager:
         return {"counts": counts, "statuses": statuses}
 
     def _read_public_asset_index(self) -> dict[str, Any]:
-        last_error: Exception | None = None
-        for attempt, delay in enumerate((0, 15, 60)):
-            if delay:
-                self.progress(
-                    ProgressEvent(
-                        "asset_compare",
-                        f"data 站资产索引读取遇到瞬时网络错误，{delay} 秒后重试",
-                    )
-                )
-                time.sleep(delay)
-            url = f"{PUBLIC_ASSET_INDEX_URL}?t={time.time_ns()}"
-            request = Request(
-                url,
-                headers=public_download_headers("application/json"),
+        def report_retry(attempt: int, delay: float, error: Exception) -> None:
+            self.progress(ProgressEvent(
+                "asset_compare",
+                f"data 站资产索引读取遇到网络错误（{error}），{delay} 秒后重试 "
+                f"{attempt}/{self.config.retries - 1}",
+            ))
+
+        try:
+            body = read_public_bytes(
+                f"{PUBLIC_ASSET_INDEX_URL}?t={time.time_ns()}",
+                self.config.request_timeout, retries=self.config.retries,
+                opener=urlopen, before_attempt=self.token.raise_if_cancelled,
+                on_retry=report_retry,
             )
-            try:
-                with urlopen(request, timeout=self.config.request_timeout) as response:
-                    status = int(getattr(response, "status", 200))
-                    if status < 200 or status >= 300:
-                        raise HTTPError(url, status, "HTTP 状态失败", None, None)
-                    payload = json.loads(response.read().decode("utf-8-sig"))
-                return validate_asset_index(payload, allow_v1=True)
-            except HTTPError as exc:
-                if exc.code not in {408, 429} and not 500 <= exc.code <= 599:
-                    raise ValidationError(f"data 站 asset-sync-index.json 读取失败：{exc}") from exc
-                last_error = exc
-            except (URLError, TimeoutError, OSError) as exc:
-                last_error = exc
-            except (UnicodeDecodeError, json.JSONDecodeError, ValidationError) as exc:
-                if isinstance(exc, ValidationError):
-                    raise
-                raise ValidationError("data 站 asset-sync-index.json 不是有效 JSON") from exc
-        raise ValidationError(f"data 站 asset-sync-index.json 读取失败：{last_error}") from last_error
+        except (HTTPException, URLError, TimeoutError, OSError) as exc:
+            raise ValidationError(f"data 站 asset-sync-index.json 读取失败：{exc}") from exc
+        try:
+            payload = json.loads(body.decode("utf-8-sig"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ValidationError("data 站 asset-sync-index.json 不是有效 JSON") from exc
+        return validate_asset_index(payload, allow_v1=True)
 
     def _upload_remote_asset_index(self, value: dict[str, Any]) -> None:
         clean = validate_asset_index(value, allow_v1=False)
