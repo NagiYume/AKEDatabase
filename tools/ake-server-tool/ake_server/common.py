@@ -65,6 +65,9 @@ def load_config(path):
         raise ValueError("Invalid work directory")
     if value["interval"] < 1 or value["request_timeout"] < 1:
         raise ValueError("Invalid interval or timeout")
+    idle_timeout = value.get("extraction_idle_timeout", 180)
+    if type(idle_timeout) is not int or not 30 <= idle_timeout <= 1800:
+        raise ValueError("extraction_idle_timeout must be an integer from 30 to 1800")
     if value["bucket"] != "akedatabase":
         raise ValueError("This deployment is scoped to akedatabase")
     if value.get("status_host") not in {"127.0.0.1", "::1"}:

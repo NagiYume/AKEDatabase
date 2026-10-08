@@ -251,15 +251,20 @@ class Worker:
         started = time.monotonic()
         chunks = {Path(entry.name).name for _, entry in by_name.values() if entry.name.endswith(".chk")}
         processed = set()
+        last_progress = started
+        idle_timeout = self.config.get("extraction_idle_timeout", 180)
         with (job / "sdk.log").open("w", encoding="utf-8") as log, (job / "sdk.log").open(encoding="utf-8", errors="replace") as tail:
             process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
             def consume_sdk_output():
+                nonlocal last_progress
                 for line in tail:
                     clean = re.sub(r"\x1b\[[0-9;]*m", "", line).strip()
                     if not clean:
                         continue
                     match = re.search(r"Dumped (\d+) file\(s\) from chunk (\S+)", clean)
                     if match and match.group(2) in chunks:
+                        if match.group(2) not in processed:
+                            last_progress = time.monotonic()
                         processed.add(match.group(2))
                         self.emit("unpack", f"正在解析数据块 / Parsing chunk {match.group(2)} ({len(processed)}/{len(chunks)})",
                                   current=len(processed), total=len(chunks), progress_unit="chunks",
@@ -272,6 +277,8 @@ class Worker:
                     self.token.raise_if_cancelled()
                     if time.monotonic() - started > 1800:
                         raise TimeoutError("TableCfg extraction timed out")
+                    if time.monotonic() - last_progress > idle_timeout:
+                        raise TimeoutError(f"TableCfg extraction made no progress for {idle_timeout} seconds")
                     self.stop.wait(0.25)
                 consume_sdk_output()
                 if process.returncode:
@@ -332,13 +339,13 @@ class Worker:
         self.emit("validate", "全表校验完成 / All tables validated", current=len(paths), total=len(paths), progress_unit="files")
         return result
 
-    def cycle(self, force=False, publish=False):
+    def cycle(self, force=False, publish=False, automatic=False):
         import fcntl
         with (self.root / "operation.lock").open("a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            return self._cycle(force, publish)
+            return self._cycle(force, publish, automatic)
 
-    def _cycle(self, force=False, publish=False):
+    def _cycle(self, force=False, publish=False, automatic=False):
         self.token.raise_if_cancelled()
         started = time.monotonic()
         latest = self.client.get_latest()
@@ -347,10 +354,37 @@ class Worker:
         self.emit("check", "Official version checked", official_version=version_id,
                   last_check_at=now(), check_seconds=round(time.monotonic() - started, 3))
         state_file = self.root / "completed.json"
-        read_json(state_file, {})  # Fail visibly on corrupt completion state.
-        # Startup always rechecks R2. Ongoing loop rechecks every five minutes even unchanged.
+        completed = read_json(state_file, {})  # Fail visibly on corrupt completion state.
+        if not isinstance(completed, dict):
+            raise ValueError("Invalid completion state")
+        job = self.root / "jobs" / identity(latest)
+        if (automatic and completed.get("identity") == identity(latest)
+                and completed.get("version") == version_id
+                and completed.get("sdk_sha256") == self.sdk_digest
+                and not (job / "pending.json").exists()):
+            # Starting/resuming reads metadata only; unchanged tables are not rescanned.
+            if force:
+                try:
+                    manifest, _ = self.storage.manifest()
+                    entry = next((v for v in manifest["versions"] if v.get("id") == version_id), None)
+                    if not entry or entry.get("tableCfgPath") != prefix.rstrip("/"):
+                        raise ValueError("Completed version missing or conflicting in remote manifest")
+                except Exception:
+                    self.force_reconcile = True
+                    raise
+                table_count = completed.get("table_count")
+                if table_count is None:
+                    saved_plan = read_json(job / "plan.json", {})
+                    if isinstance(saved_plan, dict) and saved_plan.get("identity") == identity(latest):
+                        table_count = len(saved_plan.get("files", []))
+                self.emit("check", "Version unchanged; reusing completed TableCfg validation",
+                          remote_latest=manifest.get("latest"),
+                          last_success_at=completed.get("completed_at"),
+                          table_count=table_count, remote_missing_files=0)
+            return
+        # A successfully reconciled identity no longer expires on a timer.
         cached = getattr(self, "remote_checked", None)
-        if not force and cached and cached[0] == identity(latest) and time.monotonic() - cached[1] < 300:
+        if not force and cached == identity(latest):
             return
         manifest, _ = self.storage.manifest()
         self.token.raise_if_cancelled()
@@ -368,7 +402,7 @@ class Worker:
                 "missing_remote_files": len(missing), "manifest_has_version": bool(entry),
                 "metrics": self.snapshot(), "plan": str(job / "plan.json")})
             if entry and not missing:
-                self.remote_checked = (identity(latest), time.monotonic())
+                self.remote_checked = identity(latest)
             return
         if missing or not entry:
             # Recheck official identity immediately before remote mutation/commit.
@@ -383,9 +417,10 @@ class Worker:
             self.emit("published", "TableCfg published and manifest verified", **metrics)
         self.token.raise_if_cancelled()
         atomic_json(state_file, {"identity": identity(latest), "version": version_id,
-            "sdk_sha256": self.sdk_digest, "completed_at": now(), "plan": str(job / "plan.json")})
+            "sdk_sha256": self.sdk_digest, "completed_at": now(), "plan": str(job / "plan.json"),
+            "table_count": len(plan["files"])})
         (job / "pending.json").unlink(missing_ok=True)
-        self.remote_checked = (identity(latest), time.monotonic())
+        self.remote_checked = identity(latest)
         self.emit("idle", "TableCfg is current", last_success_at=now(), healthy=True, error=None)
         self.cleanup(job)
 
@@ -410,7 +445,7 @@ class Worker:
                 force = self.force_reconcile
                 self.force_reconcile = False
             try:
-                self.cycle(force=force, publish=self.config["upload_enabled"])
+                self.cycle(force=force, publish=self.config["upload_enabled"], automatic=True)
                 failures = 0
                 self.emit("idle", "Waiting for next check", healthy=True, error=None)
             except Exception as exc:
