@@ -26,6 +26,8 @@
     const category = root.querySelector('#modelViewerCategory');
     const animation = root.querySelector('#modelViewerAnimation');
     const state = root.querySelector('#modelViewerState');
+    const potential = root.querySelector('#modelViewerPotential');
+    const potentialLabel = root.querySelector('#modelViewerPotentialLabel');
     const play = root.querySelector('#modelViewerPlay');
     const pause = root.querySelector('#modelViewerPause');
     const timeline = root.querySelector('#modelViewerTimeline');
@@ -77,10 +79,27 @@
         status.querySelector('.ake-ui-state__message').textContent = message || '';
     }
 
+    function visibilityGroups() {
+        if (typeof viewer?.listVisibilityGroups !== 'function') return [];
+        return viewer.listVisibilityGroups();
+    }
+
+    function applyPotential(visible) {
+        if (!renderer) return;
+        for (const attachment of viewer?.listAttachments?.() || []) {
+            renderer.setAttachmentVisible(attachment.id, visible);
+        }
+        for (const group of visibilityGroups()) {
+            renderer.setVisibilityGroupVisible(group, visible);
+        }
+    }
+
     function resetAnimationControls() {
         clips = [];
         renderer = null;
         pending = null;
+        if (potential) potential.checked = false;
+        if (potentialLabel) potentialLabel.hidden = true;
         loadButton.disabled = false;
         category.replaceChildren(new Option(t('allAnimations', null, '全部动画'), ''));
         animation.replaceChildren(new Option(t('defaultPose', null, '默认姿态'), ''));
@@ -231,6 +250,9 @@
         updateStates();
         hideProgress();
         showStatus('ready', event.detail.characterId, localizedStatus() || event.detail.characterId);
+        const hasPotentialTargets = (viewer?.listAttachments?.() || []).length > 0 || visibilityGroups().length > 0;
+        if (potential) potential.checked = false;
+        if (potentialLabel) potentialLabel.hidden = !hasPotentialTargets;
     });
 
     viewer.addEventListener('character-error', event => {
@@ -266,6 +288,7 @@
             loadButton.disabled = false;
         }
     };
+    potential.onchange = () => applyPotential(Boolean(potential.checked));
     category.onchange = filterAnimations;
     animation.onchange = () => {
         updateStates();
