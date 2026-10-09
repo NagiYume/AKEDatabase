@@ -1,10 +1,29 @@
 # Special Announcement
 
-AKEData `v1.2.20` is now available. This release expands Archive investigations and version comparisons, adds configurable New-label scope, and improves Assets access, Season Tower loading, and data caching.
+AKEData `v1.2.21` is now available. This release improves the guide image generator, refreshes the home page and Assets directory layout, and fixes raw attribute overrides in shared stat calculations.
 
 AKEData has moved to www.akedata.wiki. The former domain, akedata.top, now redirects here.
 
 # AKEData Version Changelog
+
+### v1.2.21
+
+#### Guide image generator
+
+- Updated the horizontal reference template in the guide image generator, with support for horizontal and vertical guide images.
+- Edit character information, skills, weapon and equipment recommendations, potential gains, and distribution charts with a canvas preview.
+- Export PNG images and import or export configurations to save guides and continue editing later.
+
+#### Home page and Assets directories
+
+- Updated the home page announcement button, module selection entry, and information layout.
+- The data update countdown stops displaying after its target time, while the update reason remains visible.
+- Improved the layout of Assets directories containing a single folder.
+
+#### Stat calculations
+
+- Shared stat calculations now apply raw attribute overrides before other modifiers.
+- Repeated overrides of the same type retain the final override value. Raw-value details show the override step and subsequent calculation.
 
 ### v1.2.20
 
