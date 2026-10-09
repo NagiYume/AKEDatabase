@@ -1,0 +1,59 @@
+<script src="/plugin/js/ake-renderer.js"></script>
+<script src="/plugin/js/ake-model-viewer.js"></script>
+<div class="ake-ui-page model-viewer" id="modelViewerModule" data-ake-module="model-viewer">
+    <header class="ake-ui-section model-viewer__header">
+        <div class="model-viewer__title-row">
+            <label class="model-viewer__field">
+                <span class="model-viewer__label" data-i18n="modules.modelViewer.character">角色</span>
+                <select class="ake-ui-control model-viewer__select" id="modelViewerCharacter"></select>
+            </label>
+            <button class="ake-ui-button ake-ui-button--primary model-viewer__load" id="modelViewerLoad" type="button" data-i18n="modules.modelViewer.load">加载</button>
+            <label class="model-viewer__field">
+                <span class="model-viewer__label" data-i18n="modules.modelViewer.category">动画分类</span>
+                <select class="ake-ui-control model-viewer__select" id="modelViewerCategory">
+                    <option value="">全部动画</option>
+                </select>
+            </label>
+            <label class="model-viewer__field model-viewer__field--wide">
+                <span class="model-viewer__label" data-i18n="modules.modelViewer.animation">动画</span>
+                <select class="ake-ui-control model-viewer__select" id="modelViewerAnimation">
+                    <option value="">默认姿态</option>
+                </select>
+            </label>
+            <label class="model-viewer__field">
+                <span class="model-viewer__label" data-i18n="modules.modelViewer.state">动画状态</span>
+                <select class="ake-ui-control model-viewer__select" id="modelViewerState">
+                    <option value="">选择状态</option>
+                </select>
+            </label>
+            <label class="model-viewer__field model-viewer__field--switch" id="modelViewerPotentialLabel" hidden>
+                <span class="model-viewer__label" data-i18n="modules.modelViewer.maxPotential">满潜特效</span>
+                <input class="ake-ui-switch" type="checkbox" id="modelViewerPotential">
+            </label>
+        </div>
+        <div class="model-viewer__toolbar">
+            <button class="ake-ui-button ake-ui-button--primary" id="modelViewerPlay" type="button" data-i18n="modules.modelViewer.play">播放</button>
+            <button class="ake-ui-button ake-ui-button--secondary" id="modelViewerPause" type="button" data-i18n="modules.modelViewer.pause">暂停</button>
+            <label class="model-viewer__timeline">
+                <span class="model-viewer__label" data-i18n="modules.modelViewer.timeline">进度</span>
+                <input id="modelViewerTimeline" type="range" min="0" max="1" step="0.001" value="0">
+            </label>
+            <output class="model-viewer__time" id="modelViewerTime">0.00 / 0.00</output>
+        </div>
+    </header>
+    <section class="ake-ui-section model-viewer__stage">
+        <endfield-viewer id="modelViewerViewport" bucket="/endfield-bundles/"></endfield-viewer>
+        <div class="model-viewer__progress" id="modelViewerProgress" data-state="loading" role="progressbar" aria-valuemin="0" aria-valuemax="100" hidden>
+            <div class="model-viewer__progress-head">
+                <strong class="model-viewer__progress-title" id="modelViewerProgressTitle">正在加载模型</strong>
+                <span class="model-viewer__progress-value" id="modelViewerProgressValue">0%</span>
+            </div>
+            <div class="model-viewer__progress-track"><div class="model-viewer__progress-bar" id="modelViewerProgressBar"></div></div>
+            <div class="model-viewer__progress-detail" id="modelViewerProgressDetail"></div>
+        </div>
+        <div class="ake-ui-state" id="modelViewerStatus" data-state="loading" role="status">
+            <strong class="ake-ui-state__title" data-i18n="modules.modelViewer.loading">正在初始化模型预览</strong>
+            <p class="ake-ui-state__message" data-i18n="modules.modelViewer.webgpuHint">需要支持 WebGPU 的浏览器</p>
+        </div>
+    </section>
+</div>

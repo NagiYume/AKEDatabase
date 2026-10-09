@@ -47,6 +47,7 @@ class Pipeline:
         self._log_path: Path | None = None
         self.client = HotfixClient(timeout=config.request_timeout, appcode=config.appcode)
         self.downloader = DownloadManager(
+            concurrency=config.download_concurrency,
             timeout=config.request_timeout,
             retries=config.retries,
             verify_md5=config.verify_md5,

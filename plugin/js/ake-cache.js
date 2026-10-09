@@ -446,7 +446,7 @@
         const url = normalizeUrl(resource);
         const headers = new Headers(init?.headers || (typeof resource !== 'string' ? resource?.headers : undefined));
         const type = window.akeDataSource?.classify(resource)?.type;
-        return method === 'GET' && ['table', 'shared', 'site-public'].includes(type) &&
+        return method === 'GET' && ['table', 'shared', 'site-public', 'model-bundle'].includes(type) &&
             !headers.has('Range') && !headers.has('Authorization');
     }
 
@@ -469,7 +469,7 @@
 
     function isPublicResource(request) {
         if (request.method !== 'GET') return false;
-        return ['table', 'shared', 'site-public'].includes(window.akeDataSource?.classify(request)?.type);
+        return ['table', 'shared', 'site-public', 'model-bundle'].includes(window.akeDataSource?.classify(request)?.type);
     }
 
     function responseFromRecord(record) {

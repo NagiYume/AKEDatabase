@@ -1,0 +1,35 @@
+.model-viewer { display: grid; gap: 18px; }
+.model-viewer__header { display: grid; gap: 15px; }
+.model-viewer__title-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.model-viewer__load { align-self: end; min-height: 38px; }
+.model-viewer__field { display: grid; gap: 6px; min-width: 0; }
+.model-viewer__field--wide { grid-column: span 2; }
+.model-viewer__field--switch { align-content: end; }
+.model-viewer__field--switch[hidden] { display: none; }
+.model-viewer__field--switch input { justify-self: start; }
+.model-viewer__label { font-size: .78rem; color: var(--text-secondary); }
+.model-viewer__select { width: 100%; }
+.model-viewer__toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.model-viewer__timeline { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 220px; }
+.model-viewer__timeline input { width: 100%; }
+.model-viewer__time { font-family: Consolas, monospace; font-size: .82rem; color: var(--text-secondary); white-space: nowrap; }
+.model-viewer__stage { position: relative; min-height: max(480px, 62vh); border: 1px solid var(--border-color); border-radius: 16px; overflow: hidden; background: #0b1017; }
+.model-viewer__stage endfield-viewer { position: absolute; inset: 0; min-height: 100%; }
+.model-viewer__progress { position: absolute; left: 16px; right: 16px; bottom: 16px; z-index: 3; display: grid; gap: 7px; padding: 11px 13px 12px; color: var(--text-color); border: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--module-bg, #111923) 88%, transparent); box-shadow: 0 8px 24px rgba(2, 8, 20, .28); backdrop-filter: blur(9px); }
+.model-viewer__progress[hidden] { display: none; }
+.model-viewer__progress-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.model-viewer__progress-title { overflow: hidden; font-size: .82rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.model-viewer__progress-value { flex: 0 0 auto; color: var(--accent-color); font-family: Consolas, "Cascadia Mono", monospace; font-size: .82rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.model-viewer__progress-track { height: 7px; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--border-color) 72%, transparent); }
+.model-viewer__progress-bar { width: 0; height: 100%; border-radius: inherit; background: var(--accent-color); box-shadow: 0 0 12px color-mix(in srgb, var(--accent-color) 58%, transparent); transition: width .16s ease; }
+.model-viewer__progress-detail { overflow: hidden; color: var(--desc-color); font-size: .72rem; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.model-viewer__progress.is-indeterminate .model-viewer__progress-bar { width: 34%; animation: model-viewer-progress 1.2s ease-in-out infinite; }
+@keyframes model-viewer-progress { 0% { transform: translateX(-115%); } 55% { transform: translateX(150%); } 100% { transform: translateX(310%); } }
+.model-viewer__stage .ake-ui-state { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 8px; pointer-events: none; }
+.model-viewer__stage .ake-ui-state[data-state="error"] .ake-ui-state__message { pointer-events: auto; }
+.model-viewer__stage .ake-ui-state[data-state="ready"] { background: transparent; }
+@media (max-width: 720px) {
+    .model-viewer__field--wide { grid-column: auto; }
+    .model-viewer__load { width: 100%; }
+    .model-viewer__stage { min-height: 68vh; border-radius: 12px; }
+}

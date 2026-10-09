@@ -864,6 +864,7 @@
         const grid = document.createElement('div');
         grid.className = 'ake-ui-card-grid asset-browser__grid';
         grid.dataset.cardKind = 'asset-browser';
+        if (items.length === 1 && items[0].type === 'directory') grid.dataset.layout = 'single-folder';
         const more = document.createElement('button');
         more.type = 'button';
         more.className = 'ake-ui-button asset-load-more';

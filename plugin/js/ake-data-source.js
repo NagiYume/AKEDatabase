@@ -169,6 +169,7 @@
         const url = new URL(typeof resource === 'string' ? resource : resource?.url, window.location.href);
         if (url.origin !== window.location.origin) return { type: 'external', url };
         if (url.pathname === '/asset-sync-index.json') return { type: 'shared', url };
+        if (url.pathname === '/endfield-bundles/manifest.json' || url.pathname.startsWith('/endfield-bundles/')) return { type: 'model-bundle', url };
         if (url.pathname.startsWith('/public/TableCfg/')) return { type: 'table', url };
         if (url.pathname.startsWith('/public/Json/')) return { type: 'shared', url };
         if (url.pathname.startsWith('/public/images/')) return { type: 'shared', url };
@@ -178,11 +179,13 @@
 
     function resolveUrl(resource) {
         const result = classify(resource);
-        if (!state || (result.type !== 'table' && result.type !== 'shared')) return result.url.href;
+        if (!state || (result.type !== 'table' && result.type !== 'shared' && result.type !== 'model-bundle')) return result.url.href;
         const target = new URL(`${state.baseUrl}/`);
         if (result.type === 'table') {
             const suffix = result.url.pathname.slice('/public/TableCfg/'.length);
             target.pathname = `/${state.selected.tableCfgPath}/${suffix}`.replace(/\/+/g, '/');
+        } else if (result.type === 'model-bundle') {
+            target.pathname = result.url.pathname;
         } else {
             target.pathname = result.url.pathname;
             if (!result.url.pathname.startsWith('/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/mainhud/')) {

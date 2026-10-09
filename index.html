@@ -9,6 +9,8 @@
     <link rel="stylesheet" id="base-style">
     <link rel="stylesheet" id="theme-style">
     <link rel="stylesheet" id="guide-image-generator-style">
+    <link rel="stylesheet" id="asset-style">
+    <link rel="stylesheet" id="model-viewer-style">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
@@ -383,6 +385,10 @@
             }
             const guideImageLink = document.getElementById('guide-image-generator-style');
             if (guideImageLink) guideImageLink.href = resourceUrl('/theme/guide-image-generator.css');
+            const assetLink = document.getElementById('asset-style');
+            if (assetLink) assetLink.href = resourceUrl('/theme/asset.css');
+            const modelViewerStyleLink = document.getElementById('model-viewer-style');
+            if (modelViewerStyleLink) modelViewerStyleLink.href = resourceUrl('/theme/model-viewer.css');
             const scriptSources = new Map();
             const prefetchScript = async src => {
                 const key = resourceKey(src);
@@ -419,6 +425,8 @@
                     '/plugin/js/sidebar-resize.js',
                     '/plugin/js/module-view-state.js',
                     '/plugin/js/v3-table-data.js',
+                    '/plugin/js/ake-renderer.js',
+                    '/plugin/js/ake-model-viewer.js',
                     '/plugin/js/index-app.js'
                 ];
                 scripts.forEach(src => scriptSources.set(src, prefetchScript(src)));

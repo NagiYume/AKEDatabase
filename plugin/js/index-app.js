@@ -86,21 +86,18 @@
 
             const HOME_CONTENT = `
                 <div class="welcome-home">
-                    <button class="home-tip-button" id="homeTipButton" type="button" data-i18n="home.announcement">Announcement</button>
+                    <button class="ake-ui-button ake-ui-button--secondary welcome-home__announcement" id="homeTipButton" type="button" data-i18n="home.announcement">Announcement</button>
                     <img src="/public/images/index/main.png"
                          alt="home.heroImageAlt"
                          data-i18n-alt="home.heroImageAlt"
                          class="home-image">
-                    <p class="welcome-home__title" data-i18n="home.title">home.title</p>
+                    <button class="ake-ui-button ake-ui-button--primary welcome-home__browse" id="homeBrowseButton" type="button" data-i18n="nav.selectModule">Select module</button>
                     <div class="welcome-home__countdown" id="homeUpdateCountdown" data-i18n="version.loading">version.loading</div>
-                    <div class="welcome-home__notes">
-                        <span data-i18n="home.precisionNote">home.precisionNote</span><br>
-                        <span data-i18n="home.disclaimer">home.disclaimer</span><br>
-                        <span data-i18n="home.settingsHint">home.settingsHint</span>
-                    </div>
-                    <div class="welcome-home__registration">
+                    <p class="welcome-home__precision" data-i18n="home.precisionNote">home.precisionNote</p>
+                    <footer class="welcome-home__footer">
+                        <p data-i18n="home.disclaimer">home.disclaimer</p>
                         <a href="https://beian.miit.gov.cn/#/Integrated/index" target="_blank" rel="noopener noreferrer">浙ICP备2026014728号-1</a>
-                    </div>
+                    </footer>
                 </div>
             `;
 
@@ -111,6 +108,7 @@
                 setContent(HOME_CONTENT);
                 renderVersionInfo();
                 document.getElementById('homeTipButton')?.addEventListener('click', showTip);
+                document.getElementById('homeBrowseButton')?.addEventListener('click', openMobileMenu);
                 document.querySelectorAll('.module-item').forEach(item => item.classList.remove('active'));
                 activeModuleId = null;
                 currentTitleRoute = { plugin: '', id: '' };
@@ -613,31 +611,38 @@
 
             function renderHomeCountdown() {
                 const home = document.getElementById('homeUpdateCountdown');
-                if (!home) return;
+                if (!home) return false;
                 const version = window.akeVersion;
                 const target = parseUpdateTime(version?.totime);
                 if (!target) {
                     home.textContent = tr('version.unavailable');
-                    return;
+                    return false;
                 }
                 home.replaceChildren();
-                const countdown = document.createElement('div');
-                const remaining = formatCountdown(target.getTime() - Date.now());
-                countdown.textContent = tr('version.countdown', {
-                    time: remaining
-                }, `Time until the next data update: ${remaining}`);
-                home.appendChild(countdown);
+                const remainingMs = target.getTime() - Date.now();
+                if (remainingMs > 0) {
+                    const countdown = document.createElement('div');
+                    countdown.textContent = tr('version.countdown', { time: formatCountdown(remainingMs) });
+                    home.appendChild(countdown);
+                }
                 const description = String(version?.desc || '').trim();
                 if (description) {
                     const reason = document.createElement('div');
                     reason.textContent = tr('version.updateReason', { desc: description }, `Update reason: ${description}`);
                     home.appendChild(reason);
+                } else if (remainingMs <= 0) {
+                    home.textContent = tr('version.unavailable');
                 }
+                return remainingMs > 0;
             }
 
             function startHomeCountdown() {
-                renderHomeCountdown();
-                if (!countdownTimer) countdownTimer = setInterval(renderHomeCountdown, 1000);
+                if (!renderHomeCountdown()) {
+                    if (countdownTimer) clearInterval(countdownTimer);
+                    countdownTimer = null;
+                } else if (!countdownTimer) {
+                    countdownTimer = setInterval(startHomeCountdown, 1000);
+                }
             }
 
             function renderVersionInfo() {

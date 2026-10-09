@@ -1,0 +1,39 @@
+[Unit]
+Description=AKE TableCfg watcher and read-only status
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=600
+StartLimitBurst=4
+
+[Service]
+Type=simple
+User=ake-tablecfg
+Group=ake-tablecfg
+WorkingDirectory=/opt/ake-tablecfg/app
+ExecStart=/opt/ake-tablecfg/venv/bin/python -m ake_server serve --config /etc/ake-tablecfg/config.json
+Restart=on-failure
+RestartSec=30
+TimeoutStopSec=20
+KillMode=control-group
+MemoryHigh=960M
+MemoryMax=1G
+MemorySwapMax=0
+CPUQuota=100%
+Nice=10
+TasksMax=128
+UMask=0077
+NoNewPrivileges=true
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/ake-tablecfg /var/log/ake-tablecfg
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+Environment=LANG=C.UTF-8
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

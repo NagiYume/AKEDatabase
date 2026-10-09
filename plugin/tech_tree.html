@@ -1,0 +1,24 @@
+<script src="/plugin/js/v3-table-data.js"></script>
+<script src="/plugin/js/ake-catalog.js"></script>
+<div class="ake-ui-directory" data-ake-module="tech_tree">
+    <aside class="ake-ui-directory__sidebar">
+        <div class="ake-ui-section__header"><h2 class="ake-ui-section__title" data-catalog-title></h2></div>
+        <label class="ake-ui-directory__search">
+            <input class="ake-ui-input" type="search" data-catalog-search data-i18n-placeholder="modules.catalog.search" data-i18n-aria-label="modules.catalog.search">
+        </label>
+        <label><span data-i18n="modules.catalog.groupFilter"></span><select class="ake-ui-control ake-ui-control--select" data-catalog-filter><option value="" data-i18n="modules.catalog.all"></option></select></label>
+        <p class="ake-ui-section__description" data-catalog-count aria-live="polite"></p>
+        <div class="ake-ui-directory__list" id="tech_treeList" data-catalog-list></div>
+    </aside>
+    <main class="ake-ui-directory__content" id="tech_treeDetail" data-catalog-detail>
+        <div class="ake-ui-state" data-state="loading" data-i18n="modules.catalog.loading"></div>
+    </main>
+    <button class="ake-ui-directory__mobile-button" type="button" data-catalog-open data-i18n="common.list"></button>
+    <div class="ake-ui-directory__mobile-overlay" data-catalog-overlay aria-hidden="true">
+        <section class="ake-ui-directory__mobile-panel" role="dialog" aria-modal="true" data-i18n-aria-label="modules.tech_tree.title">
+            <header class="ake-ui-directory__mobile-header"><span data-i18n="modules.tech_tree.title"></span><button class="ake-ui-button" type="button" data-catalog-close data-i18n="modules.catalog.close"></button></header>
+            <div class="ake-ui-directory__mobile-list" data-catalog-mobile-list></div>
+        </section>
+    </div>
+</div>
+<script src="/plugin/js/tech-tree.js"></script>
