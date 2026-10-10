@@ -241,7 +241,10 @@
             function buildMobileMenu() {
                 if (!mobileMenuList) return false;
                 const visibleModules = filterModules(allModules);
-                const sorted = sortModulesByPriority(visibleModules);
+                const sorted = [
+                    ...sortModulesByPriority(allModules.filter(m => m.special === 'top' && isModuleUnlocked(m))),
+                    ...sortModulesByPriority(visibleModules)
+                ];
                 mobileMenuList.innerHTML = '';
                 sorted.forEach(mod => {
                     const item = document.createElement('div');
@@ -838,7 +841,7 @@
             }
 
             function filterModules(modules) {
-                let filtered = modules.filter(m => m.id !== 'settings');
+                let filtered = modules.filter(m => !m.special && m.id !== 'settings');
                 if (!config.showHidden) {
                     filtered = filtered.filter(m => !m.hidden);
                 }
@@ -849,9 +852,67 @@
             function applyFilterAndRender() {
                 if (!modulesReady) return;
                 const visibleModules = filterModules(allModules);
+                const topModules = allModules.filter(m => m.special === 'top' && !m.disabled && isModuleUnlocked(m));
+                const topNavigation = document.getElementById('specialModulesTop');
+                const searchDraft = document.getElementById('sidebarSearchInput')?.value ?? '';
+                topNavigation.replaceChildren(...topModules.map(mod => {
+                    if (mod.id === 'search') {
+                        const form = document.createElement('form');
+                        form.className = 'ake-ui-directory__search ake-module-search-row';
+                        form.setAttribute('role', 'search');
+                        const input = document.createElement('input');
+                        input.id = 'sidebarSearchInput';
+                        input.type = 'search';
+                        input.className = 'ake-ui-input';
+                        input.autocomplete = 'off';
+                        input.value = searchDraft;
+                        input.placeholder = tr('modules.search.placeholder');
+                        input.setAttribute('aria-label', tr('modules.search.title'));
+                        const submit = document.createElement('button');
+                        submit.type = 'submit';
+                        submit.className = 'ake-ui-icon-button';
+                        const icon = document.createElement('img');
+                        icon.className = 'sidebar-tool-icon';
+                        icon.src = '/public/images/assets/beyond/dynamicassets/gameplay/ui/prefabs/common/common_search_icon.png';
+                        icon.alt = '';
+                        icon.setAttribute('aria-hidden', 'true');
+                        icon.setAttribute('data-no-image-fallback', '');
+                        submit.append(icon);
+                        submit.setAttribute('aria-label', tr('modules.search.submit'));
+                        form.append(submit, input);
+                        form.addEventListener('submit', async event => {
+                            event.preventDefault();
+                            const query = input.value.trim();
+                            window.__akePendingSearchQuery = query;
+                            try {
+                                const loaded = await loadModuleContent(mod);
+                                if (!loaded) return;
+                                activeModuleId = mod.id;
+                                document.querySelectorAll('.module-item').forEach(item => item.classList.remove('active'));
+                                syncModuleNavigation(mod.id, loaded);
+                                window.__akeSearchController?.search(query);
+                            } finally {
+                                if (window.__akePendingSearchQuery === query) delete window.__akePendingSearchQuery;
+                            }
+                        });
+                        return form;
+                    }
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'module-item ake-ui-button';
+                    button.dataset.id = mod.id;
+                    const title = document.createElement('span');
+                    title.className = 'module-title';
+                    const label = document.createElement('span');
+                    label.className = 'module-name';
+                    label.textContent = translateModuleField(mod, 'title');
+                    title.append(label);
+                    button.append(title);
+                    return button;
+                }));
                 renderModuleList(visibleModules);
                 if (activeModuleId) {
-                    const stillVisible = visibleModules.some(m => m.id === activeModuleId);
+                    const stillVisible = [...visibleModules, ...topModules].some(m => m.id === activeModuleId);
                     if (!stillVisible) {
                         showHomePage();
                     } else {
@@ -862,12 +923,8 @@
             }
 
             function renderModuleList(modulesArray) {
-                if (!modulesArray || modulesArray.length === 0) {
-                    moduleListEl.innerHTML = `<div class="ake-ui-state" data-state="empty" data-density="compact">${tr('nav.noVisibleModules')}</div>`;
-                    return;
-                }
-                const sorted = sortModulesByPriority(modulesArray);
-                let html = '';
+                const sorted = sortModulesByPriority(modulesArray || []);
+                let html = sorted.length ? '' : `<div class="ake-ui-state" data-state="empty" data-density="compact">${tr('nav.noVisibleModules')}</div>`;
                 sorted.forEach(mod => {
                     const icon = String(mod.icon || '').trim();
                     const navIcon = String(mod.navIcon || '').trim();
@@ -2235,8 +2292,10 @@
                     applyFilterAndRender();
                     storage.set('akedata-showHidden', val);
                     if (modalShowHiddenCheck) modalShowHiddenCheck.checked = val;
+                    window.dispatchEvent(new CustomEvent('globalConfigChanged', { detail: { showHidden: val } }));
                 },
                 getConfig: () => ({ ...config }),
+                getModules: () => allModules.map(module => ({ ...module })),
                 getLevelSettings: () => ({ ...config.levelSettings }),
                 showHomePage,
                 isTokenUnlocked: (token) => {
