@@ -24,7 +24,7 @@ from .models import (
 )
 from .release import ReleaseManager
 from .state_store import StateStore
-from .unpacker import BeyondSdkTableUnpacker
+from .unpacker import PythonTableUnpacker
 from .vfs_validation_cache import VfsValidationCache, latest_identity
 
 
@@ -296,7 +296,7 @@ class Pipeline:
                     trusted_names=trusted_names,
                 )
             )
-        assert_no_linked_files(source_root, "TableCfg SDK 输入目录")
+        assert_no_linked_files(source_root, "TableCfg VFS 输入目录")
         if not VfsValidationCache.files_match(vfs_root, latest_entries):
             raise ValidationError("TableCfg VFS 文件大小校验失败")
         self.token.raise_if_cancelled()
@@ -319,7 +319,7 @@ class Pipeline:
         self._emit(
             ProgressEvent(
                 "download",
-                f"SDK 输入准备完成，共 {len(prepared_files)} 个文件，本地复制 {copied} 个",
+                f"TableCfg VFS 输入准备完成，共 {len(prepared_files)} 个文件，本地复制 {copied} 个",
                 1,
                 1,
             )
@@ -334,10 +334,7 @@ class Pipeline:
     def _stage_unpack(self, latest: LatestInfo, job_root: Path) -> dict[str, Any]:
         source_root = job_root / "source"
         unpack_root = job_root / "unpacked"
-        data_root = BeyondSdkTableUnpacker(
-            self.config.image_sdk,
-            self.config.java_path,
-        ).unpack(
+        data_root = PythonTableUnpacker().unpack(
             source_root,
             unpack_root,
             self.token,
@@ -346,7 +343,7 @@ class Pipeline:
         self._emit(ProgressEvent("unpack", f"解包/解析完成：{data_root}", 1, 1))
         return {
             "staged_data_path": str(data_root),
-            "unpack_task": "standalone VFSTableCfgExtractor",
+            "unpack_task": "python TableCfg Spark decoder",
         }
 
     def _stage_validate(self, job_root: Path) -> dict[str, Any]:

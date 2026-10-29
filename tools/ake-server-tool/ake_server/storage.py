@@ -207,7 +207,7 @@ class Storage:
                 if existing.get("tableCfgPath") != plan["prefix"].rstrip("/"):
                     raise ValueError("Manifest path conflict")
                 if not replay:
-                    return  # Never regress latest to an already-published historical version.
+                    return previous  # Preserve the actual latest for historical versions.
             if replay and (not existing or previous.get("latest") != plan["version"]):
                 raise ValueError("Replay requires the existing latest version")
             updated = copy.deepcopy(previous)
@@ -235,5 +235,5 @@ class Storage:
                        v.get("tableCfgPath") == plan["prefix"].rstrip("/") for v in verified["versions"]):
                 raise ValueError("Manifest readback failed")
             self.emit("commit", "版本清单回读通过 / Manifest readback verified", current=1, total=1, progress_unit="steps")
-            return
+            return verified
         raise ValueError("Manifest changed repeatedly; publication deferred")

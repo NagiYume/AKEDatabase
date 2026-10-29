@@ -1,20 +1,19 @@
 from __future__ import annotations
 
-import queue
+import json
 import shutil
+import struct
 import subprocess
-import threading
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
-from .errors import AkeToolError, CancelledError
+from .errors import AkeToolError, CancelledError, ValidationError
+from .file_copy import assert_no_linked_files
 from .models import CancellationToken, ProgressCallback, ProgressEvent, null_progress
-from .sdk_launch import sdk_command
-
-
-TABLE_RUNNER_SOURCE = Path(__file__).with_name("BeyondSdkTableRunner.java")
+from .tablecfg_parser import TABLE_BLOCK, SparkDecoder, decrypt, read_table_index, require_crypto
 
 
 def format_command(command: list[str]) -> str:
+    # Shared by the image/Json SDK launchers.
     return subprocess.list2cmdline([str(argument) for argument in command])
 
 
@@ -27,15 +26,7 @@ def _remove_directory(path: Path, allowed_parent: Path) -> None:
         shutil.rmtree(resolved)
 
 
-class BeyondSdkTableUnpacker:
-    def __init__(
-        self,
-        sdk_path: Path,
-        java_path: str,
-    ) -> None:
-        self.sdk_path = sdk_path.resolve()
-        self.java_path = java_path.strip()
-
+class PythonTableUnpacker:
     def unpack(
         self,
         source_root: Path,
@@ -43,91 +34,88 @@ class BeyondSdkTableUnpacker:
         token: CancellationToken,
         progress: ProgressCallback = null_progress,
     ) -> Path:
-        if not self.sdk_path.is_file():
-            raise FileNotFoundError(f"beyond-sdk.jar 不存在：{self.sdk_path}")
-        if not self.java_path:
-            raise ValueError("Java 命令不能为空")
-        if not TABLE_RUNNER_SOURCE.is_file():
-            raise FileNotFoundError(f"beyond-sdk TableCfg 本地启动器不存在：{TABLE_RUNNER_SOURCE}")
-        if not (source_root / "VFS").is_dir():
-            raise FileNotFoundError(f"SDK 输入目录中没有 VFS：{source_root / 'VFS'}")
-        for index_name in ("index_main.json", "index_initial.json"):
-            if not (source_root / index_name).is_file():
-                raise FileNotFoundError(f"SDK 输入目录缺少索引：{source_root / index_name}")
-
-        output_root.parent.mkdir(parents=True, exist_ok=True)
-        _remove_directory(output_root, output_root.parent)
-        output_root.mkdir(parents=True)
+        token.raise_if_cancelled()
+        require_crypto()
+        source_root = source_root.resolve()
+        output_root = output_root.resolve()
+        if source_root == output_root or source_root in output_root.parents or output_root in source_root.parents:
+            raise ValidationError("TableCfg 输入与输出目录不能相互包含")
+        assert_no_linked_files(source_root, "TableCfg Python 输入目录")
+        block = source_root / "VFS" / TABLE_BLOCK / f"{TABLE_BLOCK}.blc"
+        if not block.is_file():
+            raise FileNotFoundError(f"TableCfg BLC 不存在：{block}")
+        progress(ProgressEvent("unpack", "读取 TableCfg BLC 索引（Python）"))
+        version, entries = read_table_index(block, token)
+        pending = output_root / ".tablecfg-pending"
+        selected = []
+        targets = set()
+        for entry in entries:
+            token.raise_if_cancelled()
+            parts = entry.name.replace("\\", "/").split("/")
+            if "TableCfg" not in parts:
+                progress(ProgressEvent("unpack", f"非 TableCfg 条目，未导出：{entry.name}", level="warning"))
+                continue
+            relative_parts = parts[parts.index("TableCfg") + 1:]
+            if not relative_parts or any(
+                part in ("", ".", "..") or ":" in part or PureWindowsPath(part).is_reserved()
+                or part.endswith((" ", ".")) or any(c in part for c in '<>"|?*')
+                for part in relative_parts
+            ):
+                raise ValidationError(f"不安全的 TableCfg 路径：{entry.name}")
+            relative = Path(*relative_parts).with_suffix(".json")
+            target = (pending / relative).resolve()
+            if pending not in target.parents:
+                raise ValidationError(f"TableCfg 输出路径越界：{entry.name}")
+            key = relative.as_posix().casefold()
+            if key in targets:
+                raise ValidationError(f"重复 TableCfg 输出路径：{entry.name}")
+            targets.add(key)
+            if not entry.chunk.is_file() or entry.offset + entry.length > entry.chunk.stat().st_size:
+                raise ValidationError(f"TableCfg chunk 缺失或截断：{entry.chunk} ({entry.name})")
+            selected.append((entry, relative))
+        if not selected:
+            raise ValidationError("BLC 中没有 TableCfg 文件")
 
         token.raise_if_cancelled()
-        command = sdk_command(
-            self.java_path, self.sdk_path, TABLE_RUNNER_SOURCE, work_root=output_root,
-        ) + [
-            str(source_root / "VFS"),
-            str(output_root),
-        ]
-        progress(ProgressEvent("unpack", f"执行命令：{format_command(command)}"))
-        progress(ProgressEvent("unpack", "启动 beyond-sdk TableCfg 本地解析"))
-        self._run_process(command, token, progress)
-
-        candidates = (
-            output_root / "data" / "Data",
-            output_root / "Data",
-            output_root / "data",
-        )
-        for data_root in candidates:
-            if (data_root / "TableCfg").is_dir():
-                return data_root
-        raise AkeToolError(f"beyond-sdk 已结束，但没有生成 TableCfg 数据目录：{output_root}")
-
-    @staticmethod
-    def _run_process(
-        command: list[str],
-        token: CancellationToken,
-        progress: ProgressCallback,
-        stage: str = "unpack",
-    ) -> None:
-        creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-        process = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            creationflags=creation_flags,
-        )
-        output_queue: queue.Queue[str | None] = queue.Queue()
-
-        def read_output() -> None:
-            assert process.stdout is not None
-            for line in process.stdout:
-                output_queue.put(line.rstrip())
-            output_queue.put(None)
-
-        reader = threading.Thread(target=read_output, daemon=True)
-        reader.start()
-        output_finished = False
+        output_root.parent.mkdir(parents=True, exist_ok=True)
+        _remove_directory(output_root, output_root.parent)
+        pending.mkdir(parents=True)
+        progress(ProgressEvent("unpack", f"启动 Python TableCfg 解析，共 {len(selected)} 个文件"))
+        # Promote only a complete export, never partially parsed tables.
         try:
-            while not output_finished or process.poll() is None:
-                if token.is_cancelled:
-                    process.terminate()
-                    try:
-                        process.wait(timeout=5)
-                    except subprocess.TimeoutExpired:
-                        process.kill()
-                    raise CancelledError("解包任务已取消")
+            for index, (entry, relative) in enumerate(selected, 1):
+                token.raise_if_cancelled()
                 try:
-                    line = output_queue.get(timeout=0.1)
-                except queue.Empty:
-                    continue
-                if line is None:
-                    output_finished = True
-                elif line:
-                    progress(ProgressEvent(stage, line))
-            return_code = process.wait()
-            if return_code != 0:
-                raise AkeToolError(f"beyond-sdk TableCfg 解析失败，退出码 {return_code}")
+                    with entry.chunk.open("rb") as stream:
+                        stream.seek(entry.offset)
+                        payload = stream.read(entry.length)
+                    if len(payload) != entry.length:
+                        raise ValidationError("TableCfg chunk 读取截断")
+                    if entry.encrypted:
+                        payload = decrypt(payload, struct.pack("<IQ", version, entry.seed), token)
+                    if payload.lstrip().startswith((b"{", b"[")) or payload.startswith(b"\xef\xbb\xbf"):
+                        value = json.loads(payload.decode("utf-8-sig"))
+                    else:
+                        value = SparkDecoder(payload, token).decode()
+                    target = pending / relative
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    with target.open("w", encoding="utf-8", newline="\n") as stream:
+                        encoder = json.JSONEncoder(ensure_ascii=False, indent=2, allow_nan=False)
+                        for fragment in encoder.iterencode(value):
+                            token.raise_if_cancelled()
+                            stream.write(fragment)
+                        stream.write("\n")
+                except CancelledError:
+                    raise
+                except Exception as exc:
+                    raise ValidationError(f"Python TableCfg 解析失败：{entry.name}：{exc}") from exc
+                progress(ProgressEvent("unpack", f"已解析 {relative.as_posix()}", index, len(selected),
+                                       details={"file_name": relative.as_posix()}))
+            token.raise_if_cancelled()
+            data_root = output_root / "data"
+            data_root.mkdir()
+            pending.rename(data_root / "TableCfg")
+            return data_root
         finally:
-            if process.poll() is None:
-                process.kill()
+            if pending.exists():
+                _remove_directory(pending, output_root)
