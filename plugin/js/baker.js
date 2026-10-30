@@ -17,6 +17,7 @@
         3: { label: t('operators'), order: 1 }
     };
     const CONTENT_LABELS = {
+        2: t('picture'),
         4: t('video'),
         5: t('voice'),
         6: t('item'),
@@ -80,8 +81,12 @@
         return window.resolveImagePath ? window.resolveImagePath(value) : value;
     }
 
-    function chatName(chat, fallback = '') {
-        return chat?.name?.text || fallback || chat?.chatId || t('unknownContact');
+    function showHidden() {
+        return window.akeData?.getConfig?.().showHidden === true;
+    }
+
+    function chatName(chat) {
+        return chat?.name?.text || t('unknownContact');
     }
 
     function chatType(chat) {
@@ -153,7 +158,7 @@
             const text = contentText(nodes[index]);
             if (text) return text.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
         }
-        return dialog?.relatedMissionId ? t('missionId', { id: dialog.relatedMissionId }) : '';
+        return dialog?.relatedMissionId ? (showHidden() ? t('missionId', { id: dialog.relatedMissionId }) : t('mission')) : '';
     }
 
     function buildRows() {
@@ -177,13 +182,13 @@
                 name: { text: '' },
                 icon: ''
             };
-            const name = chatName(chat, chatId);
+            const name = chatName(chat);
             const dialogs = (state.dialogsByChat.get(chatId) || []).sort((a, b) => naturalCompare(a.dialogId, b.dialogId));
             const entries = dialogs.length ? dialogs : [null];
             entries.forEach(dialog => {
                 const rowDialogs = dialog ? [dialog] : [];
                 const topic = dialog ? state.topics[dialog.topicId] || state.topicByDialog.get(dialog.dialogId) : null;
-                const dialogLabel = topic?.topicName?.text || topic?.topicStartOptionDesc?.text || dialog?.dialogId || chatId;
+                const dialogLabel = topic?.topicName?.text || topic?.topicStartOptionDesc?.text || (showHidden() ? dialog?.dialogId || chatId : t('dialog'));
                 const preview = dialog ? dialogPreview(dialog) || dialogLabel : t('emptyPreview');
                 const messageText = dialog ? Object.values(dialog.dialogContentData || {}).map(contentText) : [];
                 const optionText = dialog ? Object.values(dialog.dialogContentData || {}).flatMap(node =>
@@ -254,7 +259,7 @@
         const isSelf = !speakerId || speakerId === 'endmin' || speakerId === 'player';
         if (isSelf) return { id: 'endmin', name: t('self'), chat: null, isSelf: true };
         const chat = state.chats[speakerId] || (selectedRow.chatId === speakerId ? selectedRow.chat : null);
-        return { id: speakerId, name: chatName(chat, speakerId), chat, isSelf: false };
+        return { id: speakerId, name: chatName(chat), chat, isSelf: false };
     }
 
     function bubbleMessage(node, row, body) {
@@ -273,12 +278,14 @@
         if (!names.length) return '';
         return `<div class="baker-picture-grid">${names.map(name => {
             const source = asset(`${IMAGE_ROOT}/sns/picture/${String(name).toLowerCase()}.png`);
-            return `<img src="${escapeHtml(source)}" alt="${escapeHtml(contentText(node) || name)}" loading="lazy">`;
+            return `<img src="${escapeHtml(source)}" alt="${escapeHtml(contentText(node) || t('picture'))}" loading="lazy">`;
         }).join('')}</div>`;
     }
 
     function attachmentHtml(label, title, detail, marker, route) {
-        const contentHtml = `<span class="baker-attachment__icon" aria-hidden="true">${escapeHtml(marker)}</span><div><strong>${escapeHtml(title || label)}</strong><small>${escapeHtml(detail || label)}</small></div>`;
+        const displayTitle = title || label;
+        const displayDetail = detail && detail !== displayTitle ? `<small>${escapeHtml(detail)}</small>` : '';
+        const contentHtml = `<span class="baker-attachment__icon" aria-hidden="true">${escapeHtml(marker)}</span><div><strong>${escapeHtml(displayTitle)}</strong>${displayDetail}</div>`;
         return route?.id
             ? window.AKEUI.entryLinkHtml({ plugin: route.plugin, id: route.id, label: title || label, className: 'baker-attachment', contentHtml })
             : `<div class="baker-attachment">${contentHtml}</div>`;
@@ -293,10 +300,10 @@
         const reactions = parseContentParams(node.contentParams);
         if (!Array.isArray(reactions)) return `<div class="baker-system-message">${escapeHtml(t('reactions'))}</div>`;
         return `<div class="baker-reactions">${reactions.map(reaction => {
-            const people = (reaction.npcIds || []).map(id => chatName(state.chats[id], id)).join('、');
+            const people = (reaction.npcIds || []).map(id => chatName(state.chats[id])).join('、');
             const resourceId = reaction.emojiResPath || '';
             const source = stickerUrl(resourceId);
-            const emoji = source ? `<img class="baker-reaction__emoji" src="${escapeHtml(source)}" alt="${escapeHtml(resourceId)}" loading="lazy">` : escapeHtml(resourceId || t('emoji'));
+            const emoji = source ? `<img class="baker-reaction__emoji" src="${escapeHtml(source)}" alt="${escapeHtml(t('emoji'))}" loading="lazy">` : escapeHtml(showHidden() ? resourceId || t('emoji') : t('emoji'));
             return `<span class="baker-reaction">${emoji}<span>${escapeHtml(people || t('people', { count: reaction.npcCount || 0 }))}</span></span>`;
         }).join('')}</div>`;
     }
@@ -318,22 +325,22 @@
 
         let attachment = '';
         const params = node.contentParam || [];
-        if (type === 4) attachment = attachmentHtml(CONTENT_LABELS[type], params[1] || params[0], t('videoUnavailable'), '▶');
-        else if (type === 5) attachment = attachmentHtml(CONTENT_LABELS[type], text || params[0], params.filter(Boolean).join(' · '), '♪');
+        if (type === 4) attachment = attachmentHtml(CONTENT_LABELS[type], showHidden() ? params[1] || params[0] : CONTENT_LABELS[type], t('videoUnavailable'), '▶');
+        else if (type === 5) attachment = attachmentHtml(CONTENT_LABELS[type], text || (showHidden() ? params[0] : CONTENT_LABELS[type]), showHidden() ? params.filter(Boolean).join(' · ') : CONTENT_LABELS[type], '♪');
         else if (type === 6) {
             const itemId = params[0] || '';
             const item = state.items[itemId] || {};
-            attachment = attachmentHtml(CONTENT_LABELS[type], item.name?.text || itemId, itemId, '+', { plugin: 'v3_item', id: itemId });
+            attachment = attachmentHtml(CONTENT_LABELS[type], item.name?.text || (showHidden() ? itemId : CONTENT_LABELS[type]), showHidden() ? itemId : CONTENT_LABELS[type], '+', { plugin: 'v3_item', id: itemId });
         } else if (type === 8) {
             const linkedChat = state.chats[params[0]];
-            attachment = attachmentHtml(CONTENT_LABELS[type], chatName(linkedChat, params[0]), params[1] || params[0], '@');
+            attachment = attachmentHtml(CONTENT_LABELS[type], chatName(linkedChat), showHidden() ? params[1] || params[0] : CONTENT_LABELS[type], '@');
         } else if (type === 10) {
             const archive = parseContentParams(node.contentParams) || {};
-            attachment = attachmentHtml(CONTENT_LABELS[type], archive.id || t('narrative'), archive.phaseId || t('archiveRecord'), '#');
+            attachment = attachmentHtml(CONTENT_LABELS[type], showHidden() ? archive.id || t('narrative') : t('narrative'), showHidden() ? archive.phaseId || t('archiveRecord') : t('archiveRecord'), '#');
         } else if (type === 12) {
             const missionId = node.linkMissionId || params[0] || '';
-            attachment = attachmentHtml(CONTENT_LABELS[type], missionId, t('missionAttachment'), '!', { plugin: 'v3_mission', id: missionId });
-        } else attachment = attachmentHtml(CONTENT_LABELS[type] || t('messageType', { type }), text, params.join(' · '), '?');
+            attachment = attachmentHtml(CONTENT_LABELS[type], showHidden() ? missionId : CONTENT_LABELS[type], t('missionAttachment'), '!', { plugin: 'v3_mission', id: missionId });
+        } else attachment = attachmentHtml(CONTENT_LABELS[type] || t('messageType', { type }), text, showHidden() ? params.join(' · ') : '', '?');
         const caption = text && type !== 5 ? `<div class="baker-bubble__text">${richText(text)}</div>` : '';
         return bubbleMessage(node, row, attachment + caption);
     }
@@ -347,7 +354,7 @@
             const option = state.options[id];
             const resourceId = option.optionResPath || '';
             const source = stickerUrl(resourceId);
-            const label = option.optionDesc?.text || resourceId || id;
+            const label = option.optionDesc?.text || (showHidden() ? resourceId || id : t('emoji'));
             const content = source ? `<img class="baker-option__emoji" src="${escapeHtml(source)}" alt="" loading="lazy">` : escapeHtml(label);
             return `<button class="baker-option${source ? ' baker-option--emoji' : ''}${id === selectedId ? ' is-selected' : ''}" type="button" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" data-baker-dialog="${escapeHtml(dialog.dialogId)}" data-baker-node="${escapeHtml(node.contentId)}" data-baker-option="${escapeHtml(id)}" aria-pressed="${id === selectedId}">${content}</button>`;
         }).join('')}</div>`;
@@ -386,9 +393,9 @@
     function renderDialog(dialog, row) {
         const path = dialogPath(dialog);
         const content = path.map(node => `${renderNode(node, row)}${optionButtons(dialog, node)}`).join('');
-        const metadata = [dialog.dialogId, dialog.relatedMissionId ? t('missionId', { id: dialog.relatedMissionId }) : '', dialog.noticeType ? t('notice') : '']
+        const metadata = [showHidden() ? dialog.dialogId : '', dialog.relatedMissionId ? (showHidden() ? t('missionId', { id: dialog.relatedMissionId }) : t('mission')) : '', dialog.noticeType ? t('notice') : '']
             .filter(Boolean).join(' · ');
-        return `<section class="baker-dialog"><div class="baker-dialog__meta">${escapeHtml(metadata)}</div>${content || `<div class="baker-system-message">${escapeHtml(t('emptyDialog'))}</div>`}</section>`;
+        return `<section class="baker-dialog">${metadata ? `<div class="baker-dialog__meta">${escapeHtml(metadata)}</div>` : ''}${content || `<div class="baker-system-message">${escapeHtml(t('emptyDialog'))}</div>`}</section>`;
     }
 
     function conversationGroups(row) {
@@ -414,15 +421,21 @@
         const type = chatType(row.chat);
         const topicCount = groups.filter(group => group.topic).length;
         const threads = groups.length ? groups.map(group => {
-            const title = group.topic?.topicName?.text || group.topic?.topicStartOptionDesc?.text || (row.dialogs.length === 1 ? t('dialog') : group.dialogs[0].dialogId);
-            return `<section class="baker-thread"><h3 class="baker-thread__heading"><strong>${escapeHtml(title)}</strong>${group.topic ? `<span>${escapeHtml(t('segments', { count: group.dialogs.length }))}</span>` : ''}</h3>${group.dialogs.sort((a, b) => naturalCompare(a.dialogId, b.dialogId)).map(dialog => renderDialog(dialog, row)).join('')}</section>`;
+            const title = group.topic?.topicName?.text || group.topic?.topicStartOptionDesc?.text || (showHidden() ? group.dialogs[0].dialogId : t('dialog'));
+            return `<section class="baker-thread ake-ui-section"><header class="ake-ui-section__header"><h3 class="ake-ui-section__title">${escapeHtml(title)}</h3>${group.topic ? `<span class="ake-ui-section__meta">${escapeHtml(t('segments', { count: group.dialogs.length }))}</span>` : ''}</header>${group.dialogs.sort((a, b) => naturalCompare(a.dialogId, b.dialogId)).map(dialog => renderDialog(dialog, row)).join('')}</section>`;
         }).join('') : `<div class="baker-welcome"><b>${escapeHtml(t('emptyContact'))}</b></div>`;
+        const iconUrl = avatarUrl(row.chat);
+        const icon = iconUrl ? { src: iconUrl, alt: '' } : window.AKEUI.element('span', 'baker-avatar baker-avatar--placeholder', Array.from(row.name)[0] || '?');
+        const header = window.AKEUI.detailHeader({
+            className: 'baker-chat-header',
+            icon,
+            title: row.name,
+            id: showHidden() ? row.id : '',
+            subtitle: type.label,
+            after: window.AKEUI.fragment(`<div class="baker-chat-header__stats">${window.AKEUI.badge(t('dialogs', { count: row.dialogs.length })).outerHTML}${window.AKEUI.badge(t('topics', { count: topicCount })).outerHTML}</div>`)
+        });
         elements.conversation.innerHTML = `
-            <header class="baker-chat-header">
-                ${avatarHtml(row.chat, row.name)}
-                <div><h2>${escapeHtml(row.name)}</h2><p>${escapeHtml(row.id)} · ${escapeHtml(type.label)}</p></div>
-                <div class="baker-chat-header__stats"><span class="baker-badge">${escapeHtml(t('dialogs', { count: row.dialogs.length }))}</span><span class="baker-badge">${escapeHtml(t('topics', { count: topicCount }))}</span></div>
-            </header>
+            ${header.outerHTML}
             <div class="baker-thread-list">${threads}</div>
         `;
     }

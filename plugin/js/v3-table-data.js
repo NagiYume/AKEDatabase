@@ -979,11 +979,15 @@
             dungeon_actmonster: 'eventCombat', dungeon_challenge: 'challenge', dungeon_resource: 'resource',
             dungeon_weeklyraid: 'weeklyRaid', dungeon_char: 'characterMission', dungeon_chartutorial: 'characterTutorial',
             dungeon_contract: 'contingencyContract', dungeon_train: 'training', dungeon_worldlevel: 'worldLevel',
-            dungeon_wuling_A: 'wulingA', dungeon_wuling_B: 'wulingB'
+            dungeon_wuling_A: 'wulingA', dungeon_wuling_B: 'wulingB', dungeon_puzzle: 'mystery',
+            dungeon_roguelike: 'protocolDivergence'
         };
         const rows = Object.entries(series).filter(([templateId, row]) => row.gameCategory && includeSeries(row, templateId)).map(([templateId, row], index) => ({
-            templateId, name: text(row.name, templateId), rarity: dungeonRarity(row),
-            gameCategory: row.gameCategory, gameCategoryName: categoryNames[row.gameCategory] ? dungeonT(`categories.${categoryNames[row.gameCategory]}`) : row.gameCategory,
+            templateId,
+            name: text(row.name, (row.includeDungeonIds || []).length === 1
+                ? text(dungeons[row.includeDungeonIds[0]]?.dungeonName, templateId) : templateId),
+            rarity: dungeonRarity(row),
+            gameCategory: row.gameCategory, gameCategoryName: dungeonT(`categories.${categoryNames[row.gameCategory] || 'other'}`),
             categoryOrder: dungeonRarity(row) * -1, dungeonCount: (row.includeDungeonIds || []).length,
             image: row.dungeonPicPath ? `/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/dungeon/${row.dungeonPicPath}_bg.png` : '',
             contentFile: `/__v3/${module}/${templateId}.json`, sourceOrder: index, hidden: false,
@@ -1190,14 +1194,14 @@
     function rewardsToView(rewardId, rewards, items) {
         return (rewards[rewardId]?.itemBundles || []).map(bundle => {
             const item = items[bundle.id] || {};
-            return { id: bundle.id, count: bundle.count, name: text(item.name, bundle.id), picpath: icon('item', bundle.id, item.iconId) };
+            return { id: bundle.id, count: bundle.count, name: text(item.name), picpath: icon('item', bundle.id, item.iconId) };
         });
     }
 
     function itemsToView(itemIds, items) {
         return [...new Set((itemIds || []).filter(Boolean))].map(itemId => {
             const item = items[itemId] || {};
-            return { id: itemId, count: null, name: text(item.name, itemId), picpath: icon('item', itemId, item.iconId) };
+            return { id: itemId, count: null, name: text(item.name), picpath: icon('item', itemId, item.iconId) };
         });
     }
 
@@ -1225,8 +1229,8 @@
             const open = range.openTime ? new Date(range.openTime).getTime() : 0;
             const close = range.closeTime ? new Date(range.closeTime).getTime() : 0;
             const statusOrder = !close ? 3 : (open > now ? 1 : (close < now ? 2 : 0));
-            return { activityId, name: text(row.name, activityId), rawType: row.type,
-                tags: (row.tagIds || []).map(tagId => ({ tagId, name: text(tags[tagId]?.name, tagId) })),
+            return { activityId, name: text(row.name), rawType: row.type,
+                tags: (row.tagIds || []).map(tagId => ({ tagId, name: text(tags[tagId]?.name) })),
                 openTime: range.openTime || '', closeTime: range.closeTime || '',
                 tabImg: row.tabImg ? `/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/activity/${row.tabImg}.png` : '', contentFile: `/__v3/activity/${activityId}.json`,
                 statusOrder, sourceOrder: row.sortId ?? index, hidden: false,
@@ -1343,13 +1347,13 @@
         const stageList = {};
         stageRows.forEach(({ stageId, stage, dungeon, source }) => {
             if (source === 'dungeon') {
-                stageList[stageId] = { name: text(dungeon.dungeonName, stageId), desc: text(dungeon.dungeonDesc), sortId: dungeon.sortId,
+                stageList[stageId] = { name: text(dungeon.dungeonName), desc: text(dungeon.dungeonDesc), sortId: dungeon.sortId,
                     dungeonSeriesId: dungeon.dungeonSeriesId,
                     opentime: times[row.timeId]?.timeRangeList?.[0]?.openTime || '', rewarddetail: rewardsToView(dungeon.rewardId, rewards, items) };
                 return;
             }
             const range = times[stage.timeId]?.timeRangeList?.[0] || {};
-            stageList[stageId] = { name: text(stage.name, stageId), desc: text(stage.desc), sortId: stage.sortId,
+            stageList[stageId] = { name: text(stage.name), desc: text(stage.desc), sortId: stage.sortId,
                 opentime: range.openTime || '', rewarddetail: rewardsToView(stage.rewardId, rewards, items) };
         });
         const rewardGroups = rewardGroupRows.map(group => {
@@ -1357,9 +1361,9 @@
             return { ...view, rewarddetail: directItemIds ? itemsToView(directItemIds, items) : rewardsToView(rewardId, rewards, items) };
         }).filter(group => group.rewarddetail.length > 0).sort((a, b) => (a.sortId || 0) - (b.sortId || 0));
 
-        return { id, name: text(row.name, id), desc: text(row.desc), conditions: (row.conditions || []).map(condition => text(condition.desc)),
+        return { id, name: text(row.name), desc: text(row.desc), conditions: (row.conditions || []).map(condition => text(condition.desc)),
             rewarddetail: rewardsToView(row.rewardId, rewards, items), sortId: row.sortId, tabImg: row.tabImg, tabImgColor: row.tabImgColor,
-            tags: (row.tagIds || []).map(tagId => ({ tagId, name: text(tags[tagId]?.name, tagId) })), rawType: row.type,
+            tags: (row.tagIds || []).map(tagId => ({ tagId, name: text(tags[tagId]?.name) })), rawType: row.type,
             instruction: instruction ? {
                 id: row.instructionId,
                 title: text(instruction.title),

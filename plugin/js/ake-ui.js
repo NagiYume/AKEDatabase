@@ -519,6 +519,12 @@
             } else {
                 button.setAttribute('aria-pressed', String(Boolean(item.active)));
             }
+            if (item.icon?.src) {
+                const image = element('img');
+                image.src = item.icon.src;
+                image.alt = item.icon.alt || '';
+                button.appendChild(image);
+            }
             if (isPresent(item.label)) button.appendChild(element('span', null, item.label));
             if (isPresent(item.count)) button.appendChild(element('small', null, item.count));
             applyAttributes(button, item.attributes);
