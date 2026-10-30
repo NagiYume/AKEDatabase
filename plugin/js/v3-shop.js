@@ -75,7 +75,7 @@
         });
         Array.from(groups.keys()).sort((a, b) => b - a);
         const rarityNames = { 6: '六星', 5: '五星', 4: '四星', 3: '三星' };
-        let html = `<div class="akeshop-pool-content"><b>${escapeHtml(gameText(pool?.name, pool?.id || ''))}</b>`;
+        let html = `<div class="akeshop-pool-content"><b>${escapeHtml(gameText(pool?.name, showIds() ? pool?.id : t('weaponClaim')))}</b>`;
         const entries = Array.from(groups.entries()).sort((a, b) => b[0] - a[0]);
         entries.forEach(([rarity, items], idx) => {
             const isFirst = idx === 0;
@@ -254,7 +254,7 @@
         const weapon = weaponId ? state.tables.weapons[weaponId] : null;
         const name = rewards.length
             ? rewards.map(entry => gameText(entry.item.name, entry.id)).join(' + ')
-            : gameText(pool?.name, goods.goodsId);
+            : gameText(pool?.name, showIds() ? goods.goodsId : t('unknown'));
         const currency = itemInfo(goods.moneyId);
         const tag = state.tables.goodsTags[goods.goodsTagId] || state.tables.commonGoodsTags[goods.goodsTagId];
         return {
@@ -269,7 +269,7 @@
             poolContent,
             weapon,
             currency,
-            tagName: gameText(tag?.tagName, goods.goodsTagId),
+            tagName: gameText(tag?.tagName),
             hint: '',
             recommendation,
             hidden: false,
@@ -298,7 +298,7 @@
         return {
             id: goods.cashGoodsId,
             kind: 'cash',
-            name: gameText(goods.goodsName, goods.cashGoodsId),
+            name: gameText(goods.goodsName, showIds() ? goods.cashGoodsId : t('unknown')),
             goods,
             meta,
             rewards,
@@ -321,7 +321,7 @@
         const sid = shop[idField];
         const override = t(`shopNames.${sid}`, null, '');
         if (override) return override;
-        return gameText(shop.shopName, sid);
+        return gameText(shop.shopName, showIds() ? sid : t('unknown'));
     }
 
     function normalShops(group) {
@@ -348,7 +348,7 @@
     function recommendationShop() {
         const products = [];
         Object.values(state.tables.recommendations).sort((a, b) => (a.priority || 0) - (b.priority || 0)).forEach(row => {
-            const recommendation = { id: row.id, name: gameText(row.name, row.id), type: row.type };
+            const recommendation = { id: row.id, name: gameText(row.name, showIds() ? row.id : t('unknown')), type: row.type };
             let ids = row.cashGoodsIdList || [];
             if (!ids.length && row.type === 'BattlePass') ids = state.tables.cashShops.BP?.cashGoodsIds || [];
             ids.forEach(id => {
@@ -457,7 +457,7 @@
         if (additional) {
             const activity = state.tables.activities[additional.activityId] || {};
             const range = state.tables.times[activity.timeId]?.timeRangeList?.[0] || {};
-            rows.push({ label: t('context.activity'), value: gameText(activity.name, additional.activityId), route: { plugin: 'v3_activity', id: additional.activityId } });
+            rows.push({ label: t('context.activity'), value: gameText(activity.name, showIds() ? additional.activityId : t('unknown')), route: { plugin: 'v3_activity', id: additional.activityId } });
             if (range.openTime || range.closeTime) rows.push({
                 label: t('context.openTime'),
                 value: `${formatDate(range.openTime) || t('unknown')} - ${formatDate(range.closeTime) || t('permanent')}`
@@ -466,12 +466,12 @@
         const domain = state.tables.groupDomains[group.shopGroupId];
         if (domain) {
             const domainRow = Object.values(state.tables.domains).find(row => row.domainShopGroupId === group.shopGroupId);
-            rows.push({ label: t('context.domain'), value: gameText(domainRow?.domainName, domain.domainId), route: { plugin: 'region', id: domain.domainId } });
+            rows.push({ label: t('context.domain'), value: gameText(domainRow?.domainName, showIds() ? domain.domainId : t('unknown')), route: { plugin: 'region', id: domain.domainId } });
         }
         const channels = Object.values(state.tables.channels).filter(row => row.shopGroupId === group.shopGroupId);
         if (channels.length) rows.push({
             label: t('context.channels'),
-            value: channels.map(row => gameText(row.channelName, row.levelId)).join(t('separator'))
+            value: channels.map(row => gameText(row.channelName, showIds() ? row.levelId : t('unknown'))).join(t('separator'))
         });
         return rows;
     }
@@ -503,7 +503,7 @@
         const entries = state.channelUnlocks.get(product.id) || [];
         if (!entries.length) return '';
         return `<span class="akeshop-channel-unlocks">${entries.map(entry => {
-            const name = gameText(entry.channel.channelName, entry.channel.levelId || entry.channelId);
+            const name = gameText(entry.channel.channelName, showIds() ? entry.channel.levelId || entry.channelId : t('unknown'));
             return `<span>${escapeHtml(t('channel.goodsUnlock', { name, level: entry.level }, `${name} Level ${entry.level} unlock`))}</span>`;
         }).join('')}</span>`;
     }
@@ -518,15 +518,15 @@
                 .map(([level, levelRow]) => {
                     const costs = (levelRow.costItemIdList || []).map((itemId, index) => {
                         const item = itemInfo(itemId);
-                        const name = gameText(item.name, itemId);
-                        return window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: itemId, label: name, contentHtml: `${escapeHtml(name)} x${formatNumber(levelRow.costItemNumList?.[index])}` });
+                        return linkedMaterial(itemId, item, levelRow.costItemNumList?.[index], 'akeshop-channel-cost');
                     });
-                    const channelName = gameText(channel.channelName, channel.levelId || channelId);
-                    return `<tr><td><b>${escapeHtml(channelName)}</b><small class="akeshop-shop-id">${escapeHtml(channelId)}</small></td>
-                        <td>${escapeHtml(level)}</td><td>${costs.length ? costs.join(' + ') : escapeHtml(t('channel.none', null, 'None'))}</td></tr>`;
+                    const channelName = gameText(channel.channelName, showIds() ? channel.levelId || channelId : t('unknown'));
+                    return `<tr><td><b>${escapeHtml(channelName)}</b>${showIds() ? `<small class="akeshop-shop-id">${escapeHtml(channelId)}</small>` : ''}</td>
+                        <td>${escapeHtml(level)}</td><td><div class="ake-ui-material__items">${costs.length ? costs.join('') : escapeHtml(t('channel.none', null, 'None'))}</div></td></tr>`;
                 }));
-        return `<section class="akeshop-shop-section"><header><div><h2>${escapeHtml(t('channel.title', null, 'Regional Dispatch Levels'))}</h2></div><span>${escapeHtml(t('channel.count', { count: channels.length }, `${channels.length} dispatch points`))}</span></header>
-            <div class="ake-ui-table-shell"><table class="ake-ui-table"><thead><tr><th>${escapeHtml(t('channel.point', null, 'Dispatch Point'))}</th><th>${escapeHtml(t('channel.level', null, 'Level'))}</th><th>${escapeHtml(t('channel.upgradeCost', null, 'Upgrade Cost'))}</th></tr></thead><tbody>${rows.join('')}</tbody></table></div></section>`;
+        return `<details class="ake-ui-section akeshop-channel-details">
+            <summary><strong>${escapeHtml(t('channel.title', null, 'Regional Dispatch Levels'))}</strong><span>${escapeHtml(t('channel.count', { count: channels.length }, `${channels.length} dispatch points`))}</span><span class="akeshop-details-chevron" aria-hidden="true"></span></summary>
+            <div class="ake-ui-table-shell"><table class="ake-ui-table"><thead><tr><th>${escapeHtml(t('channel.point', null, 'Dispatch Point'))}</th><th>${escapeHtml(t('channel.level', null, 'Level'))}</th><th>${escapeHtml(t('channel.upgradeCost', null, 'Upgrade Cost'))}</th></tr></thead><tbody>${rows.join('')}</tbody></table></div></details>`;
     }
 
     function matches(product) {
@@ -541,7 +541,7 @@
     }
 
     function productCount(group) {
-        return shopsForGroup(group).filter(shop => shop.kind !== 'rotation').reduce((sum, shop) => sum + shop.products.length, 0);
+        return shopsForGroup(group).reduce((sum, shop) => sum + shop.products.length, 0);
     }
 
     function changeTag(changeType) {
@@ -551,7 +551,7 @@
             null,
             changeType === 'added' ? '新增' : '修改'
         ) || (changeType === 'added' ? '新增' : '修改');
-        return `<span class="ake-ui-badge ake-ui-badge--corner" data-tone="${changeType}">${escapeHtml(label)}</span>`;
+        return window.AKEUI.badge({ label, tone: changeType, className: 'ake-ui-badge--change' })?.outerHTML || '';
     }
 
     function changeTabBadge(changeType) {
@@ -580,7 +580,7 @@
             : '';
         return window.AKEUI.directoryItem({
             layout: 'entity',
-            title: gameText(group.shopGroupName, group.shopGroupId),
+            title: gameText(group.shopGroupName, showIds() ? group.shopGroupId : t('unknown')),
             subtitle: groupType(group),
             count: productCount(group),
             change: changeType ? { type: changeType, label: changeLabel } : null,
@@ -603,13 +603,23 @@
 
     function rewardRows(items, className) {
         if (!items.length) return '';
-        return `<div class="akeshop-rewards ${className || ''}">${items.map(entry => {
-            const name = gameText(entry.item.name, entry.id);
-            return window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: entry.id, label: name, className: 'akeshop-reward', contentHtml: `
-                ${entry.item.iconId ? `<img src="/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/${escapeHtml(entry.item.iconId)}.png" alt="">` : ''}
-                <span>${escapeHtml(name)}</span><b>×${formatNumber(entry.count)}</b>
-            ` });
-        }).join('')}</div>`;
+        const rows = items.map(entry => linkedMaterial(entry.id, entry.item, entry.count, 'akeshop-reward'));
+        return `<div class="ake-ui-material__items akeshop-rewards ${className || ''}">${rows.join('')}</div>`;
+    }
+
+    function linkedMaterial(id, item, count, className) {
+        const name = gameText(item.name, showIds() ? id : t('unknown'));
+        const link = window.AKEUI.entryLink({ plugin: 'v3_item', id, label: name });
+        const node = window.AKEUI.materialItem({
+            element: link ? 'a' : 'span',
+            className,
+            attributes: Object.fromEntries(Array.from(link?.attributes || [], attr => [attr.name, attr.value])),
+            icon: item.iconId ? `/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/${item.iconId}.png` : '',
+            name,
+            count: formatNumber(count),
+            description: name
+        });
+        return node?.outerHTML || '';
     }
 
     function refreshLabel(type) {
@@ -631,7 +641,7 @@
             original = current;
             current = Math.ceil(current * discount);
         }
-        const currencyName = gameText(product.currency.name, goods.moneyId);
+        const currencyName = gameText(product.currency.name, showIds() ? goods.moneyId : t('unknown'));
         return window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: goods.moneyId, label: currencyName, className: 'akeshop-price', contentHtml: `
             ${product.currency.iconId ? `<img src="/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/${escapeHtml(product.currency.iconId)}.png" alt="">` : ''}
             ${original ? `<del>${formatNumber(original)}</del>` : ''}<strong>${formatNumber(current)}</strong><span>${escapeHtml(currencyName)}</span>
@@ -687,6 +697,7 @@
 
     function renderProduct(product) {
         const icon = productIcon(product);
+        const singleReward = product.kind === 'normal' && product.rewards.length === 1;
         const badges = [];
         if (product.tagName) badges.push(product.tagName);
         if (product.recommendation?.name) badges.push(product.recommendation.name);
@@ -695,24 +706,31 @@
         const changeHtml = changeTag(product.changeType);
         const targetId = product.weapon ? (product.pool?.upWeaponIds?.[0] || '') : (product.rewards.length === 1 ? product.rewards[0].id : '');
         const targetPlugin = targetId && state.tables.weapons[targetId] ? 'v3_weapon' : 'v3_item';
-        const productTitle = targetId
-            ? window.AKEUI.entryLinkHtml({ plugin: targetPlugin, id: targetId, label: product.name, className: 'ake-ui-card__title', contentHtml: escapeHtml(product.name) })
-            : `<h3 class="ake-ui-card__title">${escapeHtml(product.name)}</h3>`;
-        return `<article class="ake-ui-card has-media${product.hidden ? ' is-hidden' : ''}" data-ake-component="card" data-card-kind="shop-product" data-density="regular"${product.rarity ? ` data-accent="rarity" data-accent-value="${product.rarity}"` : ''}>
-            ${changeHtml}
-            <div class="ake-ui-card__content">
-                <header class="ake-ui-card__header"><div class="ake-ui-card__media">${icon ? `<img src="${escapeHtml(icon)}" alt="">` : '<span class="is-placeholder" aria-hidden="true">◇</span>'}</div><div class="ake-ui-card__heading">${productTitle}<small class="ake-ui-card__id">${escapeHtml(product.id)}</small></div></header>
-                ${badges.length ? `<div class="ake-ui-card__badges">${badges.map(value => `<span class="ake-ui-badge">${escapeHtml(value)}</span>`).join('')}</div>` : ''}
-                ${product.kind === 'cash' ? cashPrice(product) : normalPrice(product)}
-                ${rewardRows(product.rewards)}
-                ${product.bonusRewards.length ? `<div class="akeshop-subtitle">${escapeHtml(t('bonusReward'))}</div>${rewardRows(product.bonusRewards, 'is-bonus')}` : ''}
-                ${product.monthlyRewards.length ? `<div class="akeshop-subtitle">${escapeHtml(t('monthlyReward'))}</div>${rewardRows(product.monthlyRewards, 'is-monthly')}` : ''}
-                ${product.pool ? renderPoolContent(product.pool, product.poolContent) : ''}
-                ${product.hint ? `<div class="akeshop-note">${parseGameText(product.hint)}</div>` : ''}
-                ${renderUnlockRequirements(product.goods, 'goods')}
-                <footer class="ake-ui-card__footer"><span>${escapeHtml(limitLabel(product))}</span>${renderChannelUnlocks(product)}</footer>
-            </div>
-        </article>`;
+        const card = window.AKEUI.card({
+            density: 'regular',
+            ...(icon ? { media: { src: icon } } : {}),
+            header: { title: product.name, id: showIds() ? product.id : '', badges },
+            ...(product.rarity ? { accent: { type: 'rarity', value: product.rarity } } : {}),
+            attributes: { 'data-card-kind': 'shop-product' }
+        });
+        if (product.hidden) card.classList.add('is-hidden');
+        if (changeHtml) card.insertAdjacentHTML('afterbegin', changeHtml);
+        if (targetId) {
+            const title = card.querySelector('.ake-ui-card__title');
+            title.replaceChildren(window.AKEUI.entryLink({ plugin: targetPlugin, id: targetId, label: product.name }));
+        }
+        if (singleReward) card.querySelector('.ake-ui-card__title').insertAdjacentHTML('beforeend', ` <small class="akeshop-yield">×${formatNumber(product.rewards[0].count)}</small>`);
+        card.querySelector('.ake-ui-card__content').insertAdjacentHTML('beforeend', `
+            ${product.kind === 'cash' ? cashPrice(product) : normalPrice(product)}
+            ${singleReward ? '' : rewardRows(product.rewards)}
+            ${!product.rewards.length && !product.pool ? `<div class="akeshop-note">${escapeHtml(t('rewardUnlisted'))}</div>` : ''}
+            ${product.bonusRewards.length ? `<div class="akeshop-subtitle">${escapeHtml(t('bonusReward'))}</div>${rewardRows(product.bonusRewards, 'is-bonus')}` : ''}
+            ${product.monthlyRewards.length ? `<div class="akeshop-subtitle">${escapeHtml(t('monthlyReward'))}</div>${rewardRows(product.monthlyRewards, 'is-monthly')}` : ''}
+            ${product.pool ? renderPoolContent(product.pool, product.poolContent) : ''}
+            ${product.hint ? `<div class="akeshop-note">${parseGameText(product.hint)}</div>` : ''}
+            ${renderUnlockRequirements(product.goods, 'goods')}
+            <footer class="ake-ui-card__footer"><span>${escapeHtml(limitLabel(product))}</span>${renderChannelUnlocks(product)}</footer>`);
+        return card.outerHTML;
     }
 
     function renderRotationSection(products, sectionKey, nextProducts) {
@@ -725,7 +743,7 @@
                 <span class="akeshop-countdown-inline"><span class="akeshop-cd-label">${escapeHtml(t('rotation.refreshIn'))}</span> <strong class="${cdClass}">--:--:--</strong></span>
             </div>
             <div class="ake-ui-card-grid" data-size="wide">${products.map(renderProduct).join('')}</div>
-            ${hasNext ? `<h3 class="akeshop-rotation-title akeshop-rotation-next">${escapeHtml(t('rotation.nextBatch'))}</h3><div class="ake-ui-card-grid" data-size="wide">${nextProducts.map(renderProduct).join('')}</div>` : ''}
+            ${hasNext ? `<details class="akeshop-next-details"><summary>${escapeHtml(t('rotation.nextBatch'))}<span class="akeshop-details-chevron" aria-hidden="true"></span></summary><div class="ake-ui-card-grid" data-size="wide">${nextProducts.map(renderProduct).join('')}</div></details>` : ''}
         </div>`;
     }
 
@@ -814,9 +832,8 @@
     function renderRotationCombinedTable() {
         const rot = rotationState();
         const rotations = state.weeklyRotations;
-        const header1Html = '<th></th><th></th><th></th><th></th><th></th>' +
-            `<th colspan="7">${escapeHtml(t('rotation.dailyTitle'))}</th>`;
-        const header2Html = '<th></th>' +
+        const header1Html = `<th colspan="5">${escapeHtml(t('rotation.weekly'))}</th><th colspan="7">${escapeHtml(t('rotation.dailyTitle'))}</th>`;
+        const header2Html = `<th>${escapeHtml(t('rotation.weekNumber'))}</th>` +
             `<th>${escapeHtml(t('rotation.startDate'))}</th>` +
             `<th>${escapeHtml(t('rotation.endDate'))}</th>` +
             `<th>${escapeHtml(t('rotation.weekly6'))}</th>` +
@@ -847,7 +864,7 @@
         }
 
         return `<div class="akeshop-rotation-full">
-            <details class="akeshop-rotation-details" open>
+            <details class="akeshop-rotation-details">
                 <summary>${escapeHtml(t('rotation.fullTable'))}</summary>
                 <div class="ake-ui-table-shell">
                     <table class="ake-ui-table">
@@ -879,20 +896,39 @@
         const packageValueLink = group.shopGroupId === 'shop_pay_gift_pack'
             ? `<a class="akeshop-package-value-link" href="${PACKAGE_VALUE_URL}" target="_blank" rel="noopener noreferrer">${escapeHtml(t('packageValueLink', null, 'View package value on Endfield Yituliu'))}</a>`
             : '';
+        const groupHeader = window.AKEUI.detailHeader({
+            className: 'akeshop-group-header',
+            titleElement: 'h1',
+            eyebrow: groupType(group),
+            title: gameText(group.shopGroupName, showIds() ? group.shopGroupId : t('unknown')),
+            id: showIds() ? group.shopGroupId : '',
+            badges: [{ label: t('goodsCount', { count: total }) }]
+        });
+        if (packageValueLink) groupHeader.insertAdjacentHTML('beforeend', packageValueLink);
+        const shopTabs = shops.length > 1 ? window.AKEUI.tabs({
+            variant: 'underline',
+            items: shops.map(shop => ({
+                label: shop.name,
+                count: shop.products.length,
+                active: shop.id === state.activeShopId,
+                attributes: { 'data-shop-id': shop.id }
+            }))
+        }) : null;
+        shopTabs?.querySelectorAll('[data-shop-id]').forEach(button => {
+            const shop = shops.find(row => row.id === button.dataset.shopId);
+            if (shop?.changeType) button.insertAdjacentHTML('beforeend', changeTabBadge(shop.changeType));
+        });
         const rotationProductsHtml = activeShop?.kind === 'rotation'
             ? `<div id="akeShopCountdown">${renderRotationSection(activeShop.weekly, 'weekly', nextBatchWeekly())}${renderRotationSection(activeShop.daily, 'daily', nextBatchDaily())}${renderRotationCombinedTable()}</div>`
             : '';
-        content.innerHTML = `<section class="akeshop-group-header">
-            <div><span>${escapeHtml(groupType(group))}</span><h1>${escapeHtml(gameText(group.shopGroupName, group.shopGroupId))}</h1><small class="akeshop-group-id">${escapeHtml(group.shopGroupId)}</small></div>
-            <div class="akeshop-group-actions"><strong>${escapeHtml(t('goodsCount', { count: total }))}</strong>${packageValueLink}</div>
-        </section>
+        content.innerHTML = `${groupHeader.outerHTML}
         ${contextRows.length ? `<dl class="akeshop-context">${contextRows.map(row => `<div><dt>${escapeHtml(row.label)}</dt><dd>${row.route ? window.AKEUI.entryLinkHtml({ ...row.route, label: row.value, contentHtml: escapeHtml(row.value) }) : escapeHtml(row.value)}</dd></div>`).join('')}</dl>` : ''}
         ${renderUnlockRequirements(group, 'group')}
         ${renderChannelTimeline(group)}
-        ${shops.length > 1 ? `<div class="ake-ui-tabs" data-variant="underline" role="tablist">${shops.map(shop => `<button type="button" role="tab" aria-selected="${shop.id === state.activeShopId}" class="ake-ui-tabs__button${shop.id === state.activeShopId ? ' is-active' : ''}" data-shop-id="${escapeHtml(shop.id)}"><span>${escapeHtml(shop.name)}</span><b>${shop.products.length}</b>${changeTabBadge(shop.changeType)}</button>`).join('')}</div>` : ''}
+        ${shopTabs?.outerHTML || ''}
         ${activeShop && activeShop.kind === 'rotation'
             ? `<section class="akeshop-shop-section"><header><div><h2>${escapeHtml(activeShop.name)}</h2></div><span>${escapeHtml(t('goodsCount', { count: activeShop.products.length }))}</span></header>${rotationProductsHtml}</section>`
-            : activeShop ? `<section class="akeshop-shop-section"><header><div><h2>${escapeHtml(activeShop.name)}</h2><small class="akeshop-shop-id">${escapeHtml(activeShop.id)}</small></div><span>${escapeHtml(t('goodsCount', { count: activeShop.products.length }))}</span></header>${renderUnlockRequirements(activeShop.raw, 'shop')}<div class="ake-ui-card-grid" data-size="wide">${activeShop.products.map(renderProduct).join('')}</div></section>` : `<div class="ake-ui-state" data-state="empty">${escapeHtml(t('noGoods'))}</div>`}`;
+            : activeShop ? `<section class="akeshop-shop-section"><header><div><h2>${escapeHtml(activeShop.name)}</h2>${showIds() ? `<small class="akeshop-shop-id">${escapeHtml(activeShop.id)}</small>` : ''}</div><span>${escapeHtml(t('goodsCount', { count: activeShop.products.length }))}</span></header>${renderUnlockRequirements(activeShop.raw, 'shop')}<div class="ake-ui-card-grid" data-size="wide">${activeShop.products.map(renderProduct).join('')}</div></section>` : `<div class="ake-ui-state" data-state="empty">${escapeHtml(t('noGoods'))}</div>`}`;
         if (activeShop?.kind === 'rotation') startCountdown(); else stopCountdown();
     }
 

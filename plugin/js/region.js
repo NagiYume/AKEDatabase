@@ -86,19 +86,22 @@
     }
 
     function describeDomainLevel(domain, row, previous, levelNames) {
-        const descriptions = [];
+        const general = [];
+        const facilities = [];
         if (!previous || Number(row.moneyLimit) !== Number(previous.moneyLimit)) {
-            descriptions.push(t('effects.moneyLimit', { value: formatNumber(row.moneyLimit) }, `调度券持有上限：${formatNumber(row.moneyLimit)}`));
+            general.push(t('effects.moneyLimit', { value: formatNumber(row.moneyLimit) }, `调度券持有上限：${formatNumber(row.moneyLimit)}`));
         }
         Object.entries(row.domainDevelopmentLevelEffect || {}).forEach(([levelId, effect]) => {
             const before = previous?.domainDevelopmentLevelEffect?.[levelId] || {};
             const name = levelNames[levelId] || (showTechnicalIds() ? levelId : t('unknownFacility', null, '未命名设施'));
-            if (effect.isMineOutputUp) descriptions.push(`${name}：${t('effects.mineOutput', null, '矿物产量与纯度提升')}`);
-            if (!previous || Number(effect.bandwidth) !== Number(before.bandwidth)) descriptions.push(`${name}：${t('effects.bandwidth', { value: effect.bandwidth }, `协议容量上限 ${effect.bandwidth}`)}`);
-            if (!previous || Number(effect.battleBuildingLimit) !== Number(before.battleBuildingLimit)) descriptions.push(`${name}：${t('effects.battleBuilding', { value: effect.battleBuildingLimit }, `战斗设施上限 ${effect.battleBuildingLimit}`)}`);
-            if (!previous || Number(effect.travelPoleLimit) !== Number(before.travelPoleLimit)) descriptions.push(`${name}：${t('effects.travelPole', { value: effect.travelPoleLimit }, `滑索架上限 ${effect.travelPoleLimit}`)}`);
+            const changes = [];
+            if (effect.isMineOutputUp) changes.push(t('effects.mineOutput', null, '矿物产量与纯度提升'));
+            if (!previous || Number(effect.bandwidth) !== Number(before.bandwidth)) changes.push(t('effects.bandwidth', { value: effect.bandwidth }, `协议容量上限 ${effect.bandwidth}`));
+            if (!previous || Number(effect.battleBuildingLimit) !== Number(before.battleBuildingLimit)) changes.push(t('effects.battleBuilding', { value: effect.battleBuildingLimit }, `战斗设施上限 ${effect.battleBuildingLimit}`));
+            if (!previous || Number(effect.travelPoleLimit) !== Number(before.travelPoleLimit)) changes.push(t('effects.travelPole', { value: effect.travelPoleLimit }, `滑索架上限 ${effect.travelPoleLimit}`));
+            if (changes.length) facilities.push({ name, changes });
         });
-        return descriptions;
+        return { general, facilities };
     }
 
     function buildDomain(domain, mineEntries, currentVersion, tables) {
@@ -135,7 +138,7 @@
                 level,
                 growth: row.levelUpExp,
                 outputs: Array.from(outputs, ([id, output]) => ({ id, output })),
-                descriptions: describeDomainLevel(domain, row, developmentRows[index - 1], levelNames),
+                effects: describeDomainLevel(domain, row, developmentRows[index - 1], levelNames),
                 rewards: rewardItems(row.rewardId, tables)
             };
         });
@@ -171,27 +174,46 @@
     function renderLevelOutput(domain) {
         const rows = domain.levels.map(level => {
             const production = level.outputs.length ? `<div class="region-cell-list">${level.outputs.map(item => `<div>${window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: item.id, label: itemName(item.id, domain.itemTable), className: 'ake-ui-badge', contentHtml: `<img class="ake-ui-inline-icon" src="${itemIcon(item.id, domain.itemTable)}" alt="">${escapeHtml(itemName(item.id, domain.itemTable))} ${formatNumber(item.output)}/min` })}</div>`).join('')}</div>` : '-';
-            const descriptions = level.descriptions.length ? `<div class="region-cell-list">${level.descriptions.map(description => `<div>${escapeHtml(description)}</div>`).join('')}</div>` : '-';
+            const general = level.effects.general.map(description => `<div class="region-level-effects__key">${escapeHtml(description)}</div>`).join('');
+            const facilities = level.effects.facilities;
+            const facilityDetails = facilities.length ? `<details class="region-level-effects"><summary>${escapeHtml(t('facilityChanges', { count: facilities.length }))}<span class="region-level-effects__chevron" aria-hidden="true"></span></summary><div class="region-level-effects__list">${facilities.map(facility => `<div class="region-level-effects__facility"><strong>${escapeHtml(facility.name)}</strong><ul>${facility.changes.map(change => `<li>${escapeHtml(change)}</li>`).join('')}</ul></div>`).join('')}</div></details>` : '';
+            const descriptions = general || facilityDetails ? `${general}${facilityDetails}` : '-';
             const rewards = renderItemLines(level.rewards, domain.itemTable);
             const growth = Number(level.growth) < 0 ? t('maxLevel', null, '满级') : formatNumber(level.growth);
             return `<tr><th scope="row">${level.level}</th><td>${growth}</td><td>${production}</td><td>${descriptions}</td><td>${rewards}</td></tr>`;
         }).join('');
-        return renderCollapsibleSection(t('levelOutput'), `<div class="ake-ui-table-wrap"><table class="ake-ui-table"><thead><tr><th>${commonT('level')}</th><th>${t('growth')}</th><th>${t('output')}</th><th>${t('levelDescription', null, '等级说明')}</th><th>${t('levelRewards', null, '等级奖励')}</th></tr></thead><tbody>${rows}</tbody></table></div>`);
+        return renderCollapsibleSection(t('levelOutput'), `<div class="ake-ui-table-wrap"><table class="ake-ui-table region-level-table"><thead><tr><th>${commonT('level')}</th><th>${t('growth')}</th><th>${t('output')}</th><th>${t('levelDescription', null, '等级说明')}</th><th>${t('levelRewards', null, '等级奖励')}</th></tr></thead><tbody>${rows}</tbody></table></div>`);
     }
 
     function renderMineDetails(domain) {
         const showIds = showTechnicalIds();
-        const rows = domain.mines.sort((a, b) => String(a.levelId).localeCompare(String(b.levelId)) || String(a.logicMineDataId).localeCompare(String(b.logicMineDataId))).map(mine => {
-            const stages = parseDensity(mine);
-            const ranges = stages.map((stage, index) => `${stageRangeText(stages, index)}：${formatNumber(outputPerMinute(stage.purity, mine.itemId, domain.tables))}/min，${formatNumber(stage.purity)}%`).join('<br>');
-            const oemUrl = window.AKEV3?.pointShareUrl?.(mine.logicMineDataId) || '';
-            const oemLink = oemUrl ? `<div><a class="v2eq-oem-link" href="${escapeHtml(oemUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(equipT('acquisition.oemMapLink', null, '在 OEM 查看'))}</a></div>` : '';
-            const idCell = showIds ? `<td>${escapeHtml(mine.logicMineDataId)}${mine.isNew ? ` <span class="ake-ui-badge">${t('new', null, '新增')}</span>` : ''}${oemLink}</td>` : '';
-            const mineralName = itemName(mine.itemId, domain.itemTable);
-            const mineral = window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: mine.itemId, label: mineralName, contentHtml: `<img class="ake-ui-inline-icon" src="${itemIcon(mine.itemId, domain.itemTable)}" alt="">${escapeHtml(mineralName)}` });
-            return `<tr>${idCell}<td>${escapeHtml(mine.levelName)}</td><td>${mineral}</td><td>${ranges || '-'}</td></tr>`;
+        const areas = new Map();
+        domain.mines.forEach(mine => {
+            const areaId = mine.levelId || mine.levelName;
+            if (!areas.has(areaId)) areas.set(areaId, { name: mine.levelName, mines: [] });
+            areas.get(areaId).mines.push(mine);
+        });
+        const groups = Array.from(areas.values()).map((area, areaIndex) => {
+            const configurations = new Map();
+            area.mines.forEach(mine => {
+                const stages = parseDensity(mine);
+                const key = showIds ? mine.logicMineDataId : JSON.stringify([mine.itemId, stages]);
+                if (!configurations.has(key)) configurations.set(key, { mine, stages, count: 0 });
+                configurations.get(key).count++;
+            });
+            const rows = Array.from(configurations.values()).map(({ mine, stages, count }) => {
+                const mineralName = itemName(mine.itemId, domain.itemTable);
+                const mineral = window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: mine.itemId, label: mineralName, contentHtml: `<img class="ake-ui-inline-icon" src="${itemIcon(mine.itemId, domain.itemTable)}" alt="">${escapeHtml(mineralName)}` });
+                const intervals = stages.length ? `<div class="region-mine-intervals">${stages.map((stage, index) => `<div class="region-mine-interval"><span>${escapeHtml(stageRangeText(stages, index))}</span><strong>${formatNumber(outputPerMinute(stage.purity, mine.itemId, domain.tables))}/min</strong><span>${formatNumber(stage.purity)}%</span></div>`).join('')}</div>` : '-';
+                const oemUrl = showIds ? window.AKEV3?.pointShareUrl?.(mine.logicMineDataId) || '' : '';
+                const oemLink = oemUrl ? `<a class="v2eq-oem-link" href="${escapeHtml(oemUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(equipT('acquisition.oemMapLink', null, '在 OEM 查看'))}</a>` : '';
+                const idCell = showIds ? `<td class="region-mine-id">${escapeHtml(mine.logicMineDataId)}${mine.isNew ? ` <span class="ake-ui-badge">${t('new', null, '新增')}</span>` : ''}${oemLink}</td>` : '';
+                return `<tr><td>${mineral}</td>${showIds ? idCell : `<td>${count}</td>`}<td>${intervals}</td></tr>`;
+            }).join('');
+            const label = `${escapeHtml(area.name)} <span class="region-mine-group__count">${escapeHtml(t('mineCount', { count: area.mines.length }))}</span>`;
+            return `<details class="region-mine-group"${areaIndex === 0 ? ' open' : ''}><summary><strong>${label}</strong><span class="region-section-summary__chevron" aria-hidden="true"></span></summary><div class="ake-ui-table-wrap"><table class="ake-ui-table region-mine-table"><thead><tr><th>${t('mineral')}</th><th>${showIds ? t('mineId') : t('minePoints')}</th><th>${t('stageIntervals', null, '地区等级区间、产量与纯度')}</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
         }).join('');
-        return renderCollapsibleSection(t('mineDetails'), `<div class="ake-ui-table-wrap"><table class="ake-ui-table"><thead><tr>${showIds ? `<th>${t('mineId')}</th>` : ''}<th>${t('mineRegion', null, '所在地区')}</th><th>${t('mineral')}</th><th>${t('stageIntervals', null, '地区等级区间、产量与纯度')}</th></tr></thead><tbody>${rows}</tbody></table></div>`);
+        return renderCollapsibleSection(t('mineDetails'), `<div class="region-mine-groups">${groups}</div>`);
     }
 
     function renderSettlementSection(domain) {
