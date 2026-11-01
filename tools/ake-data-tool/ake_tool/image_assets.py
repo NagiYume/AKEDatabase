@@ -22,10 +22,14 @@ from .errors import AkeToolError, ValidationError
 from .file_copy import (
     assert_no_linked_files,
     copy_file_contents,
-    copy_tree_contents,
+    move_file_contents,
+    sync_file_contents,
+    sync_tree_contents,
     is_linked_file,
 )
 from .hotfix_api import HotfixClient
+from .file_facts import file_digest
+from .export_history import prune_exports
 from .image_paths import (
     IMAGE_PROFILE_FULL,
     IMAGE_PROFILE_STANDARD,
@@ -104,17 +108,7 @@ def _md5(
     token: CancellationToken,
     progress: Callable[[int, int], None] | None = None,
 ) -> str:
-    digest = hashlib.md5()
-    total = path.stat().st_size
-    completed = 0
-    with path.open("rb") as stream:
-        while chunk := stream.read(4 * 1024 * 1024):
-            token.raise_if_cancelled()
-            digest.update(chunk)
-            completed += len(chunk)
-            if progress is not None:
-                progress(completed, total)
-    return digest.hexdigest()
+    return file_digest(path, token=token, progress=progress)
 
 
 def _matches(
@@ -606,21 +600,6 @@ class ImageAssetPipeline:
         state["activeImageProfile"] = self.image_profile
         self._write_state_data(state)
 
-    @staticmethod
-    def _tree_digest(root: Path) -> str:
-        digest = hashlib.sha256()
-        if not root.is_dir():
-            return digest.hexdigest()
-        for path in sorted((item for item in root.rglob("*") if item.is_file())):
-            relative = path.relative_to(root).as_posix()
-            digest.update(relative.encode("utf-8"))
-            digest.update(b"\0")
-            digest.update(str(path.stat().st_size).encode("ascii"))
-            digest.update(b"\0")
-            digest.update(sha256_file(path).encode("ascii"))
-            digest.update(b"\n")
-        return digest.hexdigest()
-
     def _cached_latest_from_state(
         self,
         prefix: str,
@@ -772,9 +751,36 @@ class ImageAssetPipeline:
                 self._invalidate_profile_authorization(f"发布失败：{exc}")
             self._write_log(ProgressEvent(failed_stage, f"任务失败：{exc}", level="error"))
             raise
+        finally:
+            try:
+                self._prune_export_history(stages)
+            except (OSError, ValidationError) as exc:
+                self._emit("cleanup", f"历史导出清理未完成，将在下次解析时重试：{exc}")
         if self._log_path is not None:
             result["log_path"] = str(self._log_path)
         return result
+
+    def _prune_export_history(self, stages: list[str]) -> None:
+        # Cleanup also bounds failed exports. State-referenced maps are kept
+        # so an unfinished upload still has its required artifacts.
+        if "image_extract" in stages:
+            state = self._load_state()
+            record = (state.get("profiles") or {}).get(self.image_profile) or {}
+            protected = [record[key] for key in ("fullMapPath", "deltaMapPath", "pendingMapPath")
+                         if record.get(key)]
+            prune_exports(self.config.image_work_root,
+                          [self.config.image_work_root / "image-runs" / self.image_profile],
+                          protected=protected,
+                          report=lambda path: self._emit("image_extract", f"清理历史导出：{path}"))
+        if "json_extract" in stages:
+            legacy_exports = [path for path in (self.config.image_work_root / "json-python-validation").glob("*")
+                              if (path / "data").is_dir() or (path / "output" / "data").is_dir()]
+            legacy_exports.extend(self.config.image_work_root.glob("json-diagnostic-*/output"))
+            prune_exports(self.config.image_work_root,
+                          [self.config.image_work_root / "json-python-runs"],
+                          keep=2 if self.json_output_root.exists() else 3,
+                          extra_exports=legacy_exports,
+                          report=lambda path: self._emit("json_extract", f"清理历史导出：{path}"))
 
     def analyze(self) -> dict[str, Any]:
         self.config.validate_images(require_sources=True)
@@ -1097,7 +1103,6 @@ class ImageAssetPipeline:
         self._emit("json_extract", f"使用 Python Json 宿主，运行时：{runtime}；独立输出：{run_root}")
         report = run_json_export(self.config.image_work_root, run_root, runtime, self.token,
                                  lambda line: self._emit("json_extract", line))
-        assert_no_linked_files(run_root, "Python Json 解析输出")
         self.token.raise_if_cancelled()
         # Failed runs retain diagnostics without exposing partial data for publication.
         # Revoke the previous extraction authorization before replacing its directory.
@@ -1108,7 +1113,12 @@ class ImageAssetPipeline:
             resolved = self.json_output_root.resolve()
             if self.config.image_work_root.resolve() not in resolved.parents:
                 raise ValidationError(f"拒绝替换工作目录之外的 Json 输出：{resolved}")
-            shutil.rmtree(resolved)
+            # Keep the last two prior attempts alongside the current output,
+            # without copying their contents or retaining unbounded backups.
+            history_root = self.config.image_work_root / "json-python-runs"
+            history_root.mkdir(parents=True, exist_ok=True)
+            previous = history_root / ("previous-" + datetime.now().strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:8])
+            resolved.rename(previous)
         run_root.rename(self.json_output_root)
         source = self.json_output_root / "data" / "Json"
         self._emit("json_extract", f"Python Json 解析完成：{report['selected']} 个文件；未支持条目 {len(report['unsupported'])} 个，详见 export-report-0.json")
@@ -1164,48 +1174,20 @@ class ImageAssetPipeline:
         )
         assert_no_linked_files(public_json_root, "public/Json")
 
-        staging_root = (self.config.public_root / ".ake-json-publish-staging").resolve()
-        public_root = self.config.public_root.resolve()
-        if public_root not in staging_root.parents:
-            raise ValidationError(f"拒绝使用 public 之外的发布工作目录：{staging_root}")
-        if staging_root.exists():
-            shutil.rmtree(staging_root)
-        staging_root.mkdir(parents=True)
-
         total_files = 0
-        try:
-            for name, source in sorted(matched_sources.items()):
-                self.token.raise_if_cancelled()
-                staged = staging_root / name
-                if source.is_dir():
-                    file_count = copy_tree_contents(source, staged, self.token)
-                else:
-                    copy_file_contents(source, staged, self.token)
-                    file_count = 1
-                if file_count == 0:
-                    raise ValidationError(f"Json 输出目录为空，拒绝发布：{source}")
-                total_files += file_count
-                self._emit("json_publish", f"已暂存 {name}：{file_count} 个文件")
-
-            for index, name in enumerate(sorted(matched_sources), 1):
-                self.token.raise_if_cancelled()
-                target = public_json_root / name
-                staged = staging_root / name
+        for index, (name, source) in enumerate(sorted(matched_sources.items()), 1):
+            self.token.raise_if_cancelled()
+            target = public_json_root / name
+            if source.is_dir():
+                file_count = sync_tree_contents(source, target, self.token, checked=True)
+            else:
                 if target.is_dir():
                     shutil.rmtree(target)
-                elif target.exists():
-                    target.unlink()
-                os.replace(staged, target)
-                assert_no_linked_files(target, f"public/Json/{name}")
-                self._emit(
-                    "json_publish",
-                    f"发布 [{index}/{len(matched_sources)}] public/Json/{name}",
-                    index,
-                    len(matched_sources),
-                )
-        finally:
-            if staging_root.exists():
-                shutil.rmtree(staging_root)
+                sync_file_contents(source, target, self.token)
+                file_count = 1
+            total_files += file_count
+            self._emit("json_publish", f"增量发布 [{index}/{len(matched_sources)}] {name}：{file_count} 个文件",
+                       index, len(matched_sources))
 
         self._emit(
             "json_publish",
@@ -1581,18 +1563,11 @@ class ImageAssetPipeline:
                 target = (persistent_assets / relative).resolve()
                 if self.output_root.resolve() not in target.parents:
                     raise ValidationError(f"增量合并路径不安全：{relative}")
-                if target.is_file() and target.stat().st_size == source.stat().st_size:
-                    if _md5(target, self.token) == _md5(source, self.token):
-                        merged_unchanged += 1
-                        continue
                 if target.exists():
                     merged_overwritten += 1
                 else:
                     merged_added += 1
-                copy_file_contents(source, target, self.token)
-        assert_no_linked_files(persistent_assets, "图片持久增量输出 assets")
-        persistent_count = sum(1 for path in persistent_assets.rglob("*") if path.is_file())
-        output_digest = self._tree_digest(self.output_root)
+                move_file_contents(source, target, self.token)
         self._emit(
             "image_extract",
             f"原生 map 差分完成：完整 {metrics['full']}，历史有效 hash {metrics['oldHashes']}，"
@@ -1613,8 +1588,9 @@ class ImageAssetPipeline:
             "image_authorization_steps": ["image_analyze", "image_prepare", "image_extract"],
             "image_version_identity": list(self._version_identity(latest)),
             "image_jar_digest": sha256_file(self.config.image_sdk),
-            "image_output_digest": output_digest,
-            "image_persistent_files": persistent_count,
+            # Compatibility fields: full-history scans are no longer performed.
+            "image_output_digest": "",
+            "image_persistent_files": None,
             "image_full_map_path": str(full_map),
             "image_full_map_digest": sha256_file(full_map),
             "image_full_map_entries": metrics["full"],
@@ -1681,8 +1657,6 @@ class ImageAssetPipeline:
                 raise ValidationError(f"图片发布授权失效：{label} 缺失或摘要变化")
         if sha256_file(self.config.image_sdk) != authorization.get("jarDigest"):
             raise ValidationError("图片发布授权失效：beyond-sdk.jar 已变化")
-        if self._tree_digest(self.output_root) != authorization.get("outputDigest"):
-            raise ValidationError("图片发布授权失效：持久增量输出在解析后发生变化")
         version_values = self._cached_image_version_values(state, authorization)
         asset_version = str(authorization.get("assetVersion", "")).strip()
         if not re.fullmatch(
@@ -1723,15 +1697,14 @@ class ImageAssetPipeline:
             raise ValidationError(f"拒绝发布图片输出目录之外的路径：{source_root}")
         if not source_root.is_dir():
             raise FileNotFoundError(f"图片解析输出中不存在 assets 目录：{source_root}")
-        assert_no_linked_files(source_root, "图片解析输出 assets")
-        source_files = {
-            f"assets/{path.relative_to(source_root).as_posix()}": path
-            for path in source_root.rglob("*")
-            if path.is_file()
-            and self.image_matcher.matches(
-                f"assets/{path.relative_to(source_root).as_posix()}"
-            )
-        }
+        source_files = {}
+        for relative in delta_export_paths:
+            path = (self.output_root / relative).resolve()
+            if source_root not in path.parents or not path.is_file() or is_linked_file(path):
+                raise ValidationError(f"差分图片解析输出缺失或路径无效：{relative}")
+            if not self.image_matcher.matches(relative):
+                raise ValidationError(f"差分图片不在当前配置范围内：{relative}")
+            source_files[relative] = path
         if not source_files and int(authorization.get("deltaMapEntries", 0)) > 0:
             raise ValidationError("增量 map 非空但持久图片输出为空，拒绝发布")
 
@@ -1743,17 +1716,7 @@ class ImageAssetPipeline:
         target_root.mkdir(parents=True, exist_ok=True)
         if not target_root.is_dir():
             raise ValidationError(f"图片发布目标不是目录：{target_root}")
-        existing_files = {
-            path.relative_to(image_root).as_posix(): path
-            for path in image_root.rglob("*")
-            if path.is_file()
-        }
-        managed_existing = {
-            relative: path
-            for relative, path in existing_files.items()
-            if self.image_matcher.matches(relative)
-        }
-        outside_count = len(existing_files) - len(managed_existing)
+        # Historical files outside deltaExportPaths are neither scanned nor changed.
         added = 0
         overwritten = 0
         unchanged = 0
@@ -1762,16 +1725,14 @@ class ImageAssetPipeline:
             target = (image_root / relative).resolve()
             if image_root not in target.parents:
                 raise ValidationError(f"图片发布路径不安全：{relative}")
-            if target.is_file() and target.stat().st_size == source.stat().st_size:
-                if _md5(target, self.token) == _md5(source, self.token):
-                    unchanged += 1
-                    continue
-            if target.exists():
+            existed = target.exists()
+            if not sync_file_contents(source, target, self.token):
+                unchanged += 1
+                continue
+            if existed:
                 overwritten += 1
             else:
                 added += 1
-            copy_file_contents(source, target, self.token)
-        assert_no_linked_files(target_root, "public/images/assets")
         missing_delta_paths: list[str] = []
         for relative in delta_export_paths:
             target = (image_root / relative).resolve()
@@ -1788,7 +1749,7 @@ class ImageAssetPipeline:
         self._emit(
             "image_publish",
             f"图片发布完成：新增 {added}，覆盖 {overwritten}，不删除历史文件，"
-            f"范围内未变化 {unchanged}，保留范围外 {outside_count}",
+            f"本次增量内未变化 {unchanged}；未扫描范围外历史文件",
         )
         published_at = datetime.now(timezone.utc).isoformat()
         return {
@@ -1797,7 +1758,7 @@ class ImageAssetPipeline:
             "image_publish_overwritten": overwritten,
             "image_publish_deleted": 0,
             "image_publish_unchanged": unchanged,
-            "image_publish_outside_scope": outside_count,
+            "image_publish_outside_scope": None,
             "image_published_hotfix_version": version_values["image_hotfix_version"],
             "image_published_profile": self.image_profile,
             "image_published_config_digest": self.image_config.digest(),
@@ -1870,7 +1831,7 @@ class ImageAssetPipeline:
                 "jarDigest": str(values.get("image_jar_digest", "")),
                 "outputRoot": str(values.get("image_output_path", "")),
                 "outputDigest": str(values.get("image_output_digest", "")),
-                "persistentFiles": int(values.get("image_persistent_files", 0)),
+                "persistentFiles": values.get("image_persistent_files"),
                 "fullMapPath": str(values.get("image_full_map_path", "")),
                 "fullMapDigest": str(values.get("image_full_map_digest", "")),
                 "fullMapEntries": int(values.get("image_full_map_entries", 0)),

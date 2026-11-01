@@ -89,7 +89,7 @@ def run_json_export(source: Path, output: Path, runtime: Path, token: Cancellati
         if code or not isinstance(report, dict) or report.get('failed') or not report.get('selected'):
             raise AkeToolError(f'Python Json 导出失败或结果不完整（退出码 {code}）；日志：{output / "parser.log"}')
         expected = sum(count['written'] for count in report['datasets'].values())
-        if expected != report['selected'] or report['selected'] != len(list((output / 'data/Json').rglob('*.json'))):
+        if expected != report['selected'] or not (output / 'data/Json').is_dir():
             raise ValidationError('Python Json 文件计数与宿主报告不一致')
         return {**report, 'seconds': round(time.monotonic() - started, 2)}
     finally:

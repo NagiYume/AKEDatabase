@@ -10,7 +10,9 @@ from typing import Any
 from .config import TOOL_ROOT, AppConfig
 from .downloader import DownloadManager, entries_for_blocks, safe_target
 from .errors import AkeToolError, CancelledError, ValidationError
-from .file_copy import assert_no_linked_files, copy_file_contents
+from .file_copy import assert_no_linked_files, copy_file_contents, sync_tree_contents
+from .file_facts import cached_fact, file_identity, remember_fact
+from .export_history import prune_exports
 from .hotfix_api import HotfixClient
 from .index_crypto import DEFAULT_KEY, INITIAL_KEY, decrypt_index
 from .models import (
@@ -113,10 +115,10 @@ class Pipeline:
             self.token.raise_if_cancelled()
             job_name = self._safe_job_name(latest.hotfix.res_version or latest.seed.seed_version)
             jobs_root = work_root / "jobs"
-            if any(stage in {"download", "unpack"} for stage in stages):
-                self._remove_obsolete_jobs(jobs_root, job_name)
             job_root = jobs_root / job_name
             job_root.mkdir(parents=True, exist_ok=True)
+            if any(stage in {"download", "unpack"} for stage in stages):
+                self._remove_obsolete_jobs(jobs_root, job_name)
             self._write_metadata(job_root, latest)
             state: dict[str, Any] = {
                 "game_version": latest.seed.game_version,
@@ -501,6 +503,11 @@ class Pipeline:
         missing = [name for name in self.config.required_tables if not (table_dir / name).is_file()]
         if missing:
             raise ValidationError(f"TableCfg 缺少关键文件：{', '.join(missing)}")
+        identity = tuple(file_identity(path) for path in sorted(json_files))
+        cache_key = ("table-validation", tuple(self.config.required_tables), identity)
+        if cached_fact(cache_key) is not None:
+            self._emit(ProgressEvent(stage, f"复用 TableCfg 验证结果，共 {len(json_files)} 个 JSON 文件", 1, 1))
+            return len(json_files)
         for name in self.config.required_tables:
             self.token.raise_if_cancelled()
             try:
@@ -508,6 +515,7 @@ class Pipeline:
                     json.load(stream)
             except (OSError, json.JSONDecodeError) as exc:
                 raise ValidationError(f"关键表不是有效 JSON：{name}：{exc}") from exc
+        remember_fact(cache_key, True)
         self._emit(ProgressEvent(stage, f"验证通过，共 {len(json_files)} 个 JSON 文件", 1, 1))
         return len(json_files)
 
@@ -519,44 +527,12 @@ class Pipeline:
         self.token.raise_if_cancelled()
         if not source.is_dir():
             raise FileNotFoundError(f"待发布目录不存在：{source}")
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        temporary = destination.parent / f".{destination.name}.ake-staging-{self._timestamp()}"
-        if temporary.exists():
-            self._safe_remove(temporary, destination.parent)
-
-        files = [path for path in source.rglob("*") if path.is_file()]
-        total = sum(path.stat().st_size for path in files)
-        copied = 0
-        last_reported_percent = -1
-        stage = "publish" if self.config.public_root == destination.parent or self.config.public_root in destination.parents else "validate"
-        self._emit(ProgressEvent(stage, f"准备目录：{source} -> {destination}", 0, total))
-        temporary.mkdir(parents=True)
-        try:
-            for file_path in files:
-                self.token.raise_if_cancelled()
-                relative = file_path.relative_to(source)
-                target = temporary / relative
-                target.parent.mkdir(parents=True, exist_ok=True)
-                copy_file_contents(file_path, target, self.token)
-                copied += file_path.stat().st_size
-                percent = int(copied * 100 / total) if total else 100
-                if percent != last_reported_percent or copied == total:
-                    self._emit(ProgressEvent(stage, f"复制 {destination.name}/{relative}", copied, total))
-                    last_reported_percent = percent
-        except Exception:
-            self._safe_remove(temporary, destination.parent)
-            raise
-
-        assert_no_linked_files(temporary, f"{destination.name} 暂存目录")
-
-        if destination.exists():
-            self._emit(ProgressEvent(stage, f"删除旧目录：{destination}"))
-            self._safe_remove(destination, destination.parent)
-        try:
-            shutil.move(str(temporary), str(destination))
-            assert_no_linked_files(destination, f"{destination.name} 正式目录")
-        except Exception:
-            raise
+        self._emit(ProgressEvent("publish", f"增量发布：{source} -> {destination}"))
+        sync_tree_contents(source, destination, self.token)
+        # The source was validated immediately before this copy. Carry that
+        # result to the published files instead of decoding key tables again.
+        identity = tuple(file_identity(path) for path in sorted(destination.glob("*.json")))
+        remember_fact(("table-validation", tuple(self.config.required_tables), identity), True)
         return destination
 
     @staticmethod
@@ -564,14 +540,8 @@ class Pipeline:
         return datetime.now().strftime("%Y%m%d-%H%M%S-%f")
 
     def _remove_obsolete_jobs(self, jobs_root: Path, current_job_name: str) -> None:
-        if not jobs_root.is_dir():
-            return
-        for path in jobs_root.iterdir():
-            self.token.raise_if_cancelled()
-            if not path.is_dir() or path.name == current_job_name:
-                continue
-            self._emit(ProgressEvent("download", f"删除旧版本任务数据：{path}"))
-            self._safe_remove(path, jobs_root)
+        prune_exports(self.config.work_root, [jobs_root], protected=[jobs_root / current_job_name],
+                      report=lambda path: self._emit(ProgressEvent("download", f"清理超过 3 次保留上限的任务：{path}")))
 
     @staticmethod
     def _safe_remove(path: Path, allowed_parent: Path) -> None:
