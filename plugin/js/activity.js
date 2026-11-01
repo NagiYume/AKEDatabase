@@ -90,8 +90,8 @@
             return activities.filter(act => {
                 if (searchTerm) {
                     const term = searchTerm.toLowerCase();
-                    const nameMatch = act.name && act.name.toLowerCase().includes(term);
-                    const idMatch = act.activityId && act.activityId.toLowerCase().includes(term);
+                    const nameMatch = act.name && window.AKEModuleSearch.matches(act.name, term);
+                    const idMatch = act.activityId && window.AKEModuleSearch.matches(act.activityId, term);
                     if (!nameMatch && !idMatch) return false;
                 }
                 if (selectedTagIds.size > 0 && !(act.tags || []).some(tag => selectedTagIds.has(tag.tagId))) return false;

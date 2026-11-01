@@ -222,7 +222,7 @@
         const query = state.search.trim().toLowerCase();
         return state.rows.filter(row =>
             (state.type === 'all' || String(row.chat.chatType) === state.type) &&
-            (!query || row.searchText.includes(query))
+            (!query || window.AKEModuleSearch.matches(row.searchText, query))
         );
     }
 

@@ -530,14 +530,14 @@
     }
 
     function matches(product) {
-        return !state.query || product.searchText.includes(state.query);
+        return !state.query || window.AKEModuleSearch.matches(product.searchText, state.query);
     }
 
     function groupMatches(group) {
         if (!state.query) return true;
         const ownText = `${group.shopGroupId} ${gameText(group.shopGroupName)} ${groupType(group)} ${conditionSearchText(group)}`.toLowerCase();
-        return ownText.includes(state.query) || shopsForGroup(group).some(shop =>
-            `${shop.id} ${shop.name} ${conditionSearchText(shop.raw)}`.toLowerCase().includes(state.query) || shop.products.some(matches));
+        return window.AKEModuleSearch.matches(ownText, state.query) || shopsForGroup(group).some(shop =>
+            window.AKEModuleSearch.matches(`${shop.id} ${shop.name} ${conditionSearchText(shop.raw)}`, state.query) || shop.products.some(matches));
     }
 
     function productCount(group) {
@@ -882,10 +882,10 @@
             content.innerHTML = `<div class="ake-ui-state" data-state="empty">${escapeHtml(t('selectGroup'))}</div>`;
             return;
         }
-        const ownMatch = `${group.shopGroupId} ${gameText(group.shopGroupName)} ${groupType(group)} ${conditionSearchText(group)}`.toLowerCase().includes(state.query);
+        const ownMatch = window.AKEModuleSearch.matches(`${group.shopGroupId} ${gameText(group.shopGroupName)} ${groupType(group)} ${conditionSearchText(group)}`, state.query);
         const shops = shopsForGroup(group).map(shop => ({
             ...shop,
-            products: !state.query || ownMatch || `${shop.id} ${shop.name} ${conditionSearchText(shop.raw)}`.toLowerCase().includes(state.query)
+            products: !state.query || ownMatch || window.AKEModuleSearch.matches(`${shop.id} ${shop.name} ${conditionSearchText(shop.raw)}`, state.query)
                 ? shop.products
                 : shop.products.filter(matches)
         })).filter(shop => !state.query || shop.products.length);

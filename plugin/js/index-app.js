@@ -19,6 +19,31 @@
             const configuredPluginVersions = bootstrapVersion.pluginversion || {};
             const configuredJsVersions = bootstrapVersion.jsversion || {};
             let html2canvasPromise = null;
+            let moduleSearchPromise = null;
+            function prepareModuleSearch() {
+                if (!moduleSearchPromise) {
+                    moduleSearchPromise = (async () => {
+                        for (const [ready, path] of [
+                            [() => window.AKEModuleSearch, '/plugin/js/ake-module-search.js'],
+                            [() => window.pinyinPro?.match, '/plugin/js/vendor/pinyin-pro-3.29.0/pinyin-pro.js']
+                        ]) {
+                            if (ready()) continue;
+                            const source = await getScriptSource(new URL(path, window.location.href).href);
+                            const script = document.createElement('script');
+                            script.textContent = `${source}\n//# sourceURL=${path}`;
+                            document.head.appendChild(script);
+                            script.remove();
+                            if (!ready()) throw new Error(`Module search script did not initialize: ${path}`);
+                        }
+                    })().catch(error => {
+                        moduleSearchPromise = null;
+                        // A dictionary download failure must not disable ordinary module search.
+                        if (!window.AKEModuleSearch) throw error;
+                        console.warn('拼音搜索资源加载失败，保留文字搜索；下次打开模块时重试。', error);
+                    });
+                }
+                return moduleSearchPromise;
+            }
             window.akeLoadHtml2Canvas = function () {
                 if (typeof window.html2canvas === 'function') return Promise.resolve(window.html2canvas);
                 if (!html2canvasPromise) {
@@ -899,6 +924,7 @@
                 });
                 try {
                     const html = await getModuleSource(module);
+                    if (module.id !== 'search') await prepareModuleSearch();
                     // The navigation shell is independent; module adapters need a fixed data snapshot.
                     await window.akeDataSource?.ready;
                     if (generation !== moduleLoadGeneration) return false;

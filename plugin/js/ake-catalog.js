@@ -135,7 +135,7 @@
         function renderList() {
             if (view) { view.update({ rows, ctx, activeId }); return; }
             const query = search.value.trim().toLocaleLowerCase();
-            const filtered = rows.filter(row => (!filter?.value || row.group === filter.value) && (!query || `${row.name} ${row.group} ${row.search || ''} ${hidden() ? row.id : ''}`.toLocaleLowerCase().includes(query)));
+            const filtered = rows.filter(row => (!filter?.value || row.group === filter.value) && (!query || window.AKEModuleSearch.matches(`${row.name} ${row.group} ${row.search || ''} ${hidden() ? row.id : ''}`, query)));
             if (count) count.textContent = t('count', { count: filtered.length, total: rows.length });
             for (const target of [directory, mobile]) {
                 target.replaceChildren();

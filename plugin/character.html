@@ -132,8 +132,8 @@
                 // 搜索过滤
                 if (searchTerm) {
                     const term = searchTerm.toLowerCase();
-                    const nameMatch = c.name && c.name.toLowerCase().includes(term);
-                    const idMatch = c.charId && c.charId.toLowerCase().includes(term);
+                    const nameMatch = c.name && window.AKEModuleSearch.matches(c.name, term);
+                    const idMatch = c.charId && window.AKEModuleSearch.matches(c.charId, term);
                     if (!nameMatch && !idMatch) return false;
                 }
                 // 稀有度筛选

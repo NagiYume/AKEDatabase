@@ -153,7 +153,7 @@
         return list.filter(item => {
             const id = String(item.id || '').toLowerCase();
             const name = String(item.name || '').toLowerCase();
-            return id.includes(term) || name.includes(term);
+            return window.AKEModuleSearch.matches(id, term) || window.AKEModuleSearch.matches(name, term);
         });
     }
 

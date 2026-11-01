@@ -49,8 +49,8 @@
             if (!searchTerm) return series;
             const term = searchTerm.toLowerCase();
             return series.filter(s => 
-                (s.name && s.name.toLowerCase().includes(term)) || 
-                (s.templateId && s.templateId.toLowerCase().includes(term))
+                (s.name && window.AKEModuleSearch.matches(s.name, term)) || 
+                (s.templateId && window.AKEModuleSearch.matches(s.templateId, term))
             );
         }
 

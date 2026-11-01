@@ -74,8 +74,8 @@
             if (!searchTerm) return cats;
             const term = searchTerm.toLowerCase();
             return cats.filter(c => 
-                (c.name && c.name.toLowerCase().includes(term)) || 
-                (c.categoryId && c.categoryId.toLowerCase().includes(term))
+                (c.name && window.AKEModuleSearch.matches(c.name, term)) || 
+                (c.categoryId && window.AKEModuleSearch.matches(c.categoryId, term))
             );
         }
 

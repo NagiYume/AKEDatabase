@@ -67,8 +67,8 @@
             if (!searchTerm) return skills;
             const term = searchTerm.toLowerCase();
             return skills.filter(s =>
-                (s.id && s.id.toLowerCase().includes(term)) ||
-                (s.name && s.name.toLowerCase().includes(term))
+                (s.id && window.AKEModuleSearch.matches(s.id, term)) ||
+                (s.name && window.AKEModuleSearch.matches(s.name, term))
             );
         }
 

@@ -154,7 +154,7 @@
     }
 
     function renderLists() {
-        const filtered = domains.filter(domain => !searchTerm || `${domain.name} ${domain.domainId}`.toLowerCase().includes(searchTerm.toLowerCase()));
+        const filtered = domains.filter(domain => !searchTerm || window.AKEModuleSearch.matches(`${domain.name} ${domain.domainId}`, searchTerm));
         const list = document.getElementById('regionList');
         const mobile = document.getElementById('regionMobileListContent');
         if (!list || !mobile) return;

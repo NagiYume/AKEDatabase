@@ -549,7 +549,7 @@
                 return;
             }
             const matches = allItems.filter(item =>
-                item.name.toLocaleLowerCase().includes(query) || item.id.toLocaleLowerCase().includes(query)
+                window.AKEModuleSearch.matches(item.name, query) || window.AKEModuleSearch.matches(item.id, query)
             ).slice(0, 80);
             resultsRoot.hidden = false;
             if (!matches.length) {

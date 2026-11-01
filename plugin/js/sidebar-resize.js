@@ -109,6 +109,9 @@
         ),
         layout: 'grid'
     });
+    // Research keeps a Flex layout for the article and its floating TOC.
+    // Grid column widths do not resize its sidebar.
+    modulePresets.set('research', { ...modulePresets.get('research'), layout: 'flex' });
     registerModules(['buff'], '.buff-module > .left-column', 350, {
         minWidth: 144
     });

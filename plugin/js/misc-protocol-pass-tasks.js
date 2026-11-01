@@ -199,7 +199,7 @@
             const lowerQuery = query.trim().toLocaleLowerCase();
             const rows = tasksForCategory(selectedSeason, selectedCategory)
                 .filter(task => !selectedWeek || tables.groups?.[task.groupId]?.labelId === selectedWeek)
-                .filter(task => !lowerQuery || `${formattedTaskName(task)}${showHidden() ? ` ${task.taskId}` : ''}`.toLocaleLowerCase().includes(lowerQuery))
+                .filter(task => !lowerQuery || window.AKEModuleSearch.matches(`${formattedTaskName(task)}${showHidden() ? ` ${task.taskId}` : ''}`, lowerQuery))
                 .sort((a, b) => Number(a.sortId || 0) - Number(b.sortId || 0));
             countRoot.textContent = t('taskCount', { count: rows.length }, `${rows.length} 项`);
             if (!rows.length) {

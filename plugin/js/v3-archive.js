@@ -1116,10 +1116,10 @@
                 result.push({ group, items: allItems, ownMatch: true });
                 return;
             }
-            const ownMatch = state.groupSearch.get(String(group.firstLvId))?.includes(state.query);
+            const ownMatch = window.AKEModuleSearch.matches(state.groupSearch.get(String(group.firstLvId)), state.query);
             const items = ownMatch
                 ? allItems
-                : allItems.filter(item => state.itemSearch.get(String(item.id))?.includes(state.query));
+                : allItems.filter(item => window.AKEModuleSearch.matches(state.itemSearch.get(String(item.id)), state.query));
             if (ownMatch || items.length) result.push({ group, items, ownMatch: Boolean(ownMatch) });
         });
         return result;
@@ -1330,13 +1330,13 @@
     }
 
     function renderInvestigationList() {
-        const rows = state.investigations.filter(row => !state.query || normalizeSearch([
+        const rows = state.investigations.filter(row => !state.query || window.AKEModuleSearch.matches(normalizeSearch([
             investigationDisplayName(row), investigationDomainName(row), gameText(row.desc),
             ...(row.categoryDataList || []).map(investigationSectionName),
             ...(row.collectionIdList || []).map(id => itemDisplayName(state.itemMap.get(String(id)))),
             ...(row.categoryDataList || []).flatMap(category => (category.noteIdList || [])
                 .map(id => gameText(state.tables.notes?.[id]?.desc)))
-        ].join(' ')).includes(state.query));
+        ].join(' ')), state.query));
         const changedRows = rows.filter(row => investigationVersionInfo(row).hasChange)
             .sort((a, b) => Number(investigationVersionInfo(b).hasAddition) - Number(investigationVersionInfo(a).hasAddition));
         const regularRows = rows.filter(row => !investigationVersionInfo(row).hasChange);
@@ -1763,7 +1763,7 @@
         const group = state.groupMap.get(String(groupId || ''));
         if (!group) return false;
         const items = itemRowsForGroup(group.firstLvId);
-        const queryItem = state.query ? items.find(item => state.itemSearch.get(String(item.id))?.includes(state.query)) : null;
+        const queryItem = state.query ? items.find(item => window.AKEModuleSearch.matches(state.itemSearch.get(String(item.id)), state.query)) : null;
         if (queryItem || items[0]) return selectItem((queryItem || items[0]).id, options);
         state.activeGroupId = String(group.firstLvId);
         state.activeItemId = '';

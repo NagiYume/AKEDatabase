@@ -299,7 +299,7 @@
             if (searchQuery !== query) matchIndex = -1;
             searchQuery = query;
             matches = query ? rows.filter(row => row.kind === 'node' &&
-                `${row.name} ${row.group} ${row.search || ''} ${ctx?.hidden() ? row.key : ''}`.toLocaleLowerCase().includes(query)) : [];
+                window.AKEModuleSearch.matches(`${row.name} ${row.group} ${row.search || ''} ${ctx?.hidden() ? row.key : ''}`, query)) : [];
             highlight(); announce();
         }
         function label(parent, text, x, y, className, max = 13) {

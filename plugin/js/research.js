@@ -302,8 +302,8 @@
             if (searchTerm) {
                 const term = searchTerm.toLowerCase();
                 result = result.filter(function(d) {
-                    return (d.name && d.name.toLowerCase().includes(term)) ||
-                           (d.id && d.id.toLowerCase().includes(term));
+                    return (d.name && window.AKEModuleSearch.matches(d.name, term)) ||
+                           (d.id && window.AKEModuleSearch.matches(d.id, term));
                 });
             }
             return result;
