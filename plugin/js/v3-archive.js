@@ -264,24 +264,6 @@
             || String(a?.[idField] || '').localeCompare(String(b?.[idField] || ''), 'en');
     }
 
-    function compareGameVersions(a, b) {
-        const parts = value => {
-            const gameVersion = String(value || '').split('@')[0];
-            return /^\d+(?:\.\d+)*$/.test(gameVersion)
-                ? gameVersion.split('.').map(part => Number(part))
-                : null;
-        };
-        const left = parts(a);
-        const right = parts(b);
-        if (!left || !right) return 0;
-        const length = Math.max(left.length, right.length);
-        for (let index = 0; index < length; index += 1) {
-            const difference = (left[index] || 0) - (right[index] || 0);
-            if (difference) return difference;
-        }
-        return 0;
-    }
-
     function tableEntityIds(table, idField) {
         return new Set(Object.entries(table || {}).map(([key, row]) => String(row?.[idField] || key)).filter(Boolean));
     }
@@ -1243,33 +1225,39 @@
     }
 
     function renderPageTabs(records) {
-        return `<div class="ake-ui-tabs" data-variant="media" role="group" aria-label="${escapeHtml(t('overview.title', null, '档案一览'))}">${state.pages.map(page => {
-            const type = String(page.pageType || '');
-            const count = groupEntryCount(records.filter(record => pageTypeForCategory(record.group.categoryId) === type));
-            const active = state.activePageType === type;
-            return `<button type="button" class="ake-ui-tabs__button${active ? ' is-active' : ''}" aria-pressed="${active}"
-                data-akearchive-action="filter-page" data-page-type="${escapeHtml(type)}">
-                ${imageTag(pageIcon(page), '', '', ' aria-hidden="true"')}
-                <span><strong>${gameHtml(pageDisplayName(page))}</strong><small>${escapeHtml(tr('counts.entries', { count }, `${count} 条记录`))}</small></span>
-            </button>`;
-        }).join('')}</div>`;
+        return window.AKEUI.tabs({
+            variant: 'media',
+            role: 'group',
+            label: t('overview.title', null, '档案一览'),
+            items: state.pages.map(page => {
+                const type = String(page.pageType || '');
+                const count = groupEntryCount(records.filter(record => pageTypeForCategory(record.group.categoryId) === type));
+                return {
+                    active: state.activePageType === type,
+                    icon: { src: pageIcon(page), alt: '' },
+                    label: window.AKEUI.fragment(`<strong>${gameHtml(pageDisplayName(page))}</strong><small>${escapeHtml(tr('counts.entries', { count }, `${count} 条记录`))}</small>`),
+                    attributes: { 'data-akearchive-action': 'filter-page', 'data-page-type': type }
+                };
+            })
+        }).outerHTML;
     }
 
     function renderOverviewCard(record) {
         const group = record.group;
         const category = categoryForGroup(group);
         const subtitle = `${archiveRegionLabel(group)} · ${groupSecondary(group, pageForCategory(group.categoryId), record.items[0])}`;
-        const icon = groupIconTag(group, '', '');
         const changeInfo = groupVersionInfo(group.firstLvId);
-        return `<button type="button" class="ake-ui-card is-interactive has-media" data-ake-component="card" data-density="compact" data-card-kind="archive" data-category="${escapeHtml(group.categoryId)}"
-            data-akearchive-action="open-group" data-group-id="${escapeHtml(group.firstLvId)}">
-            <span class="ake-ui-card__media">${icon}</span>
-            <span class="ake-ui-card__content">
-                <strong class="ake-ui-card__title">${gameHtml(groupDisplayName(group))}</strong>
-                <small class="ake-ui-card__subtitle">${gameHtml(subtitle)}</small>
-                <span class="ake-ui-card__meta">${groupChangeTag(changeInfo)}<span class="ake-ui-badge">${gameHtml(categoryDisplayName(category))}</span><span class="ake-ui-badge">${escapeHtml(tr('counts.entries', { count: record.items.length }, `${record.items.length} 条记录`))}</span></span>
-            </span>
-        </button>`;
+        return window.AKEUI.card({
+            interactive: true,
+            density: 'compact',
+            media: window.AKEUI.fragment(groupIconTag(group, '', '')),
+            header: {
+                title: window.AKEUI.fragment(gameHtml(groupDisplayName(group))),
+                subtitle: window.AKEUI.fragment(gameHtml(subtitle))
+            },
+            footer: window.AKEUI.fragment(`${groupChangeTag(changeInfo)}<span class="ake-ui-badge">${gameHtml(categoryDisplayName(category))}</span><span class="ake-ui-badge">${escapeHtml(tr('counts.entries', { count: record.items.length }, `${record.items.length} 条记录`))}</span>`),
+            attributes: { 'data-akearchive-action': 'open-group', 'data-group-id': group.firstLvId }
+        }).outerHTML;
     }
 
     function renderChangeSection(records, version) {
@@ -1324,14 +1312,21 @@
     function investigationCard(row) {
         const count = (row.collectionIdList || []).length;
         const changeInfo = investigationVersionInfo(row);
-        return `<button type="button" class="ake-ui-card is-interactive" data-ake-component="card" data-density="compact"
-            data-akearchive-action="open-investigation" data-investigation-id="${escapeHtml(row.id)}" data-ake-entry-plugin="v3_archive" data-ake-entry-id="${escapeHtml(`investigation:${row.id}`)}">
-            <span class="ake-ui-card__content">
-                <strong class="ake-ui-card__title">${gameHtml(investigationDisplayName(row))}</strong>
-                <small class="ake-ui-card__subtitle">${gameHtml(investigationDomainName(row))}</small>
-                <span class="ake-ui-card__meta">${groupChangeTag(changeInfo, true)}<span class="ake-ui-badge">${escapeHtml(tr('investigate.requiredCount', { count }, `关联档案 ${count} 条`))}</span></span>
-            </span>
-        </button>`;
+        return window.AKEUI.card({
+            interactive: true,
+            density: 'compact',
+            header: {
+                title: window.AKEUI.fragment(gameHtml(investigationDisplayName(row))),
+                subtitle: window.AKEUI.fragment(gameHtml(investigationDomainName(row)))
+            },
+            footer: window.AKEUI.fragment(`${groupChangeTag(changeInfo, true)}<span class="ake-ui-badge">${escapeHtml(tr('investigate.requiredCount', { count }, `关联档案 ${count} 条`))}</span>`),
+            attributes: {
+                'data-akearchive-action': 'open-investigation',
+                'data-investigation-id': row.id,
+                'data-ake-entry-plugin': 'v3_archive',
+                'data-ake-entry-id': `investigation:${row.id}`
+            }
+        }).outerHTML;
     }
 
     function renderInvestigationList() {
@@ -1372,10 +1367,16 @@
 
     function investigationNoteContent(id, index) {
         const note = state.tables.notes?.[id];
-        return `<article class="ake-ui-section akearchive-investigation-note">
-            <header class="ake-ui-section__header"><h3 class="ake-ui-section__title">${escapeHtml(tr('investigate.note', { number: index + 1 }, `批注 ${index + 1}`))}</h3>${investigationNoteChangeTag(id)}</header>
-            ${note ? renderRichValue(gameText(note.desc)) || `<p>${escapeHtml(t('investigate.missingNote', null, '批注内容不可用'))}</p>` : `<p>${escapeHtml(t('investigate.missingNote', null, '批注内容不可用'))}${showTechnicalIds() ? ` · ${escapeHtml(id)}` : ''}</p>`}
-        </article>`;
+        const body = note
+            ? renderRichValue(gameText(note.desc)) || `<p>${escapeHtml(t('investigate.missingNote', null, '批注内容不可用'))}</p>`
+            : `<p>${escapeHtml(t('investigate.missingNote', null, '批注内容不可用'))}${showTechnicalIds() ? ` · ${escapeHtml(id)}` : ''}</p>`;
+        const card = window.AKEUI.card({
+            header: { title: tr('investigate.note', { number: index + 1 }, `批注 ${index + 1}`) },
+            attributes: { 'data-card-kind': 'archive-note' }
+        });
+        card.querySelector('.ake-ui-card__header').insertAdjacentHTML('beforeend', investigationNoteChangeTag(id));
+        card.querySelector('.ake-ui-card__content').appendChild(window.AKEUI.element('div', 'ake-ui-card__body', window.AKEUI.fragment(body)));
+        return card.outerHTML;
     }
 
     function renderInvestigation(row) {
@@ -1390,7 +1391,7 @@
         });
         elements.content.innerHTML = `<article class="ake-ui-detail" data-detail-kind="archive">
             ${header?.outerHTML || ''}
-            <div class="ake-ui-tabs" data-variant="underline"><button type="button" class="ake-ui-tabs__button" data-akearchive-action="show-investigations">${escapeHtml(t('investigate.back', null, '返回情报采集'))}</button></div>
+            <div class="akearchive-detail-actions"><button type="button" class="ake-ui-button ake-ui-button--secondary" data-akearchive-action="show-investigations">${escapeHtml(t('investigate.back', null, '返回情报采集'))}</button></div>
             ${categories.map(category => `<section class="ake-ui-section"><header class="ake-ui-section__header"><h2 class="ake-ui-section__title">${gameHtml(investigationSectionName(category))}</h2>
                 <span class="ake-ui-section__meta">${escapeHtml(tr('investigate.noteCount', { count: (category.noteIdList || []).length }, `批注 ${((category.noteIdList || []).length)} 条`))}</span></header>
                 <div class="akearchive-investigation-columns"><div class="akearchive-investigation-text">${(category.collectionIdList || []).map(investigationItemContent).join('')}</div>
@@ -1494,13 +1495,19 @@
         );
         const logo = popupLogo(popup);
         const body = (rich?.contentList || []).map(entry => renderRichValue(gameText(entry?.content))).join('');
+        const card = window.AKEUI.card({
+            density: 'spacious',
+            media: logo ? window.AKEUI.fragment(imageTag(logo, '', '', ' aria-hidden="true"')) : null,
+            header: {
+                title: window.AKEUI.fragment(`${voiceButtonHtml(itemVoiceId(item, popup))}${linkTitle ? investigationLinkedTitle(item, title) : gameHtml(title)}`),
+                subtitle: window.AKEUI.fragment(gameHtml(itemName))
+            },
+            attributes: { 'data-card-kind': 'archive-document' }
+        });
+        card.querySelector('.ake-ui-card__content').appendChild(window.AKEUI.element('div', 'ake-ui-card__body',
+            window.AKEUI.fragment(body || `<p class="akearchive-paragraph">${escapeHtml(t('empty.content', null, '该档案暂无正文内容'))}</p>`)));
         return `${richContentHasGenderImage(rich) ? renderGenderControl() : ''}
-            <article class="akearchive-document">
-                <header class="ake-ui-section__header">
-                    <div>${logo ? imageTag(logo, 'akearchive-popup-logo', '', ' aria-hidden="true"') : ''}${voiceButtonHtml(itemVoiceId(item, popup))}<h2 class="ake-ui-section__title">${linkTitle ? investigationLinkedTitle(item, title) : gameHtml(title)}</h2><p class="ake-ui-section__meta">${gameHtml(itemName)}</p></div>
-                </header>
-                ${body || `<p class="akearchive-paragraph">${escapeHtml(t('empty.content', null, '该档案暂无正文内容'))}</p>`}
-            </article>`;
+            ${card.outerHTML}`;
     }
 
     function renderTranscript(item, popup, linkTitle = false) {
@@ -1551,11 +1558,16 @@
     function renderEntryTabs(group, activeItem) {
         const items = itemRowsForGroup(group.firstLvId);
         if (items.length < 2) return '';
-        return `<div class="ake-ui-tabs" data-variant="underline" role="group" aria-label="${escapeHtml(t('details.entry', null, '条目'))}">${items.map((item, index) => {
-            const active = item.id === activeItem.id;
-            return `<button type="button" class="ake-ui-tabs__button${active ? ' is-active' : ''}" aria-pressed="${active}"
-                data-akearchive-action="select-entry" data-entry-id="${escapeHtml(item.id)}">${gameHtml(itemDisplayName(item, `${t('details.entry', null, '条目')} ${index + 1}`))}${itemChangeTag(item)}</button>`;
-        }).join('')}</div>`;
+        return window.AKEUI.tabs({
+            variant: 'underline',
+            role: 'group',
+            label: t('details.entry', null, '条目'),
+            items: items.map((item, index) => ({
+                active: item.id === activeItem.id,
+                label: window.AKEUI.fragment(`${gameHtml(itemDisplayName(item, `${t('details.entry', null, '条目')} ${index + 1}`))}${itemChangeTag(item)}`),
+                attributes: { 'data-akearchive-action': 'select-entry', 'data-entry-id': item.id }
+            }))
+        }).outerHTML;
     }
 
     function renderDetail(item) {

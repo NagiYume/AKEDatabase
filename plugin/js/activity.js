@@ -16,6 +16,10 @@
             return window.akeData?.getConfig().showHidden ?? false;
         }
 
+        function activityName(activity) {
+            return activity?.name || (getCurrentShowHidden() ? activity?.activityId || '' : t('unnamedActivity'));
+        }
+
         function parseText(text) {
             return window.parseText(text, IMAGE_BASE_PATH);
         }
@@ -35,7 +39,7 @@
                     const range = times[rangeId]?.timeRangeList?.[0]
                         || times[`time_activity_gacha_${poolId}`]?.timeRangeList?.[0]
                         || {};
-                    records.push({ type, poolId, name: row.name?.text || poolId, open: range.openTime || '', close: range.closeTime || '', duration: range.openTime && range.closeTime ? Math.max(0, Math.ceil((new Date(range.closeTime) - new Date(range.openTime)) / 86400000)) : null });
+                    records.push({ type, poolId, name: row.name?.text || (getCurrentShowHidden() ? poolId : t('unnamedPool')), open: range.openTime || '', close: range.closeTime || '', duration: range.openTime && range.closeTime ? Math.max(0, Math.ceil((new Date(range.closeTime) - new Date(range.openTime)) / 86400000)) : null });
                 };
                 Object.entries(chars || {}).forEach(([id, row]) => add(t('gacha.character', null, '角色寻访'), id, row));
                 Object.entries(weapons || {}).forEach(([id, row]) => add(t('gacha.weapon', null, '武库寻访'), id, row));
@@ -117,7 +121,7 @@
             container.innerHTML = '';
             tags.forEach(tag => {
                 const btn = window.AKEUI.filterButton({
-                    label: tag.name || tag.tagId,
+                    label: tag.name || (getCurrentShowHidden() ? tag.tagId : t('unnamedTag')),
                     pressed: selectedTagIds.has(tag.tagId),
                     attributes: { 'data-tag-id': tag.tagId },
                     onChange: pressed => {
@@ -203,7 +207,7 @@
 
         function showTimelineTooltip(item, x, y) {
             const tooltip = getTimelineTooltip();
-            tooltip.textContent = `${item.name || item.activityId}\n${t('dates.range', { start: formatTime(item.openTime), end: formatTime(item.closeTime) })}`;
+            tooltip.textContent = `${activityName(item)}\n${t('dates.range', { start: formatTime(item.openTime), end: formatTime(item.closeTime) })}`;
             tooltip.hidden = false;
             positionTimelineTooltip(tooltip, x, y);
         }
@@ -377,7 +381,7 @@
                 bar.style.width = `${visibleDurationDays * TIMELINE_DAY_WIDTH}px`;
                 const title = document.createElement('span');
                 title.className = 'activity-timeline__bar-title';
-                title.textContent = item.name || item.activityId;
+                title.textContent = activityName(item);
                 bar.appendChild(title);
                 if (item.tabImg) {
                     const image = document.createElement('img');
@@ -387,7 +391,7 @@
                     image.loading = 'lazy';
                     bar.appendChild(image);
                 }
-                bar.setAttribute('aria-label', `${item.name || item.activityId}，${t('dates.range', { start: formatTime(item.openTime), end: formatTime(item.closeTime) })}`);
+                bar.setAttribute('aria-label', `${activityName(item)}，${t('dates.range', { start: formatTime(item.openTime), end: formatTime(item.closeTime) })}`);
                 bar.addEventListener('pointerenter', event => showTimelineTooltip(item, event.clientX, event.clientY));
                 bar.addEventListener('pointermove', event => positionTimelineTooltip(getTimelineTooltip(), event.clientX, event.clientY));
                 bar.addEventListener('pointerleave', hideTimelineTooltip);
@@ -435,8 +439,8 @@
                 items: items.map(item => {
                     const status = getActivityStatus(item.openTime, item.closeTime);
                     const outlines = { 'status-active': 'status-active', 'status-upcoming': 'status-upcoming', 'status-closed': 'status-closed' };
-                    return { ...item, id: item.activityId, image: item.tabImg, fallback: t('overview.fallback'), outline: outlines[status.class],
-                        tags: [...(item.tags || []).map(tag => tag.name || tag.tagId), item.openTime ? t('dates.opensOn', { date: item.openTime.split(' ')[0] }) : t('dates.permanentContent')] };
+                    return { ...item, id: item.activityId, name: activityName(item), image: item.tabImg, fallback: t('overview.fallback'), outline: outlines[status.class],
+                        tags: [...(item.tags || []).map(tag => tag.name || (getCurrentShowHidden() ? tag.tagId : t('unnamedTag'))), item.openTime ? t('dates.opensOn', { date: item.openTime.split(' ')[0] }) : t('dates.permanentContent')] };
                 })
             });
         }
@@ -446,8 +450,8 @@
             const statusKey = status.class.replace('status-', '');
             const item = window.AKEUI.directoryItem({
                 layout: 'entity',
-                title: activity.name,
-                id: activity.activityId,
+                title: activityName(activity),
+                id: getCurrentShowHidden() ? activity.activityId : '',
                 background: activity.tabImg ? {
                     src: activity.tabImg,
                     alt: '',
@@ -545,18 +549,38 @@
             if (!rewardList || rewardList.length === 0) return `<p>${t('rewards.none')}</p>`;
             let html = '<div class="ake-ui-item-list">';
             rewardList.forEach(reward => {
-                const iconSrc = reward.picpath || '';
-                const countHtml = reward.count === null || reward.count === undefined
-                    ? ''
-                    : `<span class="ake-ui-item__meta">${t('rewards.count', { count: reward.count })}</span>`;
-                const contentHtml = `
-                        ${iconSrc ? `<img class="ake-ui-item__media" src="${iconSrc}" alt="">` : ''}
-                        <div class="ake-ui-item__copy"><span class="ake-ui-item__title">${reward.name}</span>${countHtml}</div>
-                `;
-                html += window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: reward.id, label: reward.name, className: 'ake-ui-item', contentHtml });
+                const name = reward.name || (getCurrentShowHidden() ? reward.id : t('unnamedItem'));
+                const item = window.AKEUI.materialItem({
+                    className: 'ake-ui-item',
+                    element: reward.id ? 'a' : 'span',
+                    icon: reward.picpath || '',
+                    name,
+                    count: reward.count,
+                    attributes: reward.id ? window.__akeRouter?.entryAttributes?.('v3_item', reward.id, name)
+                        || { href: `/?plugin=v3_item&id=${encodeURIComponent(reward.id)}` } : {}
+                });
+                if (item) html += item.outerHTML;
             });
             html += '</div>';
             return html;
+        }
+
+        function detailCard({ kind, title, description, meta, rewards, badge, route }) {
+            const card = window.AKEUI.card({
+                header: { title, badges: badge ? [{ label: badge }] : [] },
+                footer: window.AKEUI.fragment(`<div class="stage-rewards">${renderRewards(rewards || [])}</div>`),
+                attributes: { 'data-card-kind': kind, 'data-density': 'regular' }
+            });
+            const content = card.querySelector('.ake-ui-card__content');
+            const footer = card.querySelector('.ake-ui-card__footer');
+            const heading = card.querySelector('.ake-ui-card__title');
+            const titleContent = window.AKEUI.fragment(parseText(title));
+            heading.replaceChildren(route?.id
+                ? window.AKEUI.entryLink({ plugin: route.plugin, id: route.id, label: title, content: titleContent })
+                : titleContent);
+            if (description) content.insertBefore(window.AKEUI.element('div', 'ake-ui-card__body', window.AKEUI.fragment(parseText(description))), footer);
+            if (meta) content.insertBefore(window.AKEUI.element('div', 'ake-ui-card__meta', meta), footer);
+            return card.outerHTML;
         }
 
         function rewardGroupTitle(group, index) {
@@ -579,18 +603,9 @@
             if (!groups || groups.length === 0) return '';
             let html = `<section class="ake-ui-section"><header class="ake-ui-section__header"><h3 class="ake-ui-section__title">${t('sections.rewardDetails')}</h3></header><div class="ake-ui-card-grid" data-size="regular">`;
             groups.forEach((group, index) => {
-                const keyReward = group.keyReward ? `<div class="ake-ui-card__meta"><span class="ake-ui-badge">${t('rewards.keyReward')}</span></div>` : '';
-                const groupTitle = group.relatedCharId
-                    ? window.AKEUI.entryLinkHtml({ plugin: 'v3_character', id: group.relatedCharId, label: rewardGroupTitle(group, index), className: 'ake-ui-card__title', contentHtml: parseText(rewardGroupTitle(group, index)) })
-                    : `<div class="ake-ui-card__title">${parseText(rewardGroupTitle(group, index))}</div>`;
-                html += '<article class="ake-ui-card" data-card-kind="activity-reward" data-density="regular">' +
-                    groupTitle +
-                    (group.desc ? `<div class="ake-ui-card__body">${parseText(group.desc)}</div>` : '') +
-                    keyReward +
-                    '<div class="ake-ui-card__footer"><div class="stage-rewards">' +
-                    `<span class="ake-ui-badge">${t('rewards.preview')}</span>` +
-                    renderRewards(group.rewarddetail || []) +
-                    '</div></div></article>';
+                html += detailCard({ kind: 'activity-reward', title: rewardGroupTitle(group, index), description: group.desc,
+                    rewards: group.rewarddetail, badge: group.keyReward ? t('rewards.keyReward') : '',
+                    route: group.relatedCharId ? { plugin: 'v3_character', id: group.relatedCharId } : null });
             });
             html += '</div></section>';
             return html;
@@ -599,30 +614,20 @@
         function renderStages(stageList) {
             if (!stageList || Object.keys(stageList).length === 0) return '';
             let html = `<section class="ake-ui-section"><header class="ake-ui-section__header"><h3 class="ake-ui-section__title">${t('sections.stages')}</h3></header><div class="ake-ui-card-grid" data-size="regular">`;
-            const stages = Object.values(stageList);
-            stages.sort((a, b) => (a.sortId || 0) - (b.sortId || 0));
-            stages.forEach(function (stage) {
-                let stageTimeHtml = '';
+            const stages = Object.entries(stageList);
+            stages.sort(([, a], [, b]) => (a.sortId || 0) - (b.sortId || 0));
+            stages.forEach(function ([stageId, stage], index) {
+                let stageTime = '';
                 if (stage.opentime && stage.opentime.trim() !== '') {
                     const startTimeStr = formatTime(stage.opentime);
                     const countdown = getCountdownText(stage.opentime, false);
-                    const stageTime = countdown
+                    stageTime = countdown
                         ? t('dates.stageOpenTimeWithCountdown', { time: startTimeStr, countdown })
                         : t('dates.stageOpenTime', { time: startTimeStr });
-                    stageTimeHtml = `<div class="ake-ui-card__meta">${stageTime}</div>`;
                 }
-                const stageTitle = stage.dungeonSeriesId
-                    ? window.AKEUI.entryLinkHtml({ plugin: 'v3_dungeon', id: stage.dungeonSeriesId, label: stage.name, className: 'ake-ui-card__title', contentHtml: stage.name })
-                    : `<div class="ake-ui-card__title">${stage.name}</div>`;
-                html += '<article class="ake-ui-card" data-card-kind="activity-stage" data-density="regular">' +
-                    stageTitle +
-                    '<div class="ake-ui-card__body">' + parseText(stage.desc || '') + '</div>' +
-                    stageTimeHtml +
-                    '<div class="ake-ui-card__footer"><div class="stage-rewards">' +
-                    `<span class="ake-ui-badge">${t('rewards.stage')}</span>` +
-                    renderRewards(stage.rewarddetail || []) +
-                    '</div></div>' +
-                    '</article>';
+                html += detailCard({ kind: 'activity-stage', title: stage.name || (getCurrentShowHidden() ? stageId : t('stageNumber', { index: index + 1 })),
+                    description: stage.desc, meta: stageTime, rewards: stage.rewarddetail,
+                    route: stage.dungeonSeriesId ? { plugin: 'v3_dungeon', id: stage.dungeonSeriesId } : null });
             });
             html += '</div></section>';
             return html;
@@ -662,7 +667,7 @@
                 ? data.tags.map(tag => tag.name ? `<span class="ake-ui-badge">${tag.name}</span>` : '').join('')
                 : '';
             const detailHeader = window.AKEUI.detailHeader({
-                title: data.name || activity.name,
+                title: data.name || activityName(activity),
                 badges: [{
                     label: status.text,
                     attributes: {

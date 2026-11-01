@@ -182,17 +182,17 @@
             }
         }
 
-        function renderBadges(achv, isVersionAdded) {
-            let badges = [];
+        function achievementBadges(achv, isVersionAdded) {
+            const badges = [];
             if (isVersionAdded) {
                 const addedLabel = window.akeData?.t('versionDiff.added', null, '新增') || '新增';
-                badges.push(`<span class="ake-ui-badge" data-tone="added">${addedLabel}</span>`);
+                badges.push({ label: addedLabel, tone: 'added', className: 'ake-ui-badge--change' });
             }
-            if (achv.canBeUpgraded) badges.push(`<span class="ake-ui-badge" data-tone="accent">${t('badges.upgradable')}</span>`);
-            if (achv.canBePlated) badges.push(`<span class="ake-ui-badge" data-tone="special">${t('badges.platable')}</span>`);
-            if (achv.applyRareEffect) badges.push(`<span class="ake-ui-badge" data-tone="special">${t('badges.rareEffect')}</span>`);
-            if (achv.noObtainCanView === false) badges.push(`<span class="ake-ui-badge" data-tone="danger">${t('badges.hidden')}</span>`);
-            return badges.length ? `<div class="ake-ui-card__badges">${badges.join('')}</div>` : '';
+            if (achv.canBeUpgraded) badges.push({ label: t('badges.upgradable'), tone: 'accent' });
+            if (achv.canBePlated) badges.push({ label: t('badges.platable'), tone: 'special' });
+            if (achv.applyRareEffect) badges.push({ label: t('badges.rareEffect'), tone: 'special' });
+            if (achv.noObtainCanView === false) badges.push({ label: t('badges.hidden'), tone: 'danger' });
+            return badges;
         }
 
         function renderAchievementLevels(achv) {
@@ -212,7 +212,7 @@
                 levelsHtml += `
                     <div class="level-item">
                         <div class="level-icon">
-                            <img src="${iconSrc}">
+                            <img src="${iconSrc}" alt="" loading="lazy">
                         </div>
                         <div class="level-info">
                             <div class="level-desc">${parseText(lvl.desc || '')}</div>
@@ -234,7 +234,7 @@
                 }).join('');
                 levelsHtml += `
                     <div class="level-item">
-                        <div class="level-icon"><img src="${plating.icon || ''}"></div>
+                        <div class="level-icon"><img src="${plating.icon || ''}" alt="" loading="lazy"></div>
                         <div class="level-info">
                             <div class="level-desc"><strong>${t('detail.plating')}</strong></div>
                             <div class="level-conditions">${conditionsHtml || `<div class="condition-item">${t('detail.platingConditionUnavailable')}</div>`}</div>
@@ -254,19 +254,19 @@
 
             let html = '';
             achvList.forEach(achv => {
-                const badgesHtml = renderBadges(achv, addedAchievementIds.has(achv.id));
-                const levelsHtml = renderAchievementLevels(achv);
-                html += `
-                    <article class="ake-ui-card" data-ake-component="card" data-card-kind="achievement" data-density="regular">
-                        <div class="ake-ui-card__content">
-                            <header class="ake-ui-card__header">
-                                <span class="ake-ui-card__title">${achv.name}</span>
-                                ${badgesHtml}
-                            </header>
-                            <div class="ake-ui-card__body">${levelsHtml}</div>
-                        </div>
-                    </article>
-                `;
+                const card = window.AKEUI.card({
+                    density: 'regular',
+                    header: {
+                        title: achv.name || t('overview.fallback'),
+                        badges: achievementBadges(achv, addedAchievementIds.has(achv.id))
+                    },
+                    attributes: { 'data-card-kind': 'achievement' }
+                });
+                const body = document.createElement('div');
+                body.className = 'ake-ui-card__body achievement-levels';
+                body.innerHTML = renderAchievementLevels(achv);
+                card.querySelector('.ake-ui-card__content').appendChild(body);
+                html += card.outerHTML;
             });
             return html;
         }
@@ -279,7 +279,7 @@
             if (groupKeys.length === 1 && groupKeys[0] === 'default') {
                 return `
                     <div class="ake-ui-detail" data-detail-kind="achievement"><h2 class="ake-ui-detail-title">${t('detail.title', { name: data.categoryName || '' })}</h2>
-                    <div class="ake-ui-card-grid" data-size="regular">
+                    <div class="ake-ui-card-grid" data-size="regular" data-achievement-layout="columns">
                         ${renderGroupAchievements(group.default, addedAchievementIds)}
                     </div></div>
                 `;
@@ -292,7 +292,7 @@
                     groupsHtml += `
                         <div class="ake-ui-section">
                             <div class="ake-ui-section__header"><h3 class="ake-ui-section__title">${groupName}</h3></div>
-                            <div class="ake-ui-card-grid" data-size="regular">
+                            <div class="ake-ui-card-grid" data-size="regular" data-achievement-layout="columns">
                                 ${renderGroupAchievements(achvMap, addedAchievementIds)}
                             </div>
                         </div>
