@@ -243,6 +243,12 @@ class AppConfig:
             if type(value) is not int or not 1 <= value <= 64:
                 raise ValueError(f"{name} 必须为 1–64 的整数")
 
+    def validate_json(self) -> None:
+        self.validate_transfer_concurrency()
+        self._validate_work_root()
+        if not self.image_verify_md5:
+            raise ValueError("Json VFS 准备必须启用 MD5 校验")
+
     def _validate_work_root(self) -> None:
         work_root = self.work_root
         if work_root == Path(work_root.anchor):
