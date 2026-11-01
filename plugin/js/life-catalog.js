@@ -10,7 +10,7 @@
             ['expansion', 'InnExpansionTable'], ['milestone', 'InnMilestoneTable'],
             ['milestoneLevel', 'InnMilestoneLevelTable'], ['requirement', 'InnRequirementTable'],
             ['affix', 'InnAffixTable'], ['category', 'InnDishCategoryTable'],
-            ['refresh', 'InnRandomRuleTable'], ['stars', 'InnStarsRewardTable']
+            ['refresh', 'InnRandomRuleTable']
         ],
         farming: [
             ['animal', 'InnRanchAnimalTable'], ['feed', 'InnRanchFeedTable'],
@@ -33,6 +33,19 @@
     const textFields = ['name', 'desc', 'descText', 'handTypeName', 'clientShowName', 'itemDesc',
         'requirementText', 'menuDesc', 'desc1', 'desc2', 'extraDesc', 'objectiveDesc', 'objectiveTip1',
         'objectiveTip2', 'requirementDesc', 'unlockDesc', 'unlockQuestDesc', 'unlockText', 'descList', 'textId'];
+    const farmingKinds = new Set(definitions.farming.map(([kind]) => kind));
+    definitions.inn = [...definitions.inn, ...definitions.farming];
+    dependencies.inn = [...new Set([...dependencies.inn, ...dependencies.farming])];
+    const sprites = '/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/';
+    // Source fields name these sprites; directories are verified local asset families.
+    function entryIcon(kind, row, item) {
+        const source = kind === 'animal' ? ['inn/animalicon/', row.icon]
+            : kind === 'category' ? ['inn/recipetypetabicon/', row.iconId]
+            : kind === 'topic' ? ['inn/topicchangebg/', row.iconId]
+            : kind === 'feed' ? ['factory/crop/', row.detailIconId] : null;
+        if (source?.[1]) return sprites + source[0] + encodeURIComponent(source[1]) + '.png';
+        return item?.iconId ? sprites + 'itemiconbig/' + encodeURIComponent(item.iconId) + '.png' : undefined;
+    }
     const fieldSets = {
         dish: ['price', 'timeCost', 'unlockLevel', 'unlockTopicStarNum'], drink: ['price', 'unlockLevel'],
         topic: ['unlockLevel', 'starRequiredScore', 'topicKPIScoreLimit', 'topicProfitScoreLimit',
@@ -76,7 +89,9 @@
     function ref(c, module, kind, source, key) {
         if (key == null || key === '') return '—';
         const row = get(c, source, key);
-        return row ? c.link(module, `${kind}:${key}`, label(c, kind, key, row)) : c.h(c.t('unavailable'));
+        const route = `${kind}:${key}`;
+        return row ? c.link(module === 'gamble' ? 'misc' : module === 'farming' ? 'inn' : module,
+            module === 'gamble' ? `gamble/${encodeURIComponent(route)}` : route, label(c, kind, key, row)) : c.h(c.t('unavailable'));
     }
     function descriptions(c, row) {
         return textFields.filter(k => !['name', 'handTypeName', 'clientShowName'].includes(k)).map(k => {
@@ -107,15 +122,13 @@
         const row = get(c, 'InnRequirementTable', key);
         if (!row) return c.state(c.t('unavailable'));
         // false also appears in positive OR requirements. Never interpret boolFlag as negation.
-        return descriptions(c, row) + c.state(t('requirementNotice')) + c.table([t('category'), t('affix'), t('ingredient'), t('clauseDishes')], (row.describe || []).map(id => {
+        return c.table([t('category'), t('affix'), t('ingredient')], (row.describe || []).map(id => {
             const d = get(c, 'InnDescribeTable', id);
-            if (!d) return [c.h(c.t('unavailable')), '—', '—', '—'];
+            if (!d) return [c.h(c.t('unavailable')), '—', '—'];
             const selectorCount = [d.category, d.affix, d.ingredient].filter(Boolean).length;
             if (selectorCount !== 1) c.issue('unresolved-requirement-clause', 'InnDescribeTable', id);
             return [ref(c, 'inn', 'category', 'InnDishCategoryTable', d.category),
-                ref(c, 'inn', 'affix', 'InnAffixTable', d.affix), d.ingredient ? c.item(d.ingredient) : '—',
-                selectorCount === 1 ? dishLinks(c, dish => d.category ? dish.category === d.category
-                    : d.affix ? (dish.affix || []).includes(d.affix) : (dish.ingredient || []).includes(d.ingredient)) : c.h(t('unresolved'))];
+                ref(c, 'inn', 'affix', 'InnAffixTable', d.affix), d.ingredient ? c.item(d.ingredient) : '—'];
         }));
     }
     function dishLinks(c, predicate) {
@@ -124,13 +137,13 @@
     }
     function sources(c, item) {
         return [
-            ...c.entries(c.tables.CropObtainWayTable).filter(([, r]) => r.itemId === item).map(([key, row]) => c.link('farming', `crop:${key}`, label(c, 'crop', key, row))),
-            ...c.entries(c.tables.InnRanchAnimalTable).filter(([, r]) => r.lowLevelProd === item || r.highLevelProd === item).map(([key, row]) => c.link('farming', `animal:${key}`, label(c, 'animal', key, row)))
+            ...c.entries(c.tables.CropObtainWayTable).filter(([, r]) => r.itemId === item).map(([key, row]) => c.link('inn', `crop:${key}`, label(c, 'crop', key, row))),
+            ...c.entries(c.tables.InnRanchAnimalTable).filter(([, r]) => r.lowLevelProd === item || r.highLevelProd === item).map(([key, row]) => c.link('inn', `animal:${key}`, label(c, 'animal', key, row)))
         ].join(' ') || '—';
     }
     function renderInn(e, c) {
         const r = e.raw, T = c.tables;
-        let html = descriptions(c, r);
+        let html = e.kind === 'milestone' ? '' : descriptions(c, r);
         if (fieldSets[e.kind]) html += fields(c, r, fieldSets[e.kind]);
         const refs = (ids, kind, table) => (ids || []).map(id => ref(c, 'inn', kind, table, id)).join(' ') || '—';
         if (['dish', 'drink'].includes(e.kind)) {
@@ -202,7 +215,6 @@
             html += c.section(t('products'), c.item(r.lowLevelProd) + ' ' + c.item(r.highLevelProd), true);
             html += c.section(t('stable'), (r.stableGroupIds || []).map(id => ref(c, 'farming', 'stable', 'InnRanchStableGroupTable', id)).join(' '), true);
             html += c.section(t('usedByDishes'), dishLinks(c, d => (d.ingredient || []).some(id => id === r.lowLevelProd || id === r.highLevelProd)), true);
-            html += c.state(t('yieldNotice'));
         } else if (e.kind === 'stable') {
             html += c.table([t('slot'), t('fields.unlockLevel'), t('cost')], c.entries(r.stables).map(([key, s]) => {
                 if (String(T.InnRanchStableId2GroupId[key]) !== String(r.stableGroupId)) c.issue('stable-group-mismatch', e.source, key);
@@ -213,7 +225,6 @@
             html += c.section(t('products'), c.item(r.itemId, r.itemNum), true);
             html += c.section(t('soilItem'), c.item(r.soilItemId, r.soilItemNum), true);
             html += c.section(t('usedByDishes'), dishLinks(c, d => (d.ingredient || []).includes(r.itemId)), true);
-            if (r.questId) html += c.state(t('questGate'));
         } else if (e.kind === 'soil') {
             html += c.section(t('upgrades'), c.table([t('level'), t('cost'), t('innLevel'), t('capacity'), t('features')], (r.levelList || []).map(l => [
                 c.number(l.level), c.item(r.levelUpMoney, l.levelUpCost),
@@ -268,13 +279,14 @@
             const subtitle = kind === 'card' ? (raw.enemyIdList || []).map(id => c.text(c.tables.EnemyTemplateDisplayInfoTable?.[c.tables.EnemyTable?.[id]?.templateId]?.name)).join(' / ') : traits;
             return { id: `${kind}:${key}`, key, kind, source, raw, name, group: t(kind),
                 subtitle, search: `${search} ${subtitle}`, sources: [{ table: source, key }],
-                icon: item?.iconId ? `/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/itemiconbig/${item.iconId}.png` : undefined };
+                icon: entryIcon(kind, raw, item) };
         }));
     }
     function mount(module, presentation = {}) {
         return window.AKECatalog.mount({ id: module, tables: tables(module), primary: definitions[module].map(([, s]) => s), itemIcons: true,
-            build: c => build(module, c), render: (e, c) => ({ inn: renderInn, farming: renderFarming, gamble: renderGamble })[module](e, c), ...presentation });
+            build: c => build(module, c), render: (e, c) => module === 'inn' ? renderVillage(e, c) : ({ farming: renderFarming, gamble: renderGamble })[module](e, c), ...presentation });
     }
+    const renderVillage = (e, c) => (farmingKinds.has(e.kind) ? renderFarming : renderInn)(e, c);
     const tables = module => [...new Set(['ItemTable', 'RewardTable', ...definitions[module].map(([, s]) => s), ...dependencies[module]])];
-    window.AKELifeCatalog = { mount, definitions, tables, textFields, build, renderGamble };
+    window.AKELifeCatalog = { mount, definitions, tables, textFields, build, renderGamble, renderVillage };
 })();

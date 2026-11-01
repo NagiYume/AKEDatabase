@@ -80,7 +80,7 @@
 
     function mount(spec) {
         controllers.get(spec.id)?.destroy();
-        const root = document.querySelector(`.ake-ui-directory[data-ake-module="${spec.id}"]`);
+        const root = spec.root || document.querySelector(`.ake-ui-directory[data-ake-module="${spec.id}"]`);
         if (!root) return;
         const abort = new AbortController();
         const listen = (node, type, handler) => node?.addEventListener(type, handler, { signal: abort.signal });
@@ -95,8 +95,8 @@
         let pendingNotFound = null, lastHidden = hidden();
         let disposeDetail = null;
         let diagnostics = { state: 'loading', sources: {}, issues: [], coverage: {} };
-        const deepId = window.__deepLinkId;
-        window.__deepLinkId = null;
+        const deepId = Object.prototype.hasOwnProperty.call(spec, 'deepId') ? spec.deepId : window.__deepLinkId;
+        if (!Object.prototype.hasOwnProperty.call(spec, 'deepId')) window.__deepLinkId = null;
         const title = () => window.akeI18n.t(`modules.${spec.id}.title`);
         const entryIcon = row => {
             if (!row.icon) return undefined;
@@ -129,7 +129,10 @@
             if (!(view && id === null) && !rows.some(row => row.id === id)) return false;
             activeId = id;
             renderList(); renderDetail(); close();
-            if (update) window.__akeRouter?.updateUrl(spec.id, id);
+            if (update) {
+                if (spec.navigate) spec.navigate(id);
+                else window.__akeRouter?.updateUrl(spec.id, id);
+            }
             return true;
         }
         function renderList() {
@@ -182,10 +185,10 @@
             disposeDetail = null;
             const token = ++generation;
             loading = true;
-            view?.status('loading');
             diagnostics = { state: 'loading', sources: {}, issues: [], coverage: {} };
             detail.innerHTML = `<div class="ake-ui-state" data-state="loading">${h(t('loading'))}</div>`;
             try {
+                view?.status?.('loading');
                 if (window.configLoaded) await window.configLoaded;
                 const names = [...new Set(['ItemTable', 'RewardTable', ...(spec.tables || [])])];
                 const loaded = await Promise.all(names.map(name => window.AKEV3.table(name, undefined, { optional: (spec.optional || []).includes(name) })));
@@ -199,7 +202,7 @@
                 if (destroyed || token !== generation) return;
                 ctx = null;
                 diagnostics.state = 'error'; diagnostics.error = error.message;
-                view?.status('error');
+                view?.status?.('error');
                 detail.innerHTML = `<div class="ake-ui-state" data-state="error"><p>${h(t('loadFailed'))}</p>${hidden() ? `<p>${h(error.message)}</p>` : ''}<button class="ake-ui-button" type="button" data-catalog-retry>${h(t('retry'))}</button></div>`;
             } finally { if (token === generation) loading = false; }
         }
@@ -262,11 +265,11 @@
                 pendingNotFound = null;
             } else if (!ctx && !loading) load();
         });
-        const controller = { select, destroy() { destroyed = true; generation++; abort.abort(); disposeDetail?.(); view?.destroy(); }, diagnostics() { return structuredClone(diagnostics); } };
+        const controller = { select, ready: null, destroy() { destroyed = true; generation++; abort.abort(); disposeDetail?.(); view?.destroy?.(); }, diagnostics() { return structuredClone(diagnostics); } };
         controllers.set(spec.id, controller);
         const titleElement = root.querySelector('[data-catalog-title]');
         if (titleElement) titleElement.textContent = title();
-        load();
+        controller.ready = load();
         return controller;
     }
     window.AKECatalog = { mount, iconTile, getDiagnostics: id => id ? controllers.get(id)?.diagnostics() : Object.fromEntries([...controllers].map(([id, controller]) => [id, controller.diagnostics()])) };

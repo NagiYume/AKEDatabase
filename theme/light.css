@@ -9101,3 +9101,97 @@ body[data-ake-module="tech_tree"] .ake-ui-material__item-icon { background: var(
     .model-viewer__toolbar { grid-template-columns: minmax(0, 1fr) auto; }
     .model-viewer__playback { grid-column: 1 / -1; }
 }
+
+/* Yuanyuan Villa shares card structure with the equipment catalogue. */
+.ake-ui-directory[data-ake-module="inn"] {
+    --inn-category-icon-bg: #303743;
+    --inn-topic-opacity: .3;
+    --inn-topic-surface: #f8fafd;
+}
+.ake-ui-directory[data-ake-module="inn"] .inn-recipe-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 350px), 1fr));
+    gap: 16px;
+    align-items: start;
+}
+.ake-ui-directory[data-ake-module="inn"] [data-inn-kind] {
+    position: relative;
+    min-width: 0;
+    padding: 14px;
+    border: var(--ake-ui-border);
+    border-radius: 8px;
+    background: var(--module-bg, var(--inn-topic-surface));
+}
+.ake-ui-directory[data-ake-module="inn"] [data-inn-kind] .ake-ui-card__content {
+    position: relative;
+    min-width: 0;
+    display: grid;
+    gap: 10px;
+}
+.ake-ui-directory[data-ake-module="inn"] [data-inn-kind] .ake-ui-card__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.ake-ui-directory[data-ake-module="inn"] [data-inn-kind] .ake-ui-card__media img {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+}
+.ake-ui-directory[data-ake-module="inn"] .inn-card-row {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.ake-ui-directory[data-ake-module="inn"] .inn-card-label {
+    color: var(--desc-color);
+    font-size: .85em;
+    font-weight: 600;
+}
+.ake-ui-directory[data-ake-module="inn"] .inn-card-row .ake-ui-material__item {
+    display: inline-flex;
+    margin: 0 12px 4px 0;
+}
+.ake-ui-directory[data-ake-module="inn"] [data-inn-kind="topic"] {
+    isolation: isolate;
+    background: var(--inn-topic-surface);
+}
+.ake-ui-directory[data-ake-module="inn"] .inn-topic-background {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: min(32%, 180px);
+    height: 160px;
+    object-fit: contain;
+    object-position: top right;
+    opacity: var(--inn-topic-opacity);
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: -1;
+}
+.ake-ui-directory[data-ake-module="inn"] .inn-recipe-price {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.ake-ui-directory[data-ake-module="inn"] [data-inn-kind] .ake-ui-meta-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+}
+.ake-ui-directory[data-ake-module="inn"] [data-inn-kind] .ake-ui-table-shell {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+}
+.ake-ui-directory[data-ake-module="inn"] .inn-inline-item {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.ake-ui-directory[data-ake-module="inn"] [data-inn-kind="category"] .ake-ui-card__media {
+    background: var(--inn-category-icon-bg);
+    border-radius: 8px;
+    padding: 8px;
+}

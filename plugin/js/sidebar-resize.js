@@ -94,7 +94,7 @@
         mediaQuery: '(min-width: 769px)'
     });
     registerModules([
-        'v3_weapon', 'v3_character', 'v3_enemy', 'v3_equip', 'v3_item',
+        'inn', 'v3_weapon', 'v3_character', 'v3_enemy', 'v3_equip', 'v3_item',
         'v3_shop', 'v3_achievement', 'v3_dungeon', 'research', 'v3_archive',
         'v3_activity', 'v3_mission', 'misc', 'baker', 'v3_cc', 'season_tower',
         'v3_skill', 'v3_buff'

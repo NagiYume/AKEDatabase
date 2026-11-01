@@ -3,19 +3,9 @@
 // Maintain alongside module adapters; see the repository development skill.
 window.AKESearchIndex = {
   "inn": {
-    "tables": ["ItemTable", "RewardTable", "InnDishTable", "InnDrinkTable", "InnTopicTable", "InnCharSkillTable", "InnSkillTable", "InnLevelTable", "InnExpansionTable", "InnMilestoneTable", "InnMilestoneLevelTable", "InnRequirementTable", "InnAffixTable", "InnDishCategoryTable", "InnRandomRuleTable", "InnStarsRewardTable", "InnDescribeTable", "InnGoodsRandomTable", "InnManagementConst", "CharacterTable", "CropObtainWayTable", "InnRanchAnimalTable", "ShopGoodsTable"],
+    "tables": ["ItemTable", "RewardTable", "InnDishTable", "InnDrinkTable", "InnTopicTable", "InnCharSkillTable", "InnSkillTable", "InnLevelTable", "InnExpansionTable", "InnMilestoneTable", "InnMilestoneLevelTable", "InnRequirementTable", "InnAffixTable", "InnDishCategoryTable", "InnRandomRuleTable", "InnDescribeTable", "InnGoodsRandomTable", "InnManagementConst", "CharacterTable", "CropObtainWayTable", "InnRanchAnimalTable", "ShopGoodsTable", "InnRanchFeedTable", "InnRanchStableGroupTable", "SoilMgrTable", "SoilMgrFeatureTable", "InnRanchStateTable", "InnRanchStableId2GroupId", "RanchConst", "FactorySoilConst"],
     "sources": ["plugin/inn.html", "plugin/js/inn.js", "plugin/js/life-catalog.js", "plugin/js/ake-catalog.js"],
-    "coverage": "kind:source-key routes; named dishes, topics, requirements, skills, levels, expansions, milestones and refresh rules. Unconfirmed guest/order mappings are not inferred."
-  },
-  "farming": {
-    "tables": ["ItemTable", "RewardTable", "InnRanchAnimalTable", "InnRanchFeedTable", "InnRanchStableGroupTable", "CropObtainWayTable", "SoilMgrTable", "SoilMgrFeatureTable", "InnRanchStateTable", "InnRanchStableId2GroupId", "RanchConst", "FactorySoilConst", "InnDishTable", "InnLevelTable"],
-    "sources": ["plugin/farming.html", "plugin/js/farming.js", "plugin/js/life-catalog.js", "plugin/js/ake-catalog.js"],
-    "coverage": "Animals, feed, stable groups, crops, soil upgrades and feature descriptions. Production rates remain configuration values."
-  },
-  "gamble": {
-    "tables": ["ItemTable", "RewardTable", "GambleBattleHandTypeTable", "GambleBattleCardTable", "GambleBattleCardPoolTable", "GambleBattleEnemyBuffTable", "ActivityCommonUIMilestoneTable", "GambleBattleHandTypePoolTable", "GambleBattleConst", "ActivityCommonCoinRewardTable", "EnemyTable", "EnemyTemplateDisplayInfoTable", "ActivityTable", "DungeonTable", "TimeRangeTable"],
-    "sources": ["plugin/gamble.html", "plugin/js/gamble.js", "plugin/js/life-catalog.js", "plugin/js/ake-catalog.js"],
-    "coverage": "Six category entries contain configured hands, enemy cards, pools, effects, milestones and opening periods. Stable kind:source-key routes focus the original record inside its category. Pool membership does not establish live activity-stage membership."
+    "coverage": "Grouped inn and farming categories with recipe cards, topic summaries and combined operator bonus rules. Chef routes remain compatible but individual character bonuses are not displayed or indexed."
   },
   "search": {
     "tables": [],
@@ -350,9 +340,22 @@ window.AKESearchIndex = {
       "TyphoeaShootingRangeAffixCombinationTable",
       "TyphoeaShootingRangeAffixTable",
       "WeaponBasicTable",
-      "WikiDefaultCraftTable"
+      "WikiDefaultCraftTable",
+      "ActivityCommonCoinRewardTable",
+      "ActivityCommonUIMilestoneTable",
+      "EnemyTable",
+      "GambleBattleCardPoolTable",
+      "GambleBattleCardTable",
+      "GambleBattleConst",
+      "GambleBattleEnemyBuffTable",
+      "GambleBattleHandTypePoolTable",
+      "GambleBattleHandTypeTable"
     ],
     "sources": [
+      "plugin/misc/gamble.html",
+      "plugin/js/gamble.js",
+      "plugin/js/life-catalog.js",
+      "plugin/js/ake-catalog.js",
       "plugin/js/ake-watermark.js",
       "plugin/js/misc-character-icon-generator.js",
       "plugin/js/misc-character-skill-popup-generator.js",
