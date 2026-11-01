@@ -77,8 +77,8 @@
                 // 搜索过滤
                 if (searchTerm) {
                     const term = searchTerm.toLowerCase();
-                    const nameMatch = w.title && w.title.toLowerCase().includes(term);
-                    const idMatch = w.weaponId && w.weaponId.toLowerCase().includes(term);
+                    const nameMatch = w.title && window.AKEModuleSearch.matches(w.title, term);
+                    const idMatch = w.weaponId && window.AKEModuleSearch.matches(w.weaponId, term);
                     if (!nameMatch && !idMatch) return false;
                 }
                 // 稀有度筛选

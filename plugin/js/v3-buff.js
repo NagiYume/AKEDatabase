@@ -395,9 +395,9 @@
     function filteredDirectory() {
         if (!state.query) return state.directory;
         return state.directory.map(owner => {
-            const items = owner.searchText.includes(state.query)
+            const items = window.AKEModuleSearch.matches(owner.searchText, state.query)
                 ? owner.items
-                : owner.items.filter(item => item.searchText.includes(state.query));
+                : owner.items.filter(item => window.AKEModuleSearch.matches(item.searchText, state.query));
             return { ...owner, items };
         }).filter(owner => owner.items.length);
     }

@@ -728,7 +728,7 @@
             if (!state.showHidden && !row.typeDef.visible) return false;
             if (state.type !== 'all' && String(row.type) !== state.type) return false;
             if (state.chapter !== 'all' && String(row.chapter) !== state.chapter) return false;
-            return !search || row.searchText.includes(search);
+            return !search || window.AKEModuleSearch.matches(row.searchText, search);
         });
     }
 

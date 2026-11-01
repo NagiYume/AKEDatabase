@@ -125,7 +125,7 @@
         }
         const matches = (character, skill, query) => (!selectedRooms.size || selectedRooms.has(skill.room))
             && (!activeFilter || (skill.room === filters.get(activeFilter).room && skill.numeric.effect === filters.get(activeFilter).effect && skill.numeric.target === filters.get(activeFilter).target))
-            && (!query || `${plain(character.name)} ${skill.search} ${c.hidden() ? `${character.charId} ${skill.id}`.toLocaleLowerCase() : ''}`.includes(query));
+            && (!query || window.AKEModuleSearch.matches(`${plain(character.name)} ${skill.search} ${c.hidden() ? `${character.charId} ${skill.id}` : ''}`, query));
         const material = (name, icon) => window.AKEUI.materialItem({ name, icon })?.outerHTML || c.h(name);
         function renderResults() {
             const query = search.value.trim().toLocaleLowerCase();

@@ -100,7 +100,7 @@
             if (!searchTerm && !hasEquipmentTermFilter()) return suits;
             const t = searchTerm.toLowerCase();
             return suits.filter(s =>
-                (!searchTerm || (s.name && s.name.toLowerCase().includes(t)) || (s.suitID && s.suitID.toLowerCase().includes(t))) &&
+                (!searchTerm || (s.name && window.AKEModuleSearch.matches(s.name, t)) || (s.suitID && window.AKEModuleSearch.matches(s.suitID, t))) &&
                 (!hasEquipmentTermFilter() || (s.equipmentIndex || []).some(equipmentMatchesTerms))
             );
         }

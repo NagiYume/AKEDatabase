@@ -738,7 +738,7 @@ class MainWindow(QMainWindow):
         watch_options_row.addStretch()
         watch_options_layout.addLayout(watch_options_row)
         watch_scope = QLabel(
-            "自动流程：准备 TableCfg VFS → beyond-sdk 解析 → 验证工作目录中的结果 → 直接发布 public/TableCfg。"
+            "自动流程：准备 TableCfg VFS → Python 解析 → 验证工作目录中的结果 → 直接发布 public/TableCfg。"
             "仅在勾选“上传到 R2”时继续上传 Cloudflare R2 并更新远端 manifest.json；"
             "否则到发布 public 为止。不修改 version.json，也不执行 Git。"
             "自动监听始终忽略手动版本输入，只跟踪官方当前最新版。JsonData、Json 和 images 不在监听范围内。"
@@ -1687,7 +1687,7 @@ class MainWindow(QMainWindow):
         title = QLabel("Json 解析")
         title.setObjectName("pageTitle")
         subtitle = QLabel(
-            "在启动 beyond-sdk 前准备完整 VFS，解析 Json 并发布指定的 Json 数据目录"
+            "准备完整 VFS，使用 Python 和匹配版本的游戏运行时解析 Json，再发布 Json 数据目录"
         )
         subtitle.setObjectName("subtitle")
         root.addWidget(title)
@@ -1754,7 +1754,7 @@ class MainWindow(QMainWindow):
         specs = [
             ("json_analyze", "1. 检查最新版本/索引"),
             ("json_prepare", "2. 准备并校验 775A31D1"),
-            ("json_extract", "3. JAR 解析 Json"),
+            ("json_extract", "3. Python 解析 Json"),
             ("json_publish", "4. 发布全部 Json 数据到 public"),
         ]
         for index, (stage, text) in enumerate(specs):

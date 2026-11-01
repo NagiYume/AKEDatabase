@@ -19,6 +19,31 @@
             const configuredPluginVersions = bootstrapVersion.pluginversion || {};
             const configuredJsVersions = bootstrapVersion.jsversion || {};
             let html2canvasPromise = null;
+            let moduleSearchPromise = null;
+            function prepareModuleSearch() {
+                if (!moduleSearchPromise) {
+                    moduleSearchPromise = (async () => {
+                        for (const [ready, path] of [
+                            [() => window.AKEModuleSearch, '/plugin/js/ake-module-search.js'],
+                            [() => window.pinyinPro?.match, '/plugin/js/vendor/pinyin-pro-3.29.0/pinyin-pro.js']
+                        ]) {
+                            if (ready()) continue;
+                            const source = await getScriptSource(new URL(path, window.location.href).href);
+                            const script = document.createElement('script');
+                            script.textContent = `${source}\n//# sourceURL=${path}`;
+                            document.head.appendChild(script);
+                            script.remove();
+                            if (!ready()) throw new Error(`Module search script did not initialize: ${path}`);
+                        }
+                    })().catch(error => {
+                        moduleSearchPromise = null;
+                        // A dictionary download failure must not disable ordinary module search.
+                        if (!window.AKEModuleSearch) throw error;
+                        console.warn('拼音搜索资源加载失败，保留文字搜索；下次打开模块时重试。', error);
+                    });
+                }
+                return moduleSearchPromise;
+            }
             window.akeLoadHtml2Canvas = function () {
                 if (typeof window.html2canvas === 'function') return Promise.resolve(window.html2canvas);
                 if (!html2canvasPromise) {
@@ -789,69 +814,6 @@
                 return moduleHtmlCache.get(cacheKey);
             }
 
-            async function waitForModulePreloadIdle() {
-                do {
-                    await new Promise(resolve => {
-                        if (window.requestIdleCallback) window.requestIdleCallback(resolve, { timeout: 1000 });
-                        else setTimeout(resolve, 200);
-                    });
-                    const stats = window.akeDataLoader?.getStats?.();
-                    if (!document.hidden && !stats?.active && !stats?.queued &&
-                        !contentArea.querySelector('.ake-ui-state[data-state="loading"]')) return;
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                } while (true);
-            }
-
-            async function preloadVisibleModules() {
-                if (document.readyState !== 'complete') {
-                    await new Promise(resolve => window.addEventListener('load', resolve, { once: true }));
-                }
-                const scripts = new Set();
-                const queue = [...allModules];
-                for (const module of queue) {
-                    if (module.hidden || module.disabled || !isModuleUnlocked(module)) continue;
-                    await waitForModulePreloadIdle();
-                    let html;
-                    try {
-                        html = await getModuleSource(module);
-                    } catch (error) {
-                        console.warn(`模块 ${module.id} 后台预加载失败，打开时将重试。`, error);
-                        continue;
-                    }
-                    const template = document.createElement('template');
-                    template.innerHTML = html;
-                    for (const script of template.content.querySelectorAll('script[src]')) {
-                        const src = new URL(script.getAttribute('src'), window.location.href).href;
-                        if (scripts.has(src)) continue;
-                        await waitForModulePreloadIdle();
-                        try {
-                            await getScriptSource(src);
-                            scripts.add(src);
-                        } catch (error) {
-                            console.warn(`脚本 ${src} 后台预加载失败，打开模块时将重试。`, error);
-                        }
-                    }
-                    if (module.id === 'misc') {
-                        await waitForModulePreloadIdle();
-                        try {
-                            const manifest = JSON.parse(await getModuleSource({
-                                id: 'misc/manifest', versionKey: 'misc', contentFile: '/plugin/misc/manifest.json'
-                            }));
-                            if (!Array.isArray(manifest)) throw new Error('Invalid misc module manifest');
-                            for (const child of manifest) {
-                                if (!child?.id || !child.contentFile || child.hidden || child.disabled) continue;
-                                const url = new URL(child.contentFile, window.location.href);
-                                if (url.origin !== window.location.origin || !url.pathname.startsWith('/plugin/misc/') ||
-                                    !url.pathname.endsWith('.html')) continue;
-                                queue.push({ ...child, id: `misc/${child.id}`, versionKey: 'misc' });
-                            }
-                        } catch (error) {
-                            console.warn('杂项子模块后台预加载失败，打开时将重试。', error);
-                        }
-                    }
-                }
-            }
-
             async function executeModuleScript(sourceScript, prefetchedSource) {
                 const script = document.createElement('script');
                 Array.from(sourceScript.attributes).forEach(attr => {
@@ -899,6 +861,7 @@
                 });
                 try {
                     const html = await getModuleSource(module);
+                    if (module.id !== 'search') await prepareModuleSearch();
                     // The navigation shell is independent; module adapters need a fixed data snapshot.
                     await window.akeDataSource?.ready;
                     if (generation !== moduleLoadGeneration) return false;
@@ -1328,6 +1291,8 @@
                 ['bufficon/', 'sprites/bufficon/'],
                 ['dungeon/', 'sprites/dungeon/'],
                 ['TermIcon/', 'sprites/termicon/'],
+                ['Inn/Type/', 'sprites/inn/type/'],
+                ['inn/type/', 'sprites/inn/type/'],
                 ['contingencycontract/', 'sprites/contingencycontract/']
             ];
 
@@ -1424,6 +1389,7 @@
                 'season-tower': 'season_tower'
             });
             function entryUrl(plugin, id) {
+                if (plugin === 'gamble') { plugin = 'misc'; id = `gamble/${encodeURIComponent(id)}`; }
                 const url = new URL(window.location.href);
                 url.search = '';
                 url.hash = '';
@@ -1433,6 +1399,7 @@
             }
 
             function entryAttributes(plugin, id, label) {
+                if (plugin === 'gamble') { plugin = 'misc'; id = `gamble/${encodeURIComponent(id)}`; }
                 const attributes = {
                     href: entryUrl(plugin, id),
                     'data-ake-entry-plugin': normalizeModuleRouteId(plugin),
@@ -1486,6 +1453,8 @@
             };
 
             const MODULE_ROUTE_ALIASES = Object.freeze({
+                farming: 'inn',
+                gamble: 'misc',
                 weapon: 'v3_weapon',
                 v2_weapon: 'v3_weapon',
                 character: 'v3_character',
@@ -2013,7 +1982,11 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const requestedPlugin = urlParams.get('plugin');
                 const deepPlugin = normalizeModuleRouteId(requestedPlugin);
-                const deepId = urlParams.get('id');
+                let deepId = urlParams.get('id');
+                if (requestedPlugin === 'gamble') {
+                    deepId = deepId ? `gamble/${encodeURIComponent(deepId)}` : 'gamble';
+                    urlParams.set('id', deepId);
+                }
                 if (requestedPlugin && deepPlugin !== requestedPlugin) {
                     urlParams.set('plugin', deepPlugin);
                 }
@@ -2417,11 +2390,7 @@
                 getUnlockedTokens: () => [...config.unlockedTokens]
             };
             brandHome.addEventListener('click', showHomePage);
-            initApp().then(() => {
-                void preloadVisibleModules().catch(error => {
-                    console.warn('模块后台预加载已停止，模块仍可按需加载。', error);
-                });
-            }).catch(error => {
+            initApp().catch(error => {
                 void window.__akeRevealNavigationShell?.({ waitForImages: false });
                 window.AKEUI?.setState(contentArea, {
                     state: 'error',

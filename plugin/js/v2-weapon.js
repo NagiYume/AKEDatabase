@@ -51,8 +51,8 @@
         return weapons.filter(w => {
             if (searchTerm) {
                 const term = searchTerm.toLowerCase();
-                if (!(w.name && w.name.toLowerCase().includes(term)) &&
-                    !(w.weaponId && w.weaponId.toLowerCase().includes(term))) return false;
+                if (!(w.name && window.AKEModuleSearch.matches(w.name, term)) &&
+                    !(w.weaponId && window.AKEModuleSearch.matches(w.weaponId, term))) return false;
             }
             if (selectedRarities.size > 0 && !selectedRarities.has(w.rarity)) return false;
             if (selectedTypes.size > 0 && !selectedTypes.has(w.weaponType)) return false;

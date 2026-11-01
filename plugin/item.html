@@ -184,8 +184,8 @@
                 // 搜索过滤
                 if (searchTerm) {
                     const term = searchTerm.toLowerCase();
-                    const nameMatch = item.name && item.name.toLowerCase().includes(term);
-                    const idMatch = item.itemId && item.itemId.toLowerCase().includes(term);
+                    const nameMatch = item.name && window.AKEModuleSearch.matches(item.name, term);
+                    const idMatch = item.itemId && window.AKEModuleSearch.matches(item.itemId, term);
                     if (!nameMatch && !idMatch) return false;
                 }
                 // 稀有度筛选

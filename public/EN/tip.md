@@ -1,10 +1,54 @@
 # Special Announcement
 
-AKEData `v1.3.4` opens the Dijiang module and adds logistics skill filtering by room, effect and product, with sorting based on structured skill parameters.
+AKEData `v1.3.6` opens Yuanyuan Villa and the Industrial Technology Tree, moves Baiqu Martial Exhibition into Miscellaneous, adds pinyin support to module-local search, and loads other modules on demand. The missing v1.3.5 changelog is also included.
 
 AKEData has moved to www.akedata.wiki. The former domain, akedata.top, now redirects here.
 
 # AKEData Version Changelog
+
+### v1.3.6
+
+#### Yuanyuan Villa
+
+- Combined Inn Management and Farming into the visible Yuanyuan Villa module, placed after Dijiang.
+- Browse recipes, drinks, themes, operator bonuses, expansions, milestones, animals, crops and other categories directly from the sidebar. Each category displays all its entries.
+- Recipe and drink cards show icons, cooking time, prices, categories, traits, ingredients and unlock conditions. Prices use the currency icon.
+- Theme cards show theme artwork, popular choices, descriptions, bonus objectives, menu requirements, rewards and properties. Fixed dish-category icons inside descriptions.
+- Combined kitchen operators and kitchen skills into Operator Bonuses, presenting hobby and attribute rules without per-operator numerical bonuses.
+- Unified the remaining cards across all three themes, removed duplicate descriptions and obsolete notices, and removed the star-rating category and requirement-based dish lookup.
+- Fixed category-view loading failures. Detail cards render in cancellable batches to reduce main-thread blocking when entering or switching categories.
+
+#### Navigation and loading
+
+- Moved the battle-hand catalogue into Miscellaneous as Baiqu Martial Exhibition and made it visible, retaining compatibility with existing entry links.
+- Made the Industrial Technology Tree visible after Regional Development.
+- Removed idle background preloading of other modules after opening the website. Modules now load when requested.
+
+#### Search and interface
+
+- Module-local search supports full pinyin, prefixes and initials: `hy`, `hongy` and `hongyuan` can match “宏愿”. Global search retains its existing matching behavior.
+- Fixed the Research sidebar failing to collapse.
+- Continued unifying directories, details, cards and filters, and updated module ownership and search navigation.
+
+### v1.3.5
+
+#### Model previews
+
+- Added an on-demand model preview in operator details.
+- Updated the model viewer to download resources per animation, refined animation and rendering presentation, and improved compatibility with some alpha-tested and depth effects.
+
+#### Interface and interaction
+
+- Unified detail headers, sections, cards, state messages and voice-player components, with presentation and interaction improvements for Combat, Buffs, Dungeons and War Echoes.
+- Improved Industrial Technology Tree nodes, connections, item icons and facility links. Its entry remained hidden in this version.
+- Reorganized the battle-hand catalogue into category directories and category-wide cards while retaining links to individual records. Its entry remained hidden in this version.
+
+#### Data relationships and research
+
+- Added source references for archive reading content, refined the boundary between archives and missions, and updated related search navigation.
+- Improved Contingency Contract indicator and value relationships, explicitly marking unresolved values as unavailable.
+- Added Contingency Contract Buff analyses v3 and v4 and an analysis of enemy special attacks. The research documents distinguish candidate indicators and predictions from confirmed data.
+- Added a data API guide for individual developers covering version manifests, game data and asset indexes.
 
 ### v1.3.4
 

@@ -73,7 +73,7 @@ def main():
                 raise ValueError("Existing remote version is incomplete")
             objects = worker.storage.objects(plan["prefix"])
             descriptor = {"version": args.version, "identity": identity(latest),
-                "bucket": config["bucket"], "sdk_sha256": worker.sdk_digest,
+                "bucket": config["bucket"], "parser_sha256": worker.parser_digest,
                 "plan_path": str(job / "plan.json"), "plan_sha256": digest(job / "plan.json"),
                 "manifest_etag": etag, "created_at": now(),
                 "remote": {name: {"etag": obj["ETag"], "modified": obj["LastModified"].isoformat()}
@@ -87,7 +87,7 @@ def main():
             return
         descriptor = read_json(descriptor_path)
         if (descriptor["version"] != args.version or descriptor["identity"] != identity(latest)
-                or descriptor["bucket"] != config["bucket"] or descriptor["sdk_sha256"] != worker.sdk_digest):
+                or descriptor["bucket"] != config["bucket"] or descriptor.get("parser_sha256") != worker.parser_digest):
             raise ValueError("Replay authorization identity changed")
         plan_path = Path(descriptor["plan_path"]).resolve()
         if root not in plan_path.parents or digest(plan_path) != descriptor["plan_sha256"]:

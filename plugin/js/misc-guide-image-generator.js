@@ -241,7 +241,7 @@
         const renderGrid = () => {
             const query = search.value.trim().toLowerCase();
             grid.replaceChildren();
-            values.filter(value => !query || value.label.toLowerCase().includes(query)).forEach(value => {
+            values.filter(value => !query || window.AKEModuleSearch.matches(value.label, query)).forEach(value => {
                 const optionButton = document.createElement('button');
                 optionButton.type = 'button';
                 optionButton.className = 'guide-image-picker__option';

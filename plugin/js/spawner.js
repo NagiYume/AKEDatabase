@@ -113,7 +113,7 @@
             if (searchTerm.trim()) {
                 const lower = searchTerm.toLowerCase();
                 filteredGroups = groups.filter(g =>
-                    g.name.toLowerCase().includes(lower) || g.id.toLowerCase().includes(lower)
+                    window.AKEModuleSearch.matches(g.name, lower) || window.AKEModuleSearch.matches(g.id, lower)
                 );
             }
             if (filteredGroups.length === 0) {
@@ -413,7 +413,7 @@
             let filteredGroups = groups;
             if (searchTerm.trim()) {
                 const lower = searchTerm.toLowerCase();
-                filteredGroups = groups.filter(g => g.name.toLowerCase().includes(lower) || g.id.toLowerCase().includes(lower));
+                filteredGroups = groups.filter(g => window.AKEModuleSearch.matches(g.name, lower) || window.AKEModuleSearch.matches(g.id, lower));
             }
             if (filteredGroups.length === 0) {
                 container.innerHTML = `<div class="mobile-list-empty">${escapeHtml(t('mobile.emptyGroups'))}</div>`;

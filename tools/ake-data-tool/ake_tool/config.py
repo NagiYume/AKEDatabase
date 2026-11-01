@@ -195,16 +195,15 @@ class AppConfig:
                 "Map 上传版本格式无效，应类似 1.2.5@1242134-1"
             )
         if set(self.parts) != {"main", "initial"}:
-            raise ValueError("beyond-sdk TableCfg 解析必须同时准备 main 和 initial")
+            raise ValueError("TableCfg 下载必须同时准备 main 和 initial 索引")
         if not self.blocks:
             raise ValueError("至少需要选择一个下载区块")
         if self.blocks != ["TableCfg"]:
             raise ValueError("当前工具只允许处理 TableCfg；JsonData 请手动更新")
         if require_tool:
-            if not self.java_path.strip():
-                raise ValueError("Java 命令不能为空")
-            if not self.image_sdk.is_file():
-                raise FileNotFoundError(f"beyond-sdk.jar 不存在：{self.image_sdk}")
+            from .tablecfg_parser import require_crypto
+
+            require_crypto()
 
     def image_config(self, profile: str) -> ImageParsingConfig:
         profile = normalize_image_profile(profile)
@@ -243,6 +242,12 @@ class AppConfig:
             value = getattr(self, name)
             if type(value) is not int or not 1 <= value <= 64:
                 raise ValueError(f"{name} 必须为 1–64 的整数")
+
+    def validate_json(self) -> None:
+        self.validate_transfer_concurrency()
+        self._validate_work_root()
+        if not self.image_verify_md5:
+            raise ValueError("Json VFS 准备必须启用 MD5 校验")
 
     def _validate_work_root(self) -> None:
         work_root = self.work_root

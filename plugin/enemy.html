@@ -52,8 +52,8 @@
             if (!searchTerm) return enemies;
             const term = searchTerm.toLowerCase();
             return enemies.filter(e => 
-                (e.name && e.name.toLowerCase().includes(term)) || 
-                (e.templateId && e.templateId.toLowerCase().includes(term))
+                (e.name && window.AKEModuleSearch.matches(e.name, term)) || 
+                (e.templateId && window.AKEModuleSearch.matches(e.templateId, term))
             );
         }
 

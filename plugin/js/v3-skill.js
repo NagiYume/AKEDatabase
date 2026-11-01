@@ -969,11 +969,11 @@
         const term = state.query;
         if (!term) return state.directory;
         return state.directory.map(character => {
-            const characterMatch = !character.isOther && character.searchText.includes(term);
+            const characterMatch = !character.isOther && window.AKEModuleSearch.matches(character.searchText, term);
             const groups = character.groups.map(group => {
-                const directSkills = group.skills.filter(item => item.searchText.includes(term));
+                const directSkills = group.skills.filter(item => window.AKEModuleSearch.matches(item.searchText, term));
                 const skills = character.isOther ? directSkills
-                    : (characterMatch || group.searchText.includes(term) ? group.skills : directSkills);
+                    : (characterMatch || window.AKEModuleSearch.matches(group.searchText, term) ? group.skills : directSkills);
                 return { ...group, skills };
             }).filter(group => group.skills.length);
             return { ...character, groups };

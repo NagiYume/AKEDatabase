@@ -41,8 +41,8 @@
             return items.filter(item => {
                 if (searchTerm) {
                     const t = searchTerm.toLowerCase();
-                    if (!(item.name && item.name.toLowerCase().includes(t)) &&
-                        !(item.itemId && item.itemId.toLowerCase().includes(t))) return false;
+                    if (!(item.name && window.AKEModuleSearch.matches(item.name, t)) &&
+                        !(item.itemId && window.AKEModuleSearch.matches(item.itemId, t))) return false;
                 }
                 if (selectedRarities.size > 0 && !selectedRarities.has(item.rarity)) return false;
                 if (selectedCategories.size > 0) {

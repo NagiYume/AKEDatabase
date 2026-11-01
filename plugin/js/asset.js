@@ -950,7 +950,7 @@
         if (tokens.length) {
             for (const entry of state.searchEntries) {
                 if (state.newOnly && (entry.type === 'file' ? !entry.isNew : entry.totalNewFiles === 0)) continue;
-                if (!tokens.every(token => entry.searchKey.includes(token))) continue;
+                if (!tokens.every(token => window.AKEModuleSearch.matches(entry.searchKey, token))) continue;
                 if (matches.length >= SEARCH_RESULT_LIMIT) {
                     limited = true;
                     break;

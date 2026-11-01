@@ -10,7 +10,6 @@ import shutil
 import subprocess
 import threading
 import time
-import zipfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -49,15 +48,15 @@ from .models import (
 from .release import resolve_r2_versions
 from .unpacker import format_command
 from .sdk_launch import sdk_command
+from .json_unpacker import resolve_json_runtime, run_json_export
 from .vfs_validation_cache import VfsValidationCache, latest_identity
 
 
 IMAGE_BLOCKS = ("Bundle", "InitialBundle", "BundleManifest")
 IMAGE_RUNNER_SOURCE = Path(__file__).with_name("BeyondSdkImageRunner.java")
 VFS_KEY_RUNNER_SOURCE = Path(__file__).with_name("BeyondSdkVfsKeyRunner.java")
-# beyond-sdk 的 Json 导出前置任务会检查这些 VFS 类型。全部由工具提前准备，
-# 避免 SDK 因任一依赖缺失而自行下载资源。
-JSON_SDK_BLOCKS = (
+# Json 宿主所需的表、字符串池和哈希依赖；统一由准备流程提供。
+JSON_BLOCKS = (
     "TableCfg",
     "Json",
     "InitialExtendData",
@@ -557,7 +556,7 @@ class ImageAssetPipeline:
         return self._get_resource_plan(IMAGE_BLOCKS, "image_analyze", "图片")
 
     def _get_json_plan(self) -> dict[str, Any]:
-        return self._get_resource_plan(JSON_SDK_BLOCKS, "json_analyze", "Json")
+        return self._get_resource_plan(JSON_BLOCKS, "json_analyze", "Json")
 
     def _load_state(self) -> dict[str, Any]:
         if not self.state_path.is_file():
@@ -811,7 +810,7 @@ class ImageAssetPipeline:
         return result
 
     def analyze_json(self) -> dict[str, Any]:
-        self.config.validate_images(require_sources=True)
+        self.config.validate_json()
         plan = self._get_json_plan()
         latest: LatestInfo = plan["latest"]
         latest_entries: list[DownloadEntry] = plan["entries"]
@@ -967,7 +966,7 @@ class ImageAssetPipeline:
         vfs_cache, vfs_identity, vfs_hit_blocks, vfs_trusted_names = self._prepare_vfs_cache(
             latest,
             latest_entries,
-            JSON_SDK_BLOCKS,
+            JSON_BLOCKS,
             "json_prepare",
         )
         reused = self._apply_workspace_vfs_reuse(
@@ -990,7 +989,7 @@ class ImageAssetPipeline:
             part = latest.hotfix.parts[part_name]
             self._emit(
                 "json_prepare",
-                f"SDK 启动前从最新 Hotfix {part_name} 补齐 {len(entries)} 个 VFS 文件…",
+                f"Json 解析前从最新 Hotfix {part_name} 补齐 {len(entries)} 个 VFS 文件…",
             )
             self.downloader.download_entries(
                 part.path,
@@ -1001,7 +1000,7 @@ class ImageAssetPipeline:
                 verify_md5=False,
             )
 
-        self._emit("json_prepare", "在 SDK 启动前组装 Json 解析所需的完整 VFS…")
+        self._emit("json_prepare", "在 Json 解析前组装 Json 解析所需的完整 VFS…")
         for index, entry in enumerate(latest_entries, 1):
             self.token.raise_if_cancelled()
             target = safe_target(self.config.image_work_root, entry.name)
@@ -1028,7 +1027,7 @@ class ImageAssetPipeline:
             (self.vfs_root / Path(entry.name).relative_to("VFS")).resolve()
             for entry in latest_entries
         }
-        for block in JSON_SDK_BLOCKS:
+        for block in JSON_BLOCKS:
             block_root = self.vfs_root / BLOCK_IDS[block]
             if not block_root.is_dir():
                 continue
@@ -1036,8 +1035,8 @@ class ImageAssetPipeline:
                 if path.is_file() and path.resolve() not in expected_targets:
                     path.unlink()
 
-        self._emit("json_prepare", "逐个校验 SDK 所需 VFS 文件的大小与 MD5…")
-        for block in JSON_SDK_BLOCKS:
+        self._emit("json_prepare", "逐个校验 Json 宿主所需 VFS 文件的大小与 MD5…")
+        for block in JSON_BLOCKS:
             block_entries = self._block_entries(latest_entries, block)
             if block in vfs_hit_blocks:
                 continue
@@ -1045,13 +1044,13 @@ class ImageAssetPipeline:
                 self.token.raise_if_cancelled()
                 target = self.vfs_root / Path(entry.name).relative_to("VFS")
                 if not _matches(target, entry, self.token, True):
-                    raise ValidationError(f"SDK 启动前 VFS 文件校验失败：{target}")
+                    raise ValidationError(f"Json 解析前 VFS 文件校验失败：{target}")
                 self._emit("json_prepare", f"校验 {entry.name}", 0, 0)
         self._finish_vfs_cache(
             vfs_cache,
             vfs_identity,
             latest_entries,
-            JSON_SDK_BLOCKS,
+            JSON_BLOCKS,
             "json_prepare",
         )
 
@@ -1060,7 +1059,7 @@ class ImageAssetPipeline:
             entry for entry in latest_entries if f"/{BLOCK_IDS['Json']}/" in f"/{entry.name}"
         ]
         if not json_block_root.is_dir() or not json_block_entries:
-            raise ValidationError(f"SDK 启动前缺少 Json 输入目录：{json_block_root}")
+            raise ValidationError(f"Json 解析前缺少 Json 输入目录：{json_block_root}")
         info.update(
             {
                 "json_prepared": True,
@@ -1071,206 +1070,57 @@ class ImageAssetPipeline:
         )
         return info
 
-    def _verify_json_sdk_inputs(self, plan: dict[str, Any]) -> int:
+    def _verify_json_inputs(self, plan: dict[str, Any]) -> int:
         entries: list[DownloadEntry] = plan["entries"]
         json_block_id = BLOCK_IDS["Json"]
         json_count = 0
         if not VfsValidationCache.files_match(self.vfs_root, entries):
-            raise ValidationError("拒绝启动 SDK：Json 解析所需文件缺失或大小不符")
+            raise ValidationError("拒绝解析 Json： 解析所需文件缺失或大小不符")
         for entry in entries:
             if f"/{json_block_id}/" in f"/{entry.name}":
                 json_count += 1
         json_root = self.vfs_root / json_block_id
         if json_count == 0 or not json_root.is_dir():
-            raise ValidationError(f"拒绝启动 SDK：Json 输入路径不正确：{json_root}")
+            raise ValidationError(f"拒绝解析 Json： 输入路径不正确：{json_root}")
         return json_count
 
-    def _prepare_json_sdk_indexes(self, state: dict[str, Any]) -> None:
-        hotfix_version = str(state.get("json_hotfix_version", "")).strip()
-        if not hotfix_version:
-            raise ValidationError("Json 准备状态中缺少 Hotfix 版本，请重新执行前两步")
-        index_dir = (
-            self.config.image_work_root
-            / "indexes"
-            / self._safe_version(hotfix_version)
-        )
-        for part_name in ("main", "initial"):
-            source = index_dir / f"index_{part_name}.json"
-            if not source.is_file():
-                raise FileNotFoundError(
-                    f"SDK 启动前缺少已分析的 {part_name} 索引：{source}"
-                )
-            try:
-                payload = json.loads(source.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError) as exc:
-                raise ValidationError(f"无法读取已分析的 {part_name} 索引：{source}") from exc
-            if not isinstance(payload, dict):
-                raise ValidationError(f"已分析的 {part_name} 索引格式不正确：{source}")
-            part_version = str(state.get(f"json_{part_name}_version", "")).strip()
-            if not part_version:
-                raise ValidationError(
-                    f"Json 准备状态中缺少 {part_name} 版本，请重新执行前两步"
-                )
-            payload["version"] = part_version
-            payload["isInitial"] = part_name == "initial"
-            target = self.config.image_work_root / source.name
-            temporary = target.with_suffix(".json.tmp")
-            temporary.write_text(
-                json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
-                encoding="utf-8",
-            )
-            temporary.replace(target)
-        self._emit(
-            "json_extract",
-            "已将前两步的 main/initial 索引写入 SDK 缓存根目录，"
-            "exportJsonData 将比较后复用现有 .chk。",
-        )
-
-    def _json_sdk_target(self) -> str:
-        try:
-            with zipfile.ZipFile(self.config.image_sdk) as archive:
-                class_names = [
-                    name
-                    for name in archive.namelist()
-                    if name.endswith(".class")
-                    and any(token in name for token in ("VFS", "Vfs", "Json"))
-                ]
-                supports_export = False
-                for name in class_names:
-                    content = archive.read(name)
-                    if b"unpackJson" in content:
-                        return "unpackJson"
-                    if b"exportJsonData" in content:
-                        supports_export = True
-                if supports_export:
-                    return "exportJsonData"
-        except (OSError, KeyError, zipfile.BadZipFile) as exc:
-            raise ValidationError(
-                f"无法读取 beyond-sdk.jar 任务信息：{self.config.image_sdk}"
-            ) from exc
-        raise ValidationError(
-            "当前 beyond-sdk.jar 未提供 unpackJson 或 exportJsonData 任务"
-        )
-
     def extract_json(self) -> dict[str, Any]:
-        self.config.validate_images(require_sources=False)
+        self.config.validate_json()
         latest = self._require_json_latest_state("json_prepared_hotfix_version")
-        if not self.config.image_sdk.is_file():
-            raise FileNotFoundError(f"beyond-sdk.jar 不存在：{self.config.image_sdk}")
-
         state = self._load_state()
-        json_count = int(state.get("json_block_files", 0))
         json_input_root = self.vfs_root / BLOCK_IDS["Json"]
-        if not state.get("json_prepared") or json_count <= 0 or not json_input_root.is_dir():
-            raise ValidationError(
-                "Json 前两步的准备状态不完整，请先单步执行索引分析和 VFS 准备"
-            )
-        self._emit(
-            "json_extract",
-            "已读取前两步的完成状态，跳过索引重新分析和逐文件校验。",
-        )
+        if not state.get("json_prepared") or int(state.get("json_block_files", 0)) <= 0 or not json_input_root.is_dir():
+            raise ValidationError("Json VFS 准备状态不完整，请先执行索引分析和 VFS 准备")
         self._assert_vfs_is_independent()
-        self._prepare_json_sdk_indexes(state)
+        runtime = resolve_json_runtime(self.config.image_work_root, latest.seed.game_version, latest.seed.seed_version)
+        run_root = self.config.image_work_root / "json-python-runs" / (datetime.now().strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:8])
+        self._emit("json_extract", f"使用 Python Json 宿主，运行时：{runtime}；独立输出：{run_root}")
+        report = run_json_export(self.config.image_work_root, run_root, runtime, self.token,
+                                 lambda line: self._emit("json_extract", line))
+        assert_no_linked_files(run_root, "Python Json 解析输出")
+        self.token.raise_if_cancelled()
+        # Failed runs retain diagnostics without exposing partial data for publication.
+        # Revoke the previous extraction authorization before replacing its directory.
+        for key in ("json_extracted_hotfix_version", "json_published_hotfix_version"):
+            state.pop(key, None)
+        self._write_state_data(state)
         if self.json_output_root.exists():
             resolved = self.json_output_root.resolve()
             if self.config.image_work_root.resolve() not in resolved.parents:
-                raise ValidationError(f"拒绝清理工作目录之外的路径：{resolved}")
-            self._emit("json_extract", f"清理上次 Json 解析输出：{resolved}")
+                raise ValidationError(f"拒绝替换工作目录之外的 Json 输出：{resolved}")
             shutil.rmtree(resolved)
-        self.json_output_root.mkdir(parents=True, exist_ok=True)
-
-        sdk_target = self._json_sdk_target()
-        command = sdk_command(
-            self.config.java_path, self.config.image_sdk,
-            work_root=self.config.image_work_root / "json-sdk-runtime",
-        ) + [
-            "vfs",
-            str(self.config.image_work_root),
-            str(self.json_output_root),
-            sdk_target,
-            "--no-vfs-update",
-        ]
-        if sdk_target == "exportJsonData":
-            command.extend(("--json-export-parallelism", "1"))
-        self._emit(
-            "json_extract",
-            f"已准备并校验 {json_count} 个 775A31D1 文件，"
-            f"启动 beyond-sdk {sdk_target}…",
-        )
-        self._emit("json_extract", f"执行命令：{format_command(command)}")
-        started = time.monotonic()
-        process = subprocess.Popen(
-            command,
-            cwd=self.config.image_sdk.parent,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
-        lines: queue.Queue[str | None] = queue.Queue()
-
-        def read_output() -> None:
-            assert process.stdout is not None
-            for line in process.stdout:
-                lines.put(line.rstrip())
-            lines.put(None)
-
-        threading.Thread(target=read_output, daemon=True).start()
-        reader_finished = False
-        sdk_failure: str | None = None
-        try:
-            while process.poll() is None or not reader_finished:
-                if self.token.is_cancelled:
-                    process.terminate()
-                    try:
-                        process.wait(timeout=5)
-                    except subprocess.TimeoutExpired:
-                        process.kill()
-                    self.token.raise_if_cancelled()
-                try:
-                    line = lines.get(timeout=0.2)
-                    if line is None:
-                        reader_finished = True
-                    elif line:
-                        self._emit("json_extract", line)
-                        # The SDK task graph can log a failure and still exit 0.
-                        # Never accept partial output as a successful Json export.
-                        if re.search(r"\bTask \S+ failed\.", line):
-                            sdk_failure = line
-                except queue.Empty:
-                    pass
-            if process.returncode:
-                raise AkeToolError(
-                    f"beyond-sdk.jar Json 解析失败，退出码 {process.returncode}"
-                )
-            if sdk_failure is not None:
-                raise AkeToolError(f"beyond-sdk.jar Json 任务失败：{sdk_failure}")
-        finally:
-            if process.poll() is None:
-                process.kill()
-
-        elapsed = time.monotonic() - started
-        try:
-            json_source_root = self._json_publish_source_root()
-        except ValidationError as exc:
-            raise ValidationError(
-                "beyond-sdk.jar 已结束，但没有生成包含文件的 Json 数据目录；"
-                f"本次使用的 SDK 任务为 {sdk_target}"
-            ) from exc
-        output_files = sum(1 for path in json_source_root.rglob("*") if path.is_file())
-        assert_no_linked_files(self.json_output_root, "Json 解析输出")
-        self._emit(
-            "json_extract",
-            f"Json 解析完成：{output_files} 个文件，耗时 {elapsed / 60:.1f} 分钟",
-        )
+        run_root.rename(self.json_output_root)
+        source = self.json_output_root / "data" / "Json"
+        self._emit("json_extract", f"Python Json 解析完成：{report['selected']} 个文件；未支持条目 {len(report['unsupported'])} 个，详见 export-report-0.json")
         return {
-            "json_extracted_files": output_files,
-            "json_extract_seconds": round(elapsed, 2),
+            "json_extracted_files": report["selected"],
+            "json_extract_seconds": report["seconds"],
             "json_output_path": str(self.json_output_root),
-            "json_content_path": str(json_source_root),
+            "json_content_path": str(source),
             "json_input_path": str(json_input_root),
-            "json_sdk_target": sdk_target,
+            "json_parser": "python-il2cpp",
+            "json_runtime_path": str(runtime),
+            "json_unsupported_entries": report["unsupported"],
             "json_extracted_hotfix_version": latest.hotfix.res_version,
             **self._json_version_values(latest),
         }

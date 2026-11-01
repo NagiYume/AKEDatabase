@@ -286,7 +286,7 @@
 
         function renderCharacterList() {
             const query = normalizeSearch(characterSearch.value);
-            const visible = characters.filter(character => !query || character.searchText.includes(query));
+            const visible = characters.filter(character => !query || window.AKEModuleSearch.matches(character.searchText, query));
             characterList.replaceChildren(...visible.map(createCharacterButton));
             characterCount.textContent = `${visible.length}/${characters.length}`;
             if (!visible.length) {

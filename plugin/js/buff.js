@@ -32,8 +32,8 @@
             if (!searchTerm) return buffs;
             const term = searchTerm.toLowerCase();
             return buffs.filter(b =>
-                (b.id && b.id.toLowerCase().includes(term)) ||
-                (b.name && b.name.toLowerCase().includes(term))
+                (b.id && window.AKEModuleSearch.matches(b.id, term)) ||
+                (b.name && window.AKEModuleSearch.matches(b.name, term))
             );
         }
 

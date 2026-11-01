@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import re
+import sys
 import shutil
 import subprocess
 import threading
@@ -12,6 +12,7 @@ from pathlib import Path
 
 from .common import atomic_json, digest, identity, now, read_json, version
 from .storage import Storage
+from .tablecfg_extract import parser_digest
 from .vendor.downloader import DownloadManager, entries_for_blocks
 from .vendor.hotfix_api import HotfixClient
 from .vendor.models import CancellationToken
@@ -48,7 +49,7 @@ class Worker:
                        "last_success_at": None, "table_count": None, "remote_missing_files": None, "error": None}
         self.client = HotfixClient(timeout=config["request_timeout"])
         self.storage = Storage(config, self.emit)
-        self.sdk_digest = digest(Path(config["sdk"]))
+        self.parser_digest = parser_digest()
 
     def emit(self, stage, message, **extra):
         with self.mutex:
@@ -194,7 +195,7 @@ class Worker:
                          or existing.get("prefix") != prefix
                          or existing.get("bucket") != self.config["bucket"]):
             raise ValueError("Saved publication plan identity mismatch")
-        if existing and existing.get("sdk_sha256") == self.sdk_digest:
+        if existing and existing.get("parser_sha256") == self.parser_digest:
             table = job / "output" / "data" / "TableCfg"
             current = self.inventory(table)
             if current == existing["files"]:
@@ -244,45 +245,52 @@ class Worker:
                 raise ValueError("Unsafe output path")
             shutil.rmtree(output)
         output.mkdir()
-        command = [self.config["java"], *self.config["java_options"], "--class-path", self.config["sdk"],
-                   str(Path(__file__).with_name("BeyondSdkTableRunner.java")),
-                   str(source / "VFS"), str(output)]
-        self.emit("unpack", "Running standalone TableCfg extractor under service memory limit")
+        command = [sys.executable, "-u", "-m", "ake_server.tablecfg_extract", str(source), str(output)]
+        self.emit("unpack", "Running Python TableCfg parser under service memory limit")
         started = time.monotonic()
-        chunks = {Path(entry.name).name for _, entry in by_name.values() if entry.name.endswith(".chk")}
-        processed = set()
         last_progress = started
+        completed_tables = 0
         idle_timeout = self.config.get("extraction_idle_timeout", 180)
-        with (job / "sdk.log").open("w", encoding="utf-8") as log, (job / "sdk.log").open(encoding="utf-8", errors="replace") as tail:
+        with (job / "parser.log").open("w", encoding="utf-8") as log, (job / "parser.log").open(encoding="utf-8", errors="replace") as tail:
             process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
-            def consume_sdk_output():
-                nonlocal last_progress
-                for line in tail:
-                    clean = re.sub(r"\x1b\[[0-9;]*m", "", line).strip()
+            def consume_parser_output():
+                nonlocal last_progress, completed_tables
+                while True:
+                    position = tail.tell()
+                    line = tail.readline()
+                    if not line:
+                        break
+                    if not line.endswith("\n") and process.poll() is None:
+                        tail.seek(position)
+                        break
+                    clean = line.strip()
                     if not clean:
                         continue
-                    match = re.search(r"Dumped (\d+) file\(s\) from chunk (\S+)", clean)
-                    if match and match.group(2) in chunks:
-                        if match.group(2) not in processed:
-                            last_progress = time.monotonic()
-                        processed.add(match.group(2))
-                        self.emit("unpack", f"正在解析数据块 / Parsing chunk {match.group(2)} ({len(processed)}/{len(chunks)})",
-                                  current=len(processed), total=len(chunks), progress_unit="chunks",
-                                  file_name=match.group(2), file_index=len(processed), file_total=len(chunks))
-                    else:
+                    try:
+                        event = json.loads(clean)
+                    except ValueError:
                         self.emit("unpack", clean[:500])
+                        continue
+                    current, total = event.get("current", 0), event.get("total", 0)
+                    if current > completed_tables:
+                        completed_tables = current
+                        last_progress = time.monotonic()
+                    self.emit("unpack", event["message"][:500], current=current, total=total,
+                              progress_unit="files", file_index=current, file_total=total,
+                              file_name=event.get("file_name"))
             try:
                 while process.poll() is None:
-                    consume_sdk_output()
+                    consume_parser_output()
                     self.token.raise_if_cancelled()
                     if time.monotonic() - started > 1800:
                         raise TimeoutError("TableCfg extraction timed out")
                     if time.monotonic() - last_progress > idle_timeout:
                         raise TimeoutError(f"TableCfg extraction made no progress for {idle_timeout} seconds")
                     self.stop.wait(0.25)
-                consume_sdk_output()
+                consume_parser_output()
+                self.token.raise_if_cancelled()
                 if process.returncode:
-                    raise RuntimeError(f"TableCfg extractor exited {process.returncode}; see job sdk.log")
+                    raise RuntimeError(f"Python TableCfg parser exited {process.returncode}; see job parser.log")
             finally:
                 if process.poll() is None:
                     process.terminate()
@@ -294,8 +302,8 @@ class Worker:
         table = output / "data" / "TableCfg"
         files = self.inventory(table)
         version_id, prefix = version(latest)
-        plan = {"schema_version": 1, "identity": identity(latest), "version": version_id,
-                "prefix": prefix, "bucket": self.config["bucket"], "sdk_sha256": self.sdk_digest,
+        plan = {"schema_version": 2, "identity": identity(latest), "version": version_id,
+                "prefix": prefix, "bucket": self.config["bucket"], "parser_sha256": self.parser_digest,
                 "files": files, "delete_paths": [], "created_at": now()}
         atomic_json(plan_file, plan)
         self.emit("validate", "All TableCfg JSON files validated; publication plan saved",
@@ -358,9 +366,16 @@ class Worker:
         if not isinstance(completed, dict):
             raise ValueError("Invalid completion state")
         job = self.root / "jobs" / identity(latest)
+        # A legacy completed record proves publication, not Python compatibility.
+        # Preserve it for unchanged automatic versions; explicit validate and
+        # replay still build a new plan bound to the Python parser fingerprint.
+        legacy_completed = ("parser_sha256" not in completed
+                            and isinstance(completed.get("sdk_sha256"), str)
+                            and len(completed["sdk_sha256"]) == 64
+                            and all(c in "0123456789abcdefABCDEF" for c in completed["sdk_sha256"]))
         if (automatic and completed.get("identity") == identity(latest)
                 and completed.get("version") == version_id
-                and completed.get("sdk_sha256") == self.sdk_digest
+                and (completed.get("parser_sha256") == self.parser_digest or legacy_completed)
                 and not (job / "pending.json").exists()):
             # Starting/resuming reads metadata only; unchanged tables are not rescanned.
             if force:
@@ -413,11 +428,12 @@ class Worker:
             metrics = self.storage.publish(plan, table, self.token)
             if identity(self.client.get_latest()) != identity(latest):
                 raise ValueError("Official version changed; manifest commit deferred")
-            self.storage.commit(plan, self.token)
-            self.emit("published", "TableCfg published and manifest verified", **metrics)
+            manifest = self.storage.commit(plan, self.token)
+            self.emit("published", "TableCfg published and manifest verified",
+                      remote_latest=manifest.get("latest"), remote_missing_files=0, **metrics)
         self.token.raise_if_cancelled()
         atomic_json(state_file, {"identity": identity(latest), "version": version_id,
-            "sdk_sha256": self.sdk_digest, "completed_at": now(), "plan": str(job / "plan.json"),
+            "parser_sha256": self.parser_digest, "completed_at": now(), "plan": str(job / "plan.json"),
             "table_count": len(plan["files"])})
         (job / "pending.json").unlink(missing_ok=True)
         self.remote_checked = identity(latest)

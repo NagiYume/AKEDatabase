@@ -140,9 +140,9 @@
         if (!searchTerm) return games;
         const t = searchTerm.toLowerCase();
         return games.filter(g =>
-            (g.gameId && g.gameId.toLowerCase().includes(t)) ||
-            (g.name && g.name.toLowerCase().includes(t)) ||
-            (g.activityId && g.activityId.toLowerCase().includes(t))
+            (g.gameId && window.AKEModuleSearch.matches(g.gameId, t)) ||
+            (g.name && window.AKEModuleSearch.matches(g.name, t)) ||
+            (g.activityId && window.AKEModuleSearch.matches(g.activityId, t))
         );
     }
 

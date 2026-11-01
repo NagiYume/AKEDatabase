@@ -113,6 +113,7 @@
         const key = parts[0], source = hit.Table, field = parts[1];
         const add = (module, id, label) => {
             if (!visible.has(module) || id === undefined || id === null || id === '') return;
+            if (module === 'gamble') { module = 'misc'; id = `gamble/${encodeURIComponent(id)}`; }
             // Keep in sync with the explicit page scope in spaceship.js.
             if (module === 'spaceship' && !['room:0', 'room:1', 'room:2', 'room:5', 'credit', 'logistics'].includes(String(id))) return;
             const target = { module, id: String(id), title: plain(label) };
@@ -134,36 +135,28 @@
             for (const [module, definitions] of Object.entries(life.definitions)) {
                 if (!has(module)) continue;
                 for (const [kind, sourceTable] of definitions) {
+                    if (module === 'inn' && kind === 'chef') continue;
+                    if (module === 'inn' && kind === 'topic' && !['name', 'desc', 'extraDesc', 'objectiveDesc', 'requirementDesc'].includes(field)) continue;
                     if (source === sourceTable && life.textFields.includes(field)) add(module, `${kind}:${key}`, title(row) || plain(row.handTypeName || row.clientShowName || row.descText || row.requirementText || row.desc1));
                 }
             }
             if (source === 'ItemTable' && field === 'name') {
                 for (const [module, sourceTable, kind, idField] of [
                     ['inn', 'InnDishTable', 'dish', 'id'], ['inn', 'InnDrinkTable', 'drink', 'id'],
-                    ['farming', 'CropObtainWayTable', 'crop', 'itemId'], ['farming', 'InnRanchFeedTable', 'feed', 'itemId']
+                    ['inn', 'CropObtainWayTable', 'crop', 'itemId'], ['inn', 'InnRanchFeedTable', 'feed', 'itemId']
                 ]) if (has(module)) for (const [id, entity] of entries(await table(sourceTable))) {
                     if (String(entity[idField] || id) === key) add(module, `${kind}:${id}`, title(row));
                 }
                 if (has('inn')) for (const [id, dish] of entries(await table('InnDishTable'))) {
-                    if ((dish.ingredient || []).includes(key) || dish.recipeId === key) add('inn', `dish:${id}`, title((await table('ItemTable'))[id]));
+                    if ((dish.ingredient || []).includes(key)) add('inn', `dish:${id}`, title((await table('ItemTable'))[id]));
                 }
-                if (has('farming')) {
-                    for (const [id, animal] of entries(await table('InnRanchAnimalTable'))) if ([animal.lowLevelProd, animal.highLevelProd].includes(key)) add('farming', `animal:${id}`, title(animal));
-                    for (const [id, crop] of entries(await table('CropObtainWayTable'))) if (crop.soilItemId === key) add('farming', `crop:${id}`, title((await table('ItemTable'))[crop.itemId]));
+                if (has('inn')) {
+                    for (const [id, animal] of entries(await table('InnRanchAnimalTable'))) if ([animal.lowLevelProd, animal.highLevelProd].includes(key)) add('inn', `animal:${id}`, title(animal));
+                    for (const [id, crop] of entries(await table('CropObtainWayTable'))) if (crop.soilItemId === key) add('inn', `crop:${id}`, title((await table('ItemTable'))[crop.itemId]));
                 }
-            }
-            if (source === 'CharacterTable' && field === 'name' && has('inn') && (await table('InnCharSkillTable'))[key]) add('inn', `chef:${key}`, title(row));
-            if (source === 'InnSkillTable' && ['name', 'desc'].includes(field) && has('inn')) {
-                const characters = await table('CharacterTable');
-                for (const [id, chef] of entries(await table('InnCharSkillTable'))) if ((chef.list || []).includes(key)) add('inn', `chef:${id}`, title(characters[id]));
             }
             if (source === 'GambleBattleEnemyBuffTable' && field === 'desc' && has('gamble')) {
                 for (const [id, hand] of entries(await table('GambleBattleHandTypeTable'))) if ([...(hand.handTypeBuffId || []), ...(hand.handTypeBuffPlusId || [])].includes(key)) add('gamble', `hand:${id}`, plain(hand.handTypeName));
-            }
-            if (source === 'InnRequirementTable' && ['requirementText', 'menuDesc'].includes(field) && has('inn')) {
-                for (const [id, topic] of entries(await table('InnTopicTable'))) {
-                    if ((topic.requirementList || []).includes(key) || (topic.objectiveParameters || []).some(p => (p.valueStringList || []).includes(key))) add('inn', `topic:${id}`, title(topic));
-                }
             }
             if (source === 'EnemyTemplateDisplayInfoTable' && field === 'name' && has('gamble')) {
                 const enemies = await table('EnemyTable');
@@ -411,6 +404,19 @@
             && (!module.hidden || window.akeData.getConfig().showHidden === true)
             && window.akeData.isTokenUnlocked(module.token)).map(module => module.id));
         const diagnostics = { received: raw.length, duplicates: 0, invalid: 0, issues: [], context: contextKey() };
+        if (visible.has('misc')) {
+            try {
+                const version = window.__akeBootstrapVersion?.pluginversion?.misc || '';
+                const response = await (window.akeFetch || fetch)(`/plugin/misc/manifest.json?v=${encodeURIComponent(version)}`, { signal });
+                if (!response.ok) throw new Error(`Misc manifest: HTTP ${response.status}`);
+                const child = (await response.json()).find(module => module.id === 'gamble');
+                if (child && !child.disabled && (!child.hidden || window.akeData.getConfig().showHidden === true)
+                    && window.akeData.isTokenUnlocked(child.token)) visible.add('gamble');
+            } catch (error) {
+                abortCheck(signal);
+                diagnostics.issues.push({ kind: 'misc-manifest-unavailable', message: error.message });
+            }
+        }
         const loads = new Map();
         const table = name => {
             abortCheck(signal);

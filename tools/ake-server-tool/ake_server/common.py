@@ -58,7 +58,7 @@ def load_config(path):
     value = read_json(Path(path))
     if not isinstance(value, dict):
         raise ValueError("Missing configuration")
-    for name in ("work_dir", "sdk", "java", "credentials_file", "status_token_file"):
+    for name in ("work_dir", "credentials_file", "status_token_file"):
         if not Path(value[name]).is_absolute():
             raise ValueError(f"{name} must be absolute")
     if Path(value["work_dir"]).resolve() == Path("/"):
