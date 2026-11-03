@@ -28,6 +28,7 @@ from .release import ReleaseManager
 from .state_store import StateStore
 from .unpacker import PythonTableUnpacker
 from .vfs_validation_cache import VfsValidationCache, latest_identity
+from .vfs_update import VfsUpdater
 
 
 TABLECFG_HOTFIX_BLOCKS = ("TableCfg",)
@@ -190,7 +191,7 @@ class Pipeline:
         self._emit(
             ProgressEvent(
                 "download",
-                "TableCfg 来源规则：优先复制版本匹配的游戏文件，缺失时从 Hotfix 下载",
+                "TableCfg 来源规则：工作 VFS 优先；跨大版本复制/完整下载，同大版本补丁/完整下载",
             )
         )
         for part_name in SDK_INDEX_PARTS:
@@ -218,105 +219,25 @@ class Pipeline:
         if not latest_entries:
             raise ValidationError("所有索引中都没有找到需要下载的文件")
 
-        vfs_root = source_root / "VFS"
-        vfs_cache = VfsValidationCache(self.config)
-        vfs_identity = latest_identity(latest)
-        table_cache_hit = vfs_cache.trusted(
-            "TableCfg",
-            vfs_identity,
-            self.config.work_root,
-            vfs_root,
-            latest_entries,
-        )
-        trusted_names = {entry.name for entry in latest_entries} if table_cache_hit else set()
-        if table_cache_hit:
-            self._emit(
-                ProgressEvent(
-                    "download",
-                    f"VFS 可信缓存命中：TableCfg，版本 {vfs_identity['seedVersion']}，"
-                    f"Hotfix {vfs_identity['hotfixVersion']}，跳过 {len(latest_entries)} 个文件的 MD5",
-                )
-            )
-        else:
-            if vfs_cache.records.get("TableCfg", {}).get("verified") is True:
-                vfs_cache.invalidate("TableCfg")
-                vfs_cache.persist()
-            self._emit(
-                ProgressEvent("download", "VFS 可信缓存未命中：TableCfg，执行完整 MD5")
-            )
-
-        streaming_entries = self._load_game_entries(
-            self.config.game_streaming_assets_dir,
-            self.config.streaming_assets_root,
-            "StreamingAssets",
-        )
-        persistent_entries = self._load_game_entries(
-            self.config.game_persistent_dir,
-            self.config.persistent_root,
-            "Persistent",
-        )
-        copied = 0
-        for index, entry in enumerate(latest_entries, 1):
+        updater = VfsUpdater(self.config.work_root, self.client, self.downloader, self.token, self._emit,
+                             self.config.vfs_validation_records)
+        game_roots = [root for configured, root in (
+            (self.config.game_streaming_assets_dir, self.config.streaming_assets_root),
+            (self.config.game_persistent_dir, self.config.persistent_root),
+        ) if configured.strip() and root.is_dir()]
+        counts = updater.prepare(latest, latest_entries, entry_parts, TABLECFG_HOTFIX_BLOCKS, game_roots)
+        # Keep an independent task snapshot for parsing/retries; the persistent VFS
+        # survives job retention and is shared with the Json dependency blocks.
+        prepared_files = []
+        for entry in latest_entries:
             target = safe_target(source_root, entry.name)
-            local_source: Path | None = None
-            source_label = ""
-            for label, root, local_entries in (
-                ("StreamingAssets", self.config.streaming_assets_root, streaming_entries),
-                ("Persistent", self.config.persistent_root, persistent_entries),
-            ):
-                if self._metadata_matches(local_entries.get(entry.name), entry):
-                    candidate = safe_target(root, entry.name)
-                    if candidate.is_file():
-                        local_source = candidate
-                        source_label = label
-                        break
-            if local_source is not None and not target.is_file():
-                copy_file_contents(local_source, target, self.token)
-                copied += 1
-                self._emit(
-                    ProgressEvent(
-                        "download",
-                        f"复制 [{index}/{len(latest_entries)}] [{source_label}] {entry.name}",
-                        index,
-                        len(latest_entries),
-                    )
-                )
-
-        prepared_files: list[Path] = []
-        for part_name in SDK_INDEX_PARTS:
-            part = latest.hotfix.parts[part_name]
-            part_entries = [
-                entry for entry in latest_entries if entry_parts[entry.name].name == part_name
-            ]
-            prepared_files.extend(
-                self.downloader.download_entries(
-                    part.path,
-                    part_entries,
-                    source_root,
-                    self.token,
-                    self._emit,
-                    trusted_names=trusted_names,
-                )
-            )
-        assert_no_linked_files(source_root, "TableCfg VFS 输入目录")
-        if not VfsValidationCache.files_match(vfs_root, latest_entries):
-            raise ValidationError("TableCfg VFS 文件大小校验失败")
-        self.token.raise_if_cancelled()
-        vfs_cache.stage_verified(
-            "TableCfg",
-            vfs_identity,
-            self.config.work_root,
-            vfs_root,
-            len(latest_entries),
-        )
-        self.token.raise_if_cancelled()
+            copy_file_contents(safe_target(self.config.work_root, entry.name), target, self.token)
+            prepared_files.append(target)
+        copied = counts["copied"]
+        vfs_cache = VfsValidationCache(self.config)
+        vfs_cache.stage_verified("TableCfg", latest_identity(latest), self.config.work_root,
+                                 self.config.work_root / "VFS", len(latest_entries))
         vfs_cache.persist()
-        self._emit(
-            ProgressEvent(
-                "download",
-                f"VFS 区块校验完成并记录：TableCfg，{len(latest_entries)} 个文件",
-            )
-        )
         total_bytes = sum(entry.size for entry in latest_entries)
         self._emit(
             ProgressEvent(
@@ -327,9 +248,11 @@ class Pipeline:
             )
         )
         return {
-            "downloaded_files": len(prepared_files),
-            "downloaded_bytes": total_bytes,
+            "downloaded_files": counts["downloaded"] + counts["patched"],
+            "downloaded_bytes": counts["full_bytes"] + counts["patch_bytes"],
+            "vfs_total_bytes": total_bytes,
             "game_files_copied": copied,
+            "vfs_update_counts": counts,
             "table_sdk_blocks": list(TABLECFG_HOTFIX_BLOCKS),
         }
 

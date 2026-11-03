@@ -16,6 +16,8 @@ from .tablecfg_extract import parser_digest
 from .vendor.downloader import DownloadManager, entries_for_blocks
 from .vendor.hotfix_api import HotfixClient
 from .vendor.models import CancellationToken
+from .vendor.vfs_update import VfsUpdater
+from .vendor.file_copy import copy_file_contents
 
 
 class Worker:
@@ -223,21 +225,25 @@ class Worker:
         manager = DownloadManager(timeout=self.config["request_timeout"], retries=3,
                                   verify_md5=True, session=self.client.session,
                                   concurrency=self.config["download_concurrency"])
-        for part_name in ("main", "initial"):
-            part = latest.hotfix.parts[part_name]
-            entries = [e for p, e in by_name.values() if p.name == part_name]
-            part_offset = sum(e.size for p, e in by_name.values() if p.name == "main") if part_name == "initial" else 0
-            file_offset = sum(1 for p, e in by_name.values() if p.name == "main") if part_name == "initial" else 0
-            def download_progress(event):
-                detail = event.details
-                self.emit(event.stage, event.message, current=part_offset + event.current, total=size,
-                          progress_unit="bytes", bytes_current=part_offset + event.current, bytes_total=size,
-                          file_name=detail.get("file_name"), file_index=file_offset + detail.get("completed_files", 0),
-                          file_total=len(by_name), file_bytes=detail.get("file_bytes", 0),
-                          file_size=detail.get("file_size", 0), active_files=detail.get("active_files", []),
-                          download_concurrency=manager.concurrency)
-            manager.download_entries(part.path, entries, source, self.token, download_progress)
-        self.emit("download", "TableCfg download verified", download_bytes=size,
+        def download_progress(event):
+            detail = event.details
+            if not detail:
+                self.progress(event)
+                return
+            self.emit(event.stage, event.message, current=event.current, total=event.total,
+                      progress_unit="bytes", bytes_current=event.current, bytes_total=event.total,
+                      file_name=detail.get("file_name"), file_index=detail.get("completed_files", 0),
+                      file_total=detail.get("file_total", 0), file_bytes=detail.get("file_bytes", 0),
+                      file_size=detail.get("file_size", 0), active_files=detail.get("active_files", []),
+                      download_concurrency=manager.concurrency)
+        updater = VfsUpdater(self.root, self.client, manager, self.token, download_progress)
+        entries = [entry for _, entry in by_name.values()]
+        entry_parts = {name: part for name, (part, _) in by_name.items()}
+        counts = updater.prepare(latest, entries, entry_parts, ("TableCfg",))
+        for entry in entries:
+            copy_file_contents(self.root / entry.name, source / entry.name, self.token)
+        self.emit("download", "Persistent VFS prepared", vfs_update_counts=counts)
+        self.emit("download", "TableCfg download verified", download_bytes=counts["full_bytes"] + counts["patch_bytes"],
                   download_seconds=round(time.monotonic() - started, 3))
         output = job / "output"
         if output.exists():

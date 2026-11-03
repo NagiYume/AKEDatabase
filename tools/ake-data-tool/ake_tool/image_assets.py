@@ -54,6 +54,7 @@ from .unpacker import format_command
 from .sdk_launch import sdk_command
 from .json_unpacker import resolve_json_runtime, run_json_export
 from .vfs_validation_cache import VfsValidationCache, latest_identity
+from .vfs_update import VfsUpdater
 
 
 IMAGE_BLOCKS = ("Bundle", "InitialBundle", "BundleManifest")
@@ -360,66 +361,27 @@ class ImageAssetPipeline:
         if not latest_entries:
             raise ValidationError(f"最新 Hotfix main/initial 索引中没有 {label} VFS 区块")
 
-        def optional_game_entries(configured_path: str, root: Path, source_label: str) -> dict[str, DownloadEntry]:
-            if not configured_path.strip() or not root.is_dir():
-                self._emit(
-                    stage,
-                    f"{source_label} 不存在，跳过本地复用并使用 Hotfix：{configured_path or '未配置'}",
-                )
-                return {}
-            try:
-                return {entry.name: entry for entry in _entries(_load_indexes(root), blocks)}
-            except (OSError, ValidationError) as exc:
-                self._emit(stage, f"{source_label} 索引不可用，改用 Hotfix：{exc}")
-                return {}
-
-        streaming_available = bool(self.config.game_streaming_assets_dir.strip()) and self.config.streaming_assets_root.is_dir()
-        persistent_available = bool(self.config.game_persistent_dir.strip()) and self.config.persistent_root.is_dir()
-        base_by_name = optional_game_entries(
-            self.config.game_streaming_assets_dir,
-            self.config.streaming_assets_root,
-            "StreamingAssets",
-        )
-        persistent_by_name = optional_game_entries(
-            self.config.game_persistent_dir,
-            self.config.persistent_root,
-            "Persistent",
-        )
+        updater = VfsUpdater(self.config.image_work_root, self.client, self.downloader, self.token,
+                             legacy_records=self.config.vfs_validation_records)
         cache_root = cache_parent / version_name
         sources: dict[str, tuple[str, Path | None]] = {}
-        source_counts = {
-            "workspace": 0,
-            "streaming": 0,
-            "persistent": 0,
-            "cache": 0,
-            "remote": 0,
-        }
+        source_counts = dict(workspace=0, streaming=0, persistent=0, cache=0, remote=0)
         remote_entries: list[DownloadEntry] = []
         for entry in latest_entries:
-            streaming_path = (
-                safe_target(self.config.streaming_assets_root, entry.name)
-                if streaming_available
-                else None
-            )
-            persistent_path = (
-                safe_target(self.config.persistent_root, entry.name)
-                if persistent_available
-                else None
-            )
-            cached_path = safe_target(cache_root, entry.name)
-            if streaming_path is not None and streaming_path.is_file() and self._metadata_matches(
-                base_by_name.get(entry.name), entry
-            ):
-                sources[entry.name] = ("streaming", streaming_path)
-                source_counts["streaming"] += 1
-            elif persistent_path is not None and persistent_path.is_file() and self._metadata_matches(
-                persistent_by_name.get(entry.name), entry
-            ):
-                sources[entry.name] = ("persistent", persistent_path)
-                source_counts["persistent"] += 1
-            elif _matches(cached_path, entry, self.token, False):
-                sources[entry.name] = ("cache", cached_path)
-                source_counts["cache"] += 1
+            self.token.raise_if_cancelled()
+            block = next(b for b in blocks if entry.name.startswith("VFS/" + BLOCK_IDS[b] + "/"))
+            workspace = safe_target(self.config.image_work_root, entry.name)
+            candidates = [("workspace", workspace)]
+            if updater.mode(block, latest) == "full":
+                candidates.extend((label, safe_target(root, entry.name)) for label, configured, root in (
+                    ("streaming", self.config.game_streaming_assets_dir, self.config.streaming_assets_root),
+                    ("persistent", self.config.game_persistent_dir, self.config.persistent_root),
+                ) if configured.strip() and root.is_dir())
+            for label, path in candidates:
+                if updater.matches(path, entry, label == "workspace" and updater.trusted_entry(block, latest, entry)):
+                    sources[entry.name] = (label, path)
+                    source_counts[label] += 1
+                    break
             else:
                 sources[entry.name] = ("remote", None)
                 source_counts["remote"] += 1
@@ -436,46 +398,6 @@ class ImageAssetPipeline:
         self._latest_plans[blocks] = plan
         return plan
 
-    def _apply_workspace_vfs_reuse(
-        self,
-        plan: dict[str, Any],
-        stage: str,
-        trusted_names: set[str] | None = None,
-    ) -> int:
-        entries: list[DownloadEntry] = plan["entries"]
-        sources: dict[str, tuple[str, Path | None]] = plan["sources"]
-        counts: dict[str, int] = plan["source_counts"]
-        trusted_names = trusted_names or set()
-        reused = 0
-        total_entries = len(entries)
-        self._emit(
-            stage,
-            f"应用已使用版本的工作 VFS 缓存：可信复用 {len(trusted_names)} 个文件…",
-        )
-        for entry in entries:
-            self.token.raise_if_cancelled()
-            if entry.name not in trusted_names:
-                continue
-            target = safe_target(self.config.image_work_root, entry.name)
-            previous_kind, _ = sources[entry.name]
-            if previous_kind != "workspace":
-                counts[previous_kind] = max(0, counts[previous_kind] - 1)
-                counts["workspace"] += 1
-            sources[entry.name] = ("workspace", target)
-            reused += 1
-        plan["remote_entries"] = [
-            entry
-            for entry in plan["remote_entries"]
-            if sources[entry.name][0] == "remote"
-        ]
-        self._emit(
-            stage,
-            f"工作 VFS 缓存应用完成：直接复用 {reused} 个，仍需下载 {counts['remote']} 个",
-            total_entries,
-            total_entries,
-        )
-        return reused
-
     @staticmethod
     def _block_entries(
         entries: Iterable[DownloadEntry],
@@ -483,44 +405,6 @@ class ImageAssetPipeline:
     ) -> list[DownloadEntry]:
         block_id = BLOCK_IDS[block]
         return [entry for entry in entries if f"/{block_id}/" in f"/{entry.name}"]
-
-    def _prepare_vfs_cache(
-        self,
-        latest: LatestInfo,
-        entries: list[DownloadEntry],
-        blocks: tuple[str, ...],
-        stage: str,
-    ) -> tuple[VfsValidationCache, dict[str, str], set[str], set[str]]:
-        cache = VfsValidationCache(self.config)
-        identity = latest_identity(latest)
-        hit_blocks: set[str] = set()
-        trusted_names: set[str] = set()
-        for block in blocks:
-            self.token.raise_if_cancelled()
-            block_entries = self._block_entries(entries, block)
-            if cache.trusted(
-                block,
-                identity,
-                self.config.image_work_root,
-                self.vfs_root,
-                block_entries,
-            ):
-                hit_blocks.add(block)
-                trusted_names.update(entry.name for entry in block_entries)
-                self._emit(
-                    stage,
-                    f"VFS 可信缓存命中：{block}，版本 {identity['seedVersion']}，"
-                    f"Hotfix {identity['hotfixVersion']}，跳过 {len(block_entries)} 个文件的 MD5",
-                )
-            else:
-                if cache.records.get(block, {}).get("verified") is True:
-                    cache.invalidate(block)
-                    cache.persist()
-                self._emit(
-                    stage,
-                    f"VFS 可信缓存未命中：{block}，组装后对最终文件执行一次 MD5",
-                )
-        return cache, identity, hit_blocks, trusted_names
 
     def _finish_vfs_cache(
         self,
@@ -792,6 +676,7 @@ class ImageAssetPipeline:
         total_bytes = sum(entry.size for entry in latest_entries)
         result = {
             "image_file_count": len(latest_entries),
+            "image_work_vfs_reused": counts["workspace"],
             "image_total_bytes": total_bytes,
             "image_base_reused": counts["streaming"],
             "image_patch_files": counts["persistent"],
@@ -808,7 +693,7 @@ class ImageAssetPipeline:
             "image_analyze",
             f"最新版本分析完成：游戏 {latest.seed.game_version}，Seed {latest.seed.seed_version}，"
             f"Hotfix {latest.hotfix.res_version}；{len(latest_entries)} 个文件，"
-            f"本体复用 {counts['streaming']}，Persistent 复用 {counts['persistent']}，"
+            f"工作 VFS 复用 {counts['workspace']}，本体复用 {counts['streaming']}，Persistent 复用 {counts['persistent']}，"
             f"Hotfix 缓存复用 {counts['cache']}，需下载 {counts['remote']}",
             len(latest_entries),
             len(latest_entries),
@@ -825,6 +710,7 @@ class ImageAssetPipeline:
         total_bytes = sum(entry.size for entry in latest_entries)
         result = {
             "json_file_count": len(latest_entries),
+            "json_work_vfs_reused": counts["workspace"],
             "json_total_bytes": total_bytes,
             "json_base_reused": counts["streaming"],
             "json_patch_files": counts["persistent"],
@@ -847,233 +733,43 @@ class ImageAssetPipeline:
         )
         return result
 
+    def _prepare_work_vfs(self, plan, blocks, stage):
+        updater = VfsUpdater(self.config.image_work_root, self.client, self.downloader,
+                             self.token, lambda event: self._emit(stage, event.message,
+                                                                  event.current, event.total),
+                             legacy_records=self.config.vfs_validation_records)
+        game_roots = [root for configured, root in (
+            (self.config.game_streaming_assets_dir, self.config.streaming_assets_root),
+            (self.config.game_persistent_dir, self.config.persistent_root),
+        ) if configured.strip() and root.is_dir()]
+        counts = updater.prepare(plan["latest"], plan["entries"], plan["entry_parts"], blocks, game_roots)
+        self._finish_vfs_cache(VfsValidationCache(self.config), latest_identity(plan["latest"]),
+                               plan["entries"], blocks, stage)
+        return counts
+
     def prepare_vfs(self) -> dict[str, Any]:
         info = self.analyze()
         plan = self._get_latest_plan()
-        latest: LatestInfo = plan["latest"]
-        latest_entries: list[DownloadEntry] = plan["entries"]
-        latest_by_name = {entry.name: entry for entry in latest_entries}
-        entry_parts: dict[str, ResourcePart] = plan["entry_parts"]
-        sources: dict[str, tuple[str, Path | None]] = plan["sources"]
-        cache_root: Path = plan["cache_root"]
-        self.vfs_root.mkdir(parents=True, exist_ok=True)
-        vfs_cache, vfs_identity, vfs_hit_blocks, vfs_trusted_names = self._prepare_vfs_cache(
-            latest,
-            latest_entries,
-            IMAGE_BLOCKS,
-            "image_prepare",
-        )
-        reused = self._apply_workspace_vfs_reuse(
-            plan,
-            "image_prepare",
-            vfs_trusted_names,
-        )
-        info["image_work_vfs_reused"] = reused
-        info["image_remote_files"] = plan["source_counts"]["remote"]
-        info["image_remote_bytes"] = sum(
-            entry.size for entry in plan["remote_entries"]
-        )
-
-        remote_by_part: dict[str, list[DownloadEntry]] = {"main": [], "initial": []}
-        for entry in plan["remote_entries"]:
-            remote_by_part[entry_parts[entry.name].name].append(entry)
-        for part_name, entries in remote_by_part.items():
-            if not entries:
-                continue
-            part = latest.hotfix.parts[part_name]
-            self._emit(
-                "image_prepare",
-                f"从最新 Hotfix {part_name} 下载 {len(entries)} 个本地缺失或过期文件…",
-            )
-            self.downloader.download_entries(
-                part.path,
-                entries,
-                cache_root,
-                self.token,
-                self._download_progress,
-                verify_md5=False,
-            )
-
-        self._emit("image_prepare", "按最新 Hotfix 索引组装图片 VFS…")
-        for index, entry in enumerate(latest_entries, 1):
-            self.token.raise_if_cancelled()
-            target = safe_target(self.config.image_work_root, entry.name)
-            planned_kind, planned_source = sources[entry.name]
-            if (
-                planned_kind == "workspace"
-                and planned_source == target
-            ):
-                source_kind = "工作 VFS 复用"
-            else:
-                source_kind, local_source = planned_kind, planned_source
-                source = (
-                    safe_target(cache_root, entry.name)
-                    if source_kind == "remote"
-                    else local_source
-                )
-                if source is None or not source.is_file():
-                    raise FileNotFoundError(f"无法定位最新图片 VFS 文件：{entry.name}")
-                self._materialize(source, target, allow_size_skip=False)
-            self._emit(
-                "image_prepare",
-                f"组装 [{index}/{len(latest_entries)}] [{source_kind}] {entry.name}",
-                index,
-                len(latest_entries),
-            )
-
-        expected_targets = {
-            (self.vfs_root / Path(name).relative_to("VFS")).resolve()
-            for name in latest_by_name
-        }
-        for block in IMAGE_BLOCKS:
-            block_id = BLOCK_IDS[block]
-            block_root = self.vfs_root / block_id
-            if block_root.is_dir():
-                for path in block_root.iterdir():
-                    if path.is_file() and path.resolve() not in expected_targets:
-                        path.unlink()
-
-        self._emit("image_prepare", "按官方最新 Hotfix 索引校验合并后的 VFS…")
-        for block in IMAGE_BLOCKS:
-            block_entries = self._block_entries(latest_entries, block)
-            if block in vfs_hit_blocks:
-                continue
-            for entry in block_entries:
-                self.token.raise_if_cancelled()
-                target = self.vfs_root / Path(entry.name).relative_to("VFS")
-                if not _matches(target, entry, self.token, True):
-                    raise ValidationError(f"合并后文件校验失败：{target}")
-                self._emit(
-                    "image_prepare",
-                    f"校验 {entry.name}",
-                    0,
-                    0,
-                )
-        self._finish_vfs_cache(
-            vfs_cache,
-            vfs_identity,
-            latest_entries,
-            IMAGE_BLOCKS,
-            "image_prepare",
-        )
-        info["image_prepared"] = True
-        info["image_prepared_hotfix_version"] = latest.hotfix.res_version
+        counts = self._prepare_work_vfs(plan, IMAGE_BLOCKS, "image_prepare")
+        info.update(image_work_vfs_reused=counts["workspace"], image_vfs_update_counts=counts,
+                    image_remote_files=counts["downloaded"] + counts["patched"],
+                    image_remote_bytes=counts["full_bytes"] + counts["patch_bytes"],
+                    image_prepared=True, image_prepared_hotfix_version=plan["latest"].hotfix.res_version)
         return info
 
     def prepare_json_vfs(self) -> dict[str, Any]:
         info = self.analyze_json()
         plan = self._get_json_plan()
-        latest: LatestInfo = plan["latest"]
-        latest_entries: list[DownloadEntry] = plan["entries"]
-        entry_parts: dict[str, ResourcePart] = plan["entry_parts"]
-        sources: dict[str, tuple[str, Path | None]] = plan["sources"]
-        cache_root: Path = plan["cache_root"]
-        self.vfs_root.mkdir(parents=True, exist_ok=True)
-        vfs_cache, vfs_identity, vfs_hit_blocks, vfs_trusted_names = self._prepare_vfs_cache(
-            latest,
-            latest_entries,
-            JSON_BLOCKS,
-            "json_prepare",
-        )
-        reused = self._apply_workspace_vfs_reuse(
-            plan,
-            "json_prepare",
-            vfs_trusted_names,
-        )
-        info["json_work_vfs_reused"] = reused
-        info["json_remote_files"] = plan["source_counts"]["remote"]
-        info["json_remote_bytes"] = sum(
-            entry.size for entry in plan["remote_entries"]
-        )
-
-        remote_by_part: dict[str, list[DownloadEntry]] = {"main": [], "initial": []}
-        for entry in plan["remote_entries"]:
-            remote_by_part[entry_parts[entry.name].name].append(entry)
-        for part_name, entries in remote_by_part.items():
-            if not entries:
-                continue
-            part = latest.hotfix.parts[part_name]
-            self._emit(
-                "json_prepare",
-                f"Json 解析前从最新 Hotfix {part_name} 补齐 {len(entries)} 个 VFS 文件…",
-            )
-            self.downloader.download_entries(
-                part.path,
-                entries,
-                cache_root,
-                self.token,
-                self._json_download_progress,
-                verify_md5=False,
-            )
-
-        self._emit("json_prepare", "在 Json 解析前组装 Json 解析所需的完整 VFS…")
-        for index, entry in enumerate(latest_entries, 1):
-            self.token.raise_if_cancelled()
-            target = safe_target(self.config.image_work_root, entry.name)
-            planned_kind, planned_source = sources[entry.name]
-            if (
-                planned_kind == "workspace"
-                and planned_source == target
-            ):
-                source_kind = "工作 VFS 复用"
-            else:
-                source_kind, local_source = planned_kind, planned_source
-                source = safe_target(cache_root, entry.name) if source_kind == "remote" else local_source
-                if source is None or not source.is_file():
-                    raise FileNotFoundError(f"无法定位 Json 解析所需 VFS 文件：{entry.name}")
-                self._materialize(source, target, allow_size_skip=False)
-            self._emit(
-                "json_prepare",
-                f"准备 [{index}/{len(latest_entries)}] [{source_kind}] {entry.name}",
-                index,
-                len(latest_entries),
-            )
-
-        expected_targets = {
-            (self.vfs_root / Path(entry.name).relative_to("VFS")).resolve()
-            for entry in latest_entries
-        }
-        for block in JSON_BLOCKS:
-            block_root = self.vfs_root / BLOCK_IDS[block]
-            if not block_root.is_dir():
-                continue
-            for path in block_root.iterdir():
-                if path.is_file() and path.resolve() not in expected_targets:
-                    path.unlink()
-
-        self._emit("json_prepare", "逐个校验 Json 宿主所需 VFS 文件的大小与 MD5…")
-        for block in JSON_BLOCKS:
-            block_entries = self._block_entries(latest_entries, block)
-            if block in vfs_hit_blocks:
-                continue
-            for entry in block_entries:
-                self.token.raise_if_cancelled()
-                target = self.vfs_root / Path(entry.name).relative_to("VFS")
-                if not _matches(target, entry, self.token, True):
-                    raise ValidationError(f"Json 解析前 VFS 文件校验失败：{target}")
-                self._emit("json_prepare", f"校验 {entry.name}", 0, 0)
-        self._finish_vfs_cache(
-            vfs_cache,
-            vfs_identity,
-            latest_entries,
-            JSON_BLOCKS,
-            "json_prepare",
-        )
-
-        json_block_root = self.vfs_root / BLOCK_IDS["Json"]
-        json_block_entries = [
-            entry for entry in latest_entries if f"/{BLOCK_IDS['Json']}/" in f"/{entry.name}"
-        ]
-        if not json_block_root.is_dir() or not json_block_entries:
-            raise ValidationError(f"Json 解析前缺少 Json 输入目录：{json_block_root}")
-        info.update(
-            {
-                "json_prepared": True,
-                "json_prepared_files": len(latest_entries),
-                "json_block_files": len(json_block_entries),
-                "json_prepared_hotfix_version": latest.hotfix.res_version,
-            }
-        )
+        counts = self._prepare_work_vfs(plan, JSON_BLOCKS, "json_prepare")
+        json_entries = self._block_entries(plan["entries"], "Json")
+        if not json_entries:
+            raise ValidationError("Json 解析前缺少 Json 输入区块")
+        info.update(json_work_vfs_reused=counts["workspace"], json_vfs_update_counts=counts,
+                    json_remote_files=counts["downloaded"] + counts["patched"],
+                    json_remote_bytes=counts["full_bytes"] + counts["patch_bytes"],
+                    json_prepared=True, json_prepared_files=len(plan["entries"]),
+                    json_block_files=len(json_entries),
+                    json_prepared_hotfix_version=plan["latest"].hotfix.res_version)
         return info
 
     def _verify_json_inputs(self, plan: dict[str, Any]) -> int:
