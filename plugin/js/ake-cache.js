@@ -724,6 +724,34 @@
         }
     };
 
+    const cachedAkeFetch = window.akeFetch;
+    window.akeFetch = async function (resource, init) {
+        const raw = typeof resource === 'string' || resource instanceof URL ? String(resource) : resource?.url || '';
+        const dataRequest = init?.akeMissingDataKind === 'json' || /\/public\/(?:[^/?]+\/)*?(?:TableCfg|Json)\/[^?#]+\.json(?:[?#]|$)/i.test(raw);
+        const tracked = !init?.akeMissingDataTracked && dataRequest;
+        const scope = window.akeMissingData?.scope();
+        const originalSignal = init?.signal || (resource instanceof Request ? resource.signal : null);
+        const controller = dataRequest ? new AbortController() : null;
+        let timedOut = false;
+        const abort = () => controller?.abort(originalSignal?.reason);
+        if (originalSignal?.aborted) abort();
+        else originalSignal?.addEventListener('abort', abort, { once: true });
+        const timer = controller ? setTimeout(() => { timedOut = true; controller.abort(); }, 60000) : null;
+        try {
+            const response = await cachedAkeFetch(resource, controller ? { ...init, signal: controller.signal } : init);
+            if (tracked && response.ok) window.akeMissingData?.resolved(raw, scope);
+            else if (tracked && ((response.status === 404 && !init?.akeMissingOptional404) || response.status === 408 || response.status >= 500)) window.akeMissingData?.report(raw, scope);
+            return response;
+        } catch (error) {
+            const failure = timedOut ? new DOMException('Data request timed out', 'TimeoutError') : error;
+            if (tracked && window.akeMissingData?.isRequestFailure(failure)) window.akeMissingData.report(raw, scope);
+            throw failure;
+        } finally {
+            if (timer !== null) clearTimeout(timer);
+            originalSignal?.removeEventListener('abort', abort);
+        }
+    };
+
     window.akeLoadMaps = function () {
         const directory = window.akeI18n?.getLanguageInfo?.().directory || 'CH';
         if (!window.__akeMapsPromises) window.__akeMapsPromises = {};

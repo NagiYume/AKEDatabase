@@ -155,11 +155,19 @@
             const load = url => window.akeDataLoader?.loadJson
                 ? window.akeDataLoader.loadJson(url, { priority: 'prefetch', hydrate: false })
                 : fetchText(url).then(losslessParse);
-            const localized = load(`${TABLE_ROOT}I18nTextTable_${suffix}.json`);
-            const promise = (suffix === 'CN' ? localized.then(value => ({ localized: value, chinese: value })) : Promise.all([
+            const safeLoad = url => load(url).then(value => ({ value, failed: false }), error => {
+                if (error?.name === 'AbortError') throw error;
+                return { value: {}, failed: true };
+            });
+            const localized = safeLoad(`${TABLE_ROOT}I18nTextTable_${suffix}.json`);
+            const promise = (suffix === 'CN' ? localized.then(result => ({ localized: result.value, chinese: result.value, incomplete: result.failed })) : Promise.all([
                 localized,
-                load(`${TABLE_ROOT}I18nTextTable_CN.json`)
-            ]).then(([current, chinese]) => ({ localized: current, chinese })))
+                safeLoad(`${TABLE_ROOT}I18nTextTable_CN.json`)
+            ]).then(([current, chinese]) => ({ localized: current.value, chinese: chinese.value, incomplete: current.failed || chinese.failed })))
+                .then(result => {
+                    if (result.incomplete) i18nPromises.delete(suffix);
+                    return result;
+                })
                 .catch(error => {
                     i18nPromises.delete(suffix);
                     throw error;
@@ -174,7 +182,7 @@
         const cacheKey = `${version?.id || 'current'}:${languageInfo().table}:${name}:${options?.hydrate === false ? 'raw' : 'hydrated'}:${options.optional === true ? 'optional' : 'required'}`;
         if (!tableCache.has(cacheKey)) {
             const raw = (window.akeDataLoader?.loadJson
-                ? window.akeDataLoader.loadJson(versionTableUrl(name, version), { priority: 'foreground' })
+                ? window.akeDataLoader.loadJson(versionTableUrl(name, version), { priority: 'foreground', reportMissing: false })
                 : fetchText(versionTableUrl(name, version)).then(losslessParse))
                 .then(data => {
                     if (!data || typeof data !== 'object' || Array.isArray(data)) {
@@ -190,7 +198,14 @@
                 });
             const promise = (options?.hydrate === false
                 ? raw
-                : Promise.all([raw, loadI18n()]).then(([data, i18n]) => hydrate(structuredClone(data), i18n)))
+                : Promise.all([raw, loadI18n()]).then(([data, i18n]) => {
+                    const result = hydrate(structuredClone(data), i18n);
+                    if (i18n.incomplete) {
+                        tableCache.delete(cacheKey);
+                        Object.defineProperty(result, '__akeIncompleteText', { value: true });
+                    }
+                    return result;
+                }))
                 .catch(error => {
                     tableCache.delete(cacheKey);
                     throw error;
@@ -387,7 +402,7 @@
         const buildManifest = adapters[module][0];
         const currentRows = await buildManifest();
         const comparison = window.akeDataSource?.getState?.()?.comparison;
-        if (!comparison?.baseline) {
+        if (!comparison?.baseline || window.akeMissingData?.hasMissing()) {
             versionDiffEntries.delete(module);
             return currentRows.map(publicManifestRow);
         }
@@ -461,7 +476,7 @@
     async function detailWithVersionDiff(module, id) {
         const buildDetail = adapters[module][1];
         const comparison = window.akeDataSource?.getState?.()?.comparison;
-        if (!comparison?.baseline) return buildDetail(id);
+        if (!comparison?.baseline || window.akeMissingData?.hasMissing()) return buildDetail(id);
         if (!versionDiffEntries.has(module)) await manifestWithVersionDiff(module);
         const entry = versionDiffEntries.get(module)?.get(String(id));
         const attachAddedEntityIds = current => {
@@ -478,6 +493,7 @@
         }
         try {
             const [current, baseline] = await Promise.all([buildDetail(id), buildDetail(id, comparison.baseline)]);
+            if (window.akeMissingData?.hasMissing()) return current;
             current.__versionDiff = { baseVersion: comparison.baseline.id, baseline };
             return attachAddedEntityIds(current);
         } catch (error) {
@@ -488,7 +504,7 @@
 
     async function optionalJson(url) {
         try {
-            const response = await originalAkeFetch(url);
+            const response = await originalAkeFetch(url, { akeMissingOptional404: true });
             return response.ok ? response.json() : null;
         } catch {
             return null;

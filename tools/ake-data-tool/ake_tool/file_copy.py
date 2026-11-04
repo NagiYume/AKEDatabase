@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import os
+import errno
+import hashlib
 import shutil
 import uuid
 from pathlib import Path
 
 from .errors import ValidationError
+from .file_facts import cached_fact, file_digest, file_identity, remember_digest
 from .models import CancellationToken
 
 
@@ -61,19 +64,100 @@ def copy_file_contents(
         raise FileNotFoundError(f"复制源文件不存在：{source}")
     target.parent.mkdir(parents=True, exist_ok=True)
     temporary = target.with_name(f".{target.name}.ake-copy-{uuid.uuid4().hex}.tmp")
+    known_digest = cached_fact(("md5", file_identity(source)))
+    digest = None if known_digest is not None else hashlib.md5()
     try:
         with source.open("rb") as input_stream, temporary.open("xb") as output_stream:
             while chunk := input_stream.read(chunk_size):
                 if token is not None:
                     token.raise_if_cancelled()
                 output_stream.write(chunk)
+                if digest is not None:
+                    digest.update(chunk)
         shutil.copystat(source, temporary, follow_symlinks=True)
         os.replace(temporary, target)
+        content_digest = known_digest if digest is None else digest.hexdigest()
+        remember_digest(source, "md5", content_digest)
+        remember_digest(target, "md5", content_digest)
     except Exception:
         temporary.unlink(missing_ok=True)
         raise
     if is_linked_file(target):
         raise ValidationError(f"内容复制后目标仍是链接文件：{target}")
+
+
+def move_file_contents(source: Path, target: Path,
+                       token: CancellationToken | None = None) -> None:
+    """Consume a private extraction file; cross-volume moves copy only once."""
+    if token is not None:
+        token.raise_if_cancelled()
+    if not source.is_file() or is_linked_file(source):
+        raise ValidationError(f"移动源不是独立文件：{source}")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        os.replace(source, target)
+    except OSError as exc:
+        if exc.errno != errno.EXDEV and getattr(exc, "winerror", None) != 17:
+            raise
+        copy_file_contents(source, target, token)
+        source.unlink()
+
+
+def sync_file_contents(source: Path, target: Path,
+                       token: CancellationToken | None = None) -> bool:
+    """Return whether content was copied; unchanged files keep their identity."""
+    if token is not None:
+        token.raise_if_cancelled()
+    if is_linked_file(source) or is_linked_file(target):
+        raise ValidationError(f"增量发布不接受链接文件：{source} -> {target}")
+    if target.is_file() and source.stat().st_size == target.stat().st_size:
+        if file_digest(source, token=token) == file_digest(target, token=token):
+            return False
+    copy_file_contents(source, target, token)
+    return True
+
+
+def sync_tree_contents(source: Path, target: Path,
+                       token: CancellationToken | None = None, *, checked: bool = False) -> int:
+    """Publish a completed export in place, retaining the source for retries.
+
+    Only individual changed files need temporary space. Stale files are removed
+    after all writes succeed; interruption is repaired by repeating publication.
+    """
+    source = source.absolute()
+    target = target.absolute()
+    if source == target or source in target.parents or target in source.parents:
+        raise ValidationError("增量发布源和目标不能相互包含")
+    if not checked:
+        assert_no_linked_files(source, "增量发布源")
+        assert_no_linked_files(target, "增量发布目标")
+    files = sorted(path for path in source.rglob("*") if path.is_file())
+    if not files:
+        raise ValidationError(f"拒绝发布空目录：{source}")
+    if target.is_file():
+        target.unlink()
+    target.mkdir(parents=True, exist_ok=True)
+    expected = set()
+    for path in files:
+        if token is not None:
+            token.raise_if_cancelled()
+        relative = path.relative_to(source)
+        destination = target / relative
+        expected.add(relative)
+        for parent in reversed(destination.parents):
+            if target in parent.parents and parent.is_file():
+                parent.unlink()
+        if destination.is_dir():
+            shutil.rmtree(destination)
+        sync_file_contents(path, destination, token)
+    for path in sorted(target.rglob("*"), key=lambda item: len(item.parts), reverse=True):
+        if token is not None:
+            token.raise_if_cancelled()
+        if path.is_file() and path.relative_to(target) not in expected:
+            path.unlink()
+        elif path.is_dir() and not any(path.iterdir()):
+            path.rmdir()
+    return len(files)
 
 
 def copy_tree_contents(

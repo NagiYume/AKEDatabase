@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Callable, Iterable
 
 from .errors import ValidationError
+from .file_facts import file_digest
 from .image_paths import IMAGE_PROFILE_FULL, IMAGE_PROFILE_STANDARD, normalize_image_profile
 from .public_http import public_download_headers
 
@@ -53,11 +54,7 @@ def validate_map_upload_version(value: str) -> str:
 
 
 def sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        while chunk := stream.read(4 * 1024 * 1024):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return file_digest(path, "sha256")
 
 
 def tree_digest(root: Path) -> str:

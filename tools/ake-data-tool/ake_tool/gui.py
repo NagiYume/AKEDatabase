@@ -872,7 +872,7 @@ class MainWindow(QMainWindow):
         self.table_block_check = QCheckBox("TableCfg")
         self.md5_check = QCheckBox("MD5 校验")
         self.keep_check = QCheckBox("保留任务文件")
-        self.keep_check.setToolTip("保留已下载 VFS 和 staging，后续任务可以断点续传")
+        self.keep_check.setToolTip("保留最近 3 个版本的任务输入与解析结果，供断点续传；发布仅复制变化文件")
         self.timeout_spin = QSpinBox()
         self.timeout_spin.setRange(10, 600)
         self.timeout_spin.setSuffix(" 秒")

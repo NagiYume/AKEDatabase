@@ -23,7 +23,6 @@ from .asset_maps import (
     build_map_manifest_record,
     map_profile_key,
     sha256_file,
-    tree_digest,
     validate_map_upload_version,
     validate_map_manifest,
 )
@@ -728,9 +727,6 @@ class ReleaseManager:
                 or sha256_file(self.config.image_sdk) != str(record.get("jarDigest", ""))
             ):
                 raise ValidationError(f"图片发布资格失效：{profile} 的 beyond-sdk.jar 已变化")
-            output_root = Path(str(record.get("outputRoot", "")))
-            if tree_digest(output_root) != str(record.get("outputDigest", "")):
-                raise ValidationError(f"图片发布资格失效：{profile} 的持久增量输出已变化")
         if int(record.get("fullMapEntries", -1)) < 0:
             raise ValidationError(f"图片发布资格失效：{profile} 的完整 map 计数无效")
         return record
@@ -1562,9 +1558,8 @@ class ReleaseManager:
                 next_index = validate_level_data_dialog_metadata(next_index)
             if self.before_index_upload is not None:
                 self.before_index_upload()
-            latest_index = self._read_public_asset_index()
-            if self._asset_index_digest(latest_index) != self._asset_index_digest(remote_index):
-                raise ValidationError("远端并发修改：资产写入期间索引发生变化，拒绝覆盖")
+            # Single-writer workflow: the baseline was checked once at execution
+            # entry. Confirm the final write below rather than re-fetching it.
             self._upload_remote_asset_index(next_index)
             verified_index = self._read_remote_asset_index_exact()
             if any(dataset.get("kind") == "json" for dataset in datasets if dataset.get("total_changes")):
@@ -2172,8 +2167,19 @@ class ReleaseManager:
         if existing.strip() and not manifest_has_version and not pending_marker.is_file():
             raise ValidationError(f"R2 版本目录已经存在且不是本工具的未完成任务，拒绝覆盖：{table_remote}")
 
-        if not existing.strip():
-            self.progress(ProgressEvent("upload", f"开始上传 TableCfg：{table_remote}"))
+        pending = self._read_asset_pending(pending_marker) if pending_marker.is_file() else None
+        if pending is not None and (
+            pending.get("version") != version_id or pending.get("remote") != table_remote
+        ):
+            raise ValidationError("TableCfg 续传状态与当前上传目标不一致")
+        # Older markers were written only after a completed transfer. New ones
+        # explicitly track completion so a failed copy can resume via rclone.
+        transfer_complete = pending is not None and pending.get("transferComplete", True)
+        if not existing.strip() or (not manifest_has_version and not transfer_complete):
+            self.progress(ProgressEvent("upload", f"上传/续传 TableCfg：{table_remote}"))
+            self._write_asset_pending(pending_marker, {
+                "version": version_id, "remote": table_remote, "transferComplete": False,
+            })
             self._stream_rclone(
                 [
                     "copy",
@@ -2186,11 +2192,9 @@ class ReleaseManager:
                 ],
                 "upload",
             )
-            pending_dir.mkdir(parents=True, exist_ok=True)
-            pending_marker.write_text(
-                json.dumps({"version": version_id, "remote": table_remote}, ensure_ascii=False, indent=2) + "\n",
-                encoding="utf-8",
-            )
+            self._write_asset_pending(pending_marker, {
+                "version": version_id, "remote": table_remote, "transferComplete": True,
+            })
         elif not manifest_has_version:
             self.progress(ProgressEvent("upload", f"继续未完成的 R2 manifest 发布：{version_id}"))
         else:

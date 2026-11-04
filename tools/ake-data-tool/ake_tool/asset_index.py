@@ -10,6 +10,7 @@ from typing import Any
 
 from .errors import ValidationError
 from .file_copy import is_linked_file
+from .file_facts import cached_fact, file_digest, file_identity, remember_fact
 from .image_paths import ImageParsingConfig, ImagePathMatcher, IMAGE_PROFILES
 
 
@@ -36,11 +37,7 @@ def validate_relative_path(value: Any, label: str = "路径") -> str:
 
 
 def _file_record(path: Path, root: Path, meta: dict[str, Any] | None = None) -> dict[str, Any]:
-    digest = hashlib.md5()
-    with path.open("rb") as stream:
-        while chunk := stream.read(1024 * 1024):
-            digest.update(chunk)
-    record: dict[str, Any] = {"size": path.stat().st_size, "md5": digest.hexdigest()}
+    record: dict[str, Any] = {"size": path.stat().st_size, "md5": file_digest(path)}
     if meta:
         record["meta"] = meta
     return record
@@ -220,6 +217,22 @@ def _level_script_meta(path: Path) -> dict[str, Any]:
 
 
 def _json_meta(path: Path, relative: str) -> dict[str, Any] | None:
+    if not relative.startswith(("MissionRuntimeAsset/", "LevelScriptData/", "LevelData/")):
+        return None
+    # Mission metadata depends on a sidecar as well as the JSON itself.
+    sidecar = path.with_name(f"{path.stem}_meta.json")
+    sidecar_identity = (file_identity(sidecar) if relative.startswith("MissionRuntimeAsset/")
+                        and sidecar.is_file() else None)
+    key = ("json-meta", relative, file_identity(path), sidecar_identity)
+    cached = cached_fact(key)
+    if cached is not None:
+        return deepcopy(cached[0])
+    result = _read_json_meta(path, relative)
+    remember_fact(key, (deepcopy(result),))
+    return result
+
+
+def _read_json_meta(path: Path, relative: str) -> dict[str, Any] | None:
     if relative.startswith("MissionRuntimeAsset/"):
         return _mission_meta(path)
     if relative.startswith("LevelScriptData/") and relative.lower().endswith(".json"):
@@ -360,6 +373,19 @@ def validate_asset_index(value: Any, allow_v1: bool = True) -> dict[str, Any]:
         clean_dataset["root"] = str(dataset.get("root", ""))
         clean_dataset["files"] = clean
         result["datasets"][kind] = clean_dataset
+    cc_data = result.get("ccData")
+    if cc_data is not None:
+        if not isinstance(cc_data, dict) or cc_data.get("root") != "public" or not isinstance(cc_data.get("files"), dict):
+            raise ValidationError("合约数值索引结构无效")
+        for raw_path, record in cc_data["files"].items():
+            path = validate_relative_path(raw_path, "合约数值索引路径")
+            if "/" in path or not path.endswith(".json") or not isinstance(record, dict):
+                raise ValidationError(f"合约数值索引记录无效：{path}")
+            size = record.get("size")
+            if (not isinstance(size, int) or isinstance(size, bool) or size < 0
+                    or not MD5_PATTERN.fullmatch(str(record.get("md5", "")))
+                    or not ASSET_VERSION_PATTERN.fullmatch(str(record.get("version", "")))):
+                raise ValidationError(f"合约数值索引记录不完整：{path}")
     parsing_configs = result.get("imageParsingConfigs")
     if parsing_configs is not None:
         if not isinstance(parsing_configs, dict) or int(parsing_configs.get("schemaVersion", 0) or 0) != 1:

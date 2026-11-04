@@ -12,6 +12,7 @@ import requests
 
 from .errors import AkeToolError, ValidationError
 from .file_copy import is_linked_file
+from .file_facts import file_digest, remember_digest
 from .models import CancellationToken, DownloadEntry, ProgressCallback, ProgressEvent, null_progress
 
 
@@ -103,12 +104,7 @@ class DownloadManager:
 
     @staticmethod
     def _md5(path: Path, token: CancellationToken) -> str:
-        digest = hashlib.md5()
-        with path.open("rb") as stream:
-            while chunk := stream.read(1024 * 1024):
-                token.raise_if_cancelled()
-                digest.update(chunk)
-        return digest.hexdigest()
+        return file_digest(path, token=token)
 
     def _is_complete(
         self,
@@ -249,6 +245,14 @@ class DownloadManager:
                     resumed = offset > 0 and response.status_code == 206
                     if offset and not resumed:
                         offset = 0
+                    digest = hashlib.md5() if verify_md5 and entry.md5 else None
+                    if digest is not None and resumed:
+                        # Hash the existing prefix once, then continue hashing
+                        # incoming bytes instead of rereading the completed file.
+                        with partial.open("rb") as prefix:
+                            while chunk := prefix.read(4 * 1024 * 1024):
+                                token.raise_if_cancelled()
+                                digest.update(chunk)
                     mode = "ab" if resumed else "wb"
                     progress(offset, f"下载 {entry.name}")
                     with partial.open(mode) as stream:
@@ -258,6 +262,8 @@ class DownloadManager:
                             if not chunk:
                                 continue
                             stream.write(chunk)
+                            if digest is not None:
+                                digest.update(chunk)
                             current += len(chunk)
                             progress(current, f"下载 {entry.name}")
 
@@ -267,13 +273,15 @@ class DownloadManager:
                     )
                 if verify_md5 and entry.md5:
                     progress(partial.stat().st_size, f"校验 {entry.name}")
-                    actual_md5 = self._md5(partial, token)
+                    actual_md5 = digest.hexdigest()
                     if actual_md5 != entry.md5:
                         partial.unlink(missing_ok=True)
                         raise ValidationError(
                             f"MD5 不符：{entry.name}，期望 {entry.md5}，实际 {actual_md5}"
                         )
                 os.replace(partial, target)
+                if verify_md5 and entry.md5:
+                    remember_digest(target, "md5", actual_md5)
                 return
             except (requests.RequestException, OSError, ValidationError) as exc:
                 last_error = exc

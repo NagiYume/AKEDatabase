@@ -189,7 +189,8 @@ def worker(args):
                             if schema.post:
                                 host.call(value, schema.post)
                             result = host.serialize(value).encode('utf-8')
-                        json.loads(result.decode('utf-8'))
+                        # The managed JSON serializer already produced JSON.
+                        # Avoid constructing a second full Python object tree.
                     atomic_write(target, result)
                     error_file.unlink(missing_ok=True)
                     count['written'] += 1

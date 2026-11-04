@@ -1,10 +1,24 @@
 # Special Announcement
 
-AKEData `v1.3.6` opens Yuanyuan Villa and the Industrial Technology Tree, moves Baiqu Martial Exhibition into Miscellaneous, adds pinyin support to module-local search, and loads other modules on demand. The missing v1.3.5 changelog is also included.
+AKEData `v1.3.7` restores first-season Contingency Contract indicator values, adds missing-data notifications, and improves asset requests during the initial page load.
 
 AKEData has moved to www.akedata.wiki. The former domain, akedata.top, now redirects here.
 
 # AKEData Version Changelog
+
+### v1.3.7
+
+#### Contingency Contract
+
+- Added first-season indicator value data, restoring parameters in indicator descriptions and related previews.
+- Unavailable parameters are shown as unresolved, while the page remains available if its value file cannot be loaded.
+- Contract value files use the asset index for versioning and are loaded by contract.
+
+#### Data and asset loading
+
+- Supported TableCfg and JSON requests can show a dismissible notification in the upper-right corner with the missing file names. The notification can reappear when reopening a page or entry.
+- When TableCfg requests fail, other loaded data remains available where possible. JSON details retain each module's existing error state. Expected 404s for files marked optional and cancelled requests do not trigger a missing-data notification.
+- Adjusted initial data-source routing to reduce requests for navigation icons and other assets against the website domain.
 
 ### v1.3.6
 

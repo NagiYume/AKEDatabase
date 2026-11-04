@@ -10,7 +10,9 @@ from typing import Any
 from .config import TOOL_ROOT, AppConfig
 from .downloader import DownloadManager, entries_for_blocks, safe_target
 from .errors import AkeToolError, CancelledError, ValidationError
-from .file_copy import assert_no_linked_files, copy_file_contents
+from .file_copy import assert_no_linked_files, copy_file_contents, sync_tree_contents
+from .file_facts import cached_fact, file_identity, remember_fact
+from .export_history import prune_exports
 from .hotfix_api import HotfixClient
 from .index_crypto import DEFAULT_KEY, INITIAL_KEY, decrypt_index
 from .models import (
@@ -26,6 +28,7 @@ from .release import ReleaseManager
 from .state_store import StateStore
 from .unpacker import PythonTableUnpacker
 from .vfs_validation_cache import VfsValidationCache, latest_identity
+from .vfs_update import VfsUpdater
 
 
 TABLECFG_HOTFIX_BLOCKS = ("TableCfg",)
@@ -113,10 +116,10 @@ class Pipeline:
             self.token.raise_if_cancelled()
             job_name = self._safe_job_name(latest.hotfix.res_version or latest.seed.seed_version)
             jobs_root = work_root / "jobs"
-            if any(stage in {"download", "unpack"} for stage in stages):
-                self._remove_obsolete_jobs(jobs_root, job_name)
             job_root = jobs_root / job_name
             job_root.mkdir(parents=True, exist_ok=True)
+            if any(stage in {"download", "unpack"} for stage in stages):
+                self._remove_obsolete_jobs(jobs_root, job_name)
             self._write_metadata(job_root, latest)
             state: dict[str, Any] = {
                 "game_version": latest.seed.game_version,
@@ -188,7 +191,7 @@ class Pipeline:
         self._emit(
             ProgressEvent(
                 "download",
-                "TableCfg 来源规则：优先复制版本匹配的游戏文件，缺失时从 Hotfix 下载",
+                "TableCfg 来源规则：工作 VFS 优先；跨大版本复制/完整下载，同大版本补丁/完整下载",
             )
         )
         for part_name in SDK_INDEX_PARTS:
@@ -216,105 +219,25 @@ class Pipeline:
         if not latest_entries:
             raise ValidationError("所有索引中都没有找到需要下载的文件")
 
-        vfs_root = source_root / "VFS"
-        vfs_cache = VfsValidationCache(self.config)
-        vfs_identity = latest_identity(latest)
-        table_cache_hit = vfs_cache.trusted(
-            "TableCfg",
-            vfs_identity,
-            self.config.work_root,
-            vfs_root,
-            latest_entries,
-        )
-        trusted_names = {entry.name for entry in latest_entries} if table_cache_hit else set()
-        if table_cache_hit:
-            self._emit(
-                ProgressEvent(
-                    "download",
-                    f"VFS 可信缓存命中：TableCfg，版本 {vfs_identity['seedVersion']}，"
-                    f"Hotfix {vfs_identity['hotfixVersion']}，跳过 {len(latest_entries)} 个文件的 MD5",
-                )
-            )
-        else:
-            if vfs_cache.records.get("TableCfg", {}).get("verified") is True:
-                vfs_cache.invalidate("TableCfg")
-                vfs_cache.persist()
-            self._emit(
-                ProgressEvent("download", "VFS 可信缓存未命中：TableCfg，执行完整 MD5")
-            )
-
-        streaming_entries = self._load_game_entries(
-            self.config.game_streaming_assets_dir,
-            self.config.streaming_assets_root,
-            "StreamingAssets",
-        )
-        persistent_entries = self._load_game_entries(
-            self.config.game_persistent_dir,
-            self.config.persistent_root,
-            "Persistent",
-        )
-        copied = 0
-        for index, entry in enumerate(latest_entries, 1):
+        updater = VfsUpdater(self.config.work_root, self.client, self.downloader, self.token, self._emit,
+                             self.config.vfs_validation_records)
+        game_roots = [root for configured, root in (
+            (self.config.game_streaming_assets_dir, self.config.streaming_assets_root),
+            (self.config.game_persistent_dir, self.config.persistent_root),
+        ) if configured.strip() and root.is_dir()]
+        counts = updater.prepare(latest, latest_entries, entry_parts, TABLECFG_HOTFIX_BLOCKS, game_roots)
+        # Keep an independent task snapshot for parsing/retries; the persistent VFS
+        # survives job retention and is shared with the Json dependency blocks.
+        prepared_files = []
+        for entry in latest_entries:
             target = safe_target(source_root, entry.name)
-            local_source: Path | None = None
-            source_label = ""
-            for label, root, local_entries in (
-                ("StreamingAssets", self.config.streaming_assets_root, streaming_entries),
-                ("Persistent", self.config.persistent_root, persistent_entries),
-            ):
-                if self._metadata_matches(local_entries.get(entry.name), entry):
-                    candidate = safe_target(root, entry.name)
-                    if candidate.is_file():
-                        local_source = candidate
-                        source_label = label
-                        break
-            if local_source is not None and not target.is_file():
-                copy_file_contents(local_source, target, self.token)
-                copied += 1
-                self._emit(
-                    ProgressEvent(
-                        "download",
-                        f"复制 [{index}/{len(latest_entries)}] [{source_label}] {entry.name}",
-                        index,
-                        len(latest_entries),
-                    )
-                )
-
-        prepared_files: list[Path] = []
-        for part_name in SDK_INDEX_PARTS:
-            part = latest.hotfix.parts[part_name]
-            part_entries = [
-                entry for entry in latest_entries if entry_parts[entry.name].name == part_name
-            ]
-            prepared_files.extend(
-                self.downloader.download_entries(
-                    part.path,
-                    part_entries,
-                    source_root,
-                    self.token,
-                    self._emit,
-                    trusted_names=trusted_names,
-                )
-            )
-        assert_no_linked_files(source_root, "TableCfg VFS 输入目录")
-        if not VfsValidationCache.files_match(vfs_root, latest_entries):
-            raise ValidationError("TableCfg VFS 文件大小校验失败")
-        self.token.raise_if_cancelled()
-        vfs_cache.stage_verified(
-            "TableCfg",
-            vfs_identity,
-            self.config.work_root,
-            vfs_root,
-            len(latest_entries),
-        )
-        self.token.raise_if_cancelled()
+            copy_file_contents(safe_target(self.config.work_root, entry.name), target, self.token)
+            prepared_files.append(target)
+        copied = counts["copied"]
+        vfs_cache = VfsValidationCache(self.config)
+        vfs_cache.stage_verified("TableCfg", latest_identity(latest), self.config.work_root,
+                                 self.config.work_root / "VFS", len(latest_entries))
         vfs_cache.persist()
-        self._emit(
-            ProgressEvent(
-                "download",
-                f"VFS 区块校验完成并记录：TableCfg，{len(latest_entries)} 个文件",
-            )
-        )
         total_bytes = sum(entry.size for entry in latest_entries)
         self._emit(
             ProgressEvent(
@@ -325,9 +248,11 @@ class Pipeline:
             )
         )
         return {
-            "downloaded_files": len(prepared_files),
-            "downloaded_bytes": total_bytes,
+            "downloaded_files": counts["downloaded"] + counts["patched"],
+            "downloaded_bytes": counts["full_bytes"] + counts["patch_bytes"],
+            "vfs_total_bytes": total_bytes,
             "game_files_copied": copied,
+            "vfs_update_counts": counts,
             "table_sdk_blocks": list(TABLECFG_HOTFIX_BLOCKS),
         }
 
@@ -501,6 +426,11 @@ class Pipeline:
         missing = [name for name in self.config.required_tables if not (table_dir / name).is_file()]
         if missing:
             raise ValidationError(f"TableCfg 缺少关键文件：{', '.join(missing)}")
+        identity = tuple(file_identity(path) for path in sorted(json_files))
+        cache_key = ("table-validation", tuple(self.config.required_tables), identity)
+        if cached_fact(cache_key) is not None:
+            self._emit(ProgressEvent(stage, f"复用 TableCfg 验证结果，共 {len(json_files)} 个 JSON 文件", 1, 1))
+            return len(json_files)
         for name in self.config.required_tables:
             self.token.raise_if_cancelled()
             try:
@@ -508,6 +438,7 @@ class Pipeline:
                     json.load(stream)
             except (OSError, json.JSONDecodeError) as exc:
                 raise ValidationError(f"关键表不是有效 JSON：{name}：{exc}") from exc
+        remember_fact(cache_key, True)
         self._emit(ProgressEvent(stage, f"验证通过，共 {len(json_files)} 个 JSON 文件", 1, 1))
         return len(json_files)
 
@@ -519,44 +450,12 @@ class Pipeline:
         self.token.raise_if_cancelled()
         if not source.is_dir():
             raise FileNotFoundError(f"待发布目录不存在：{source}")
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        temporary = destination.parent / f".{destination.name}.ake-staging-{self._timestamp()}"
-        if temporary.exists():
-            self._safe_remove(temporary, destination.parent)
-
-        files = [path for path in source.rglob("*") if path.is_file()]
-        total = sum(path.stat().st_size for path in files)
-        copied = 0
-        last_reported_percent = -1
-        stage = "publish" if self.config.public_root == destination.parent or self.config.public_root in destination.parents else "validate"
-        self._emit(ProgressEvent(stage, f"准备目录：{source} -> {destination}", 0, total))
-        temporary.mkdir(parents=True)
-        try:
-            for file_path in files:
-                self.token.raise_if_cancelled()
-                relative = file_path.relative_to(source)
-                target = temporary / relative
-                target.parent.mkdir(parents=True, exist_ok=True)
-                copy_file_contents(file_path, target, self.token)
-                copied += file_path.stat().st_size
-                percent = int(copied * 100 / total) if total else 100
-                if percent != last_reported_percent or copied == total:
-                    self._emit(ProgressEvent(stage, f"复制 {destination.name}/{relative}", copied, total))
-                    last_reported_percent = percent
-        except Exception:
-            self._safe_remove(temporary, destination.parent)
-            raise
-
-        assert_no_linked_files(temporary, f"{destination.name} 暂存目录")
-
-        if destination.exists():
-            self._emit(ProgressEvent(stage, f"删除旧目录：{destination}"))
-            self._safe_remove(destination, destination.parent)
-        try:
-            shutil.move(str(temporary), str(destination))
-            assert_no_linked_files(destination, f"{destination.name} 正式目录")
-        except Exception:
-            raise
+        self._emit(ProgressEvent("publish", f"增量发布：{source} -> {destination}"))
+        sync_tree_contents(source, destination, self.token)
+        # The source was validated immediately before this copy. Carry that
+        # result to the published files instead of decoding key tables again.
+        identity = tuple(file_identity(path) for path in sorted(destination.glob("*.json")))
+        remember_fact(("table-validation", tuple(self.config.required_tables), identity), True)
         return destination
 
     @staticmethod
@@ -564,14 +463,8 @@ class Pipeline:
         return datetime.now().strftime("%Y%m%d-%H%M%S-%f")
 
     def _remove_obsolete_jobs(self, jobs_root: Path, current_job_name: str) -> None:
-        if not jobs_root.is_dir():
-            return
-        for path in jobs_root.iterdir():
-            self.token.raise_if_cancelled()
-            if not path.is_dir() or path.name == current_job_name:
-                continue
-            self._emit(ProgressEvent("download", f"删除旧版本任务数据：{path}"))
-            self._safe_remove(path, jobs_root)
+        prune_exports(self.config.work_root, [jobs_root], protected=[jobs_root / current_job_name],
+                      report=lambda path: self._emit(ProgressEvent("download", f"清理超过 3 次保留上限的任务：{path}")))
 
     @staticmethod
     def _safe_remove(path: Path, allowed_parent: Path) -> None:
