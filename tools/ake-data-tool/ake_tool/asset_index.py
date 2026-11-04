@@ -373,6 +373,19 @@ def validate_asset_index(value: Any, allow_v1: bool = True) -> dict[str, Any]:
         clean_dataset["root"] = str(dataset.get("root", ""))
         clean_dataset["files"] = clean
         result["datasets"][kind] = clean_dataset
+    cc_data = result.get("ccData")
+    if cc_data is not None:
+        if not isinstance(cc_data, dict) or cc_data.get("root") != "public" or not isinstance(cc_data.get("files"), dict):
+            raise ValidationError("合约数值索引结构无效")
+        for raw_path, record in cc_data["files"].items():
+            path = validate_relative_path(raw_path, "合约数值索引路径")
+            if "/" in path or not path.endswith(".json") or not isinstance(record, dict):
+                raise ValidationError(f"合约数值索引记录无效：{path}")
+            size = record.get("size")
+            if (not isinstance(size, int) or isinstance(size, bool) or size < 0
+                    or not MD5_PATTERN.fullmatch(str(record.get("md5", "")))
+                    or not ASSET_VERSION_PATTERN.fullmatch(str(record.get("version", "")))):
+                raise ValidationError(f"合约数值索引记录不完整：{path}")
     parsing_configs = result.get("imageParsingConfigs")
     if parsing_configs is not None:
         if not isinstance(parsing_configs, dict) or int(parsing_configs.get("schemaVersion", 0) or 0) != 1:

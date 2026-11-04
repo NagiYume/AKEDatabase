@@ -10,6 +10,7 @@
     let currentGame = null;
     let currentDungeonData = null;
     let currentDungeonError = null;
+    let detailRequestId = 0;
     let ccAttrMap = {};
     let ccAttrNameToId = {};
     let ccBuffCache = {};
@@ -59,7 +60,7 @@
         const map = {};
         for (const term of (tagTerms || [])) {
             for (const bb of (term.blackboard || [])) {
-                if (bb.key) {
+                if (bb.key && !Object.prototype.hasOwnProperty.call(map, bb.key)) {
                     map[bb.key] = (bb.valueStr && bb.valueStr !== '') ? bb.valueStr : bb.value;
                 }
             }
@@ -132,7 +133,7 @@
                     ? allValueMaps[String(refTagId)] || {}
                     : valueMap;
                 const result = evalExprWithMap(expr, format, lookupMap);
-                return result !== null ? result : (getCurrentShowHidden() ? escapeHtml(match) : t('data.unavailableValue'));
+                return result !== null ? result : t('data.unavailableValue');
             });
     }
 
@@ -392,11 +393,19 @@
     }
 
     async function loadGameDetail(game, container) {
+        const requestId = ++detailRequestId;
         container.innerHTML = `<div class="ake-ui-state" data-state="loading">${t('loading')}</div>`;
         try {
-            const data = await (window.akeFetch || fetch)(game.contentFile).then(r => r.json());
+            const data = await (window.akeFetch || fetch)(game.contentFile).then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
+            });
+            if (requestId !== detailRequestId) return;
+            await attachContractValues(data, game.gameId);
+            if (requestId !== detailRequestId) return;
             const diagnostics = getCcDiagnostics(data);
-            if (Object.values(diagnostics).some(rows => rows.length)) console.warn('CC data relations', game.gameId, diagnostics);
+            if (diagnostics.missingTags.length || diagnostics.missingTaskGroups.length) console.warn('CC data relations', game.gameId, diagnostics);
+            else if (diagnostics.missingTerms.length) console.debug('CC effect parameters unavailable', game.gameId, diagnostics.missingTerms);
             currentData = data;
             currentGame = game;
             currentDungeonData = null;
@@ -432,8 +441,10 @@
                         if (term.termType === 1 && term.buffId) buffIds.add(term.buffId);
                     }));
                     await Promise.all(Array.from(buffIds).map(id => loadCcBuff(id, embeddedBuffData)));
+                    if (requestId !== detailRequestId) return;
                     currentDungeonData = dgData;
                 } catch (dgErr) {
+                    if (requestId !== detailRequestId) return;
                     currentDungeonError = dgErr;
                     console.error('加载副本数据失败:', dgErr);
                 }
@@ -444,7 +455,47 @@
             bindTagEvents();
             updateSelectedSummary(data.cctagtable || {});
         } catch (err) {
+            if (requestId !== detailRequestId) return;
             container.innerHTML = `<div class="ake-ui-state" data-state="error">${t('loadFailed', { message: escapeHtml(err.message) })}</div>`;
+        }
+    }
+
+    async function attachContractValues(data, gameId) {
+        if (!/^[a-zA-Z0-9_-]+$/.test(gameId || '')) return;
+        try {
+            const url = new URL(`https://data.akedata.wiki/public/${encodeURIComponent(gameId)}.json`);
+            try {
+                const index = await window.akeAssetIndex?.load({ baseUrl: 'https://data.akedata.wiki' });
+                const record = index?.ccData?.files?.[`${gameId}.json`];
+                if (index?.ccData?.root === 'public' && /^[0-9a-f]{32}$/.test(record?.md5 || '')) {
+                    url.searchParams.set('v', record.md5);
+                }
+            } catch (err) {
+                console.debug('CC value index unavailable', gameId, err);
+            }
+            const response = await (window.akeFetch || fetch)(url.href, { cache: 'no-cache' });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const values = await response.json();
+            if (values?.schemaVersion !== 1 || values.gameId !== gameId || !values.tags ||
+                typeof values.tags !== 'object' || Array.isArray(values.tags)) {
+                throw new Error('Invalid contract value data');
+            }
+            const referenced = getAllContractTags(data.contingencycontracttable);
+            const tagTable = { ...(data.cctagtable || {}) };
+            const invalid = [];
+            for (const [id, record] of Object.entries(values.tags)) {
+                if (!referenced[id] || !tagTable[id]) continue;
+                if (!Array.isArray(record?.tagTerms) || record.tagTerms.some(term =>
+                    !term || typeof term !== 'object' || !Array.isArray(term.blackboard))) {
+                    invalid.push(id);
+                    continue;
+                }
+                tagTable[id] = { ...tagTable[id], tagTerms: record.tagTerms };
+            }
+            data.cctagtable = tagTable;
+            if (invalid.length) console.warn('CC invalid value records', gameId, invalid);
+        } catch (err) {
+            console.debug('CC value data unavailable', gameId, err);
         }
     }
 
@@ -1365,7 +1416,7 @@
         let html = `
             <div class="ake-ui-detail" data-detail-kind="cc">
                 ${detailHeader?.outerHTML || ''}
-                ${Object.values(diagnostics).some(rows => rows.length) ? `<div class="ake-ui-state" role="note">${t('data.incomplete', { tags: diagnostics.missingTags.length, terms: diagnostics.missingTerms.length, groups: diagnostics.missingTaskGroups.length })}</div>` : ''}
+                ${diagnostics.missingTags.length || diagnostics.missingTaskGroups.length ? `<div class="ake-ui-state" role="note">${t('data.incomplete', { tags: diagnostics.missingTags.length, terms: diagnostics.missingTerms.length, groups: diagnostics.missingTaskGroups.length })}</div>` : ''}
                 ${renderActivityInfo(acc)}
                 ${renderContractGroups(cct, tagTable)}
                 <div class="ake-ui-section" id="v2ccSelectedSummary"></div>
@@ -1430,7 +1481,8 @@
                     if (mt === undefined) return;
                     let val;
                     if (mod.param.useBlackboardKey && mod.param.blackboardKey) {
-                        val = bb[mod.param.blackboardKey] ?? mod.param.value;
+                        val = bb[mod.param.blackboardKey];
+                        if (val === undefined || val === null) return;
                     } else { val = mod.param.value; }
                     modifiers.push({ attrType, attrValue: val, modifierType: mt });
                     const attrName = ccAttrMap[attrType] || t('attributeFallback', { type: attrType });

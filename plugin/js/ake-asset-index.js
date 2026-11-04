@@ -30,6 +30,21 @@
                 if (!record || !Number.isInteger(record.size) || record.size < 0 || !/^[0-9a-f]{32}$/.test(String(record.md5 || ''))) throw new Error(`资产索引记录无效：${path}`);
             }
         }
+        if (index.ccData !== undefined) {
+            const ccData = index.ccData;
+            if (!ccData || ccData.root !== 'public' || !ccData.files || typeof ccData.files !== 'object' || Array.isArray(ccData.files)) {
+                throw new Error('合约数值索引无效');
+            }
+            for (const [path, record] of Object.entries(ccData.files)) {
+                const parts = safeSegmentPath(path);
+                if (parts.length !== 1 || !path.endsWith('.json') || !record ||
+                    !Number.isInteger(record.size) || record.size < 0 ||
+                    !/^[0-9a-f]{32}$/.test(String(record.md5 || '')) ||
+                    !/^[^@\s]+@[^@\s]+$/.test(String(record.version || ''))) {
+                    throw new Error(`合约数值索引记录无效：${path}`);
+                }
+            }
+        }
         return index;
     }
 
