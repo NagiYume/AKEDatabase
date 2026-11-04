@@ -669,7 +669,7 @@
             button.disabled = true;
             button.textContent = t('downloading', null, '下载中');
             try {
-                const response = await fetch(fileUrl(file.dataset, file.relative));
+                const response = await (file.dataset === 'json' ? (window.akeFetch || fetch) : fetch)(fileUrl(file.dataset, file.relative));
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const blob = await response.blob();
                 const href = URL.createObjectURL(blob);

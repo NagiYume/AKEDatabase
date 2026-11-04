@@ -106,7 +106,7 @@
         await Promise.all(Array.from(ids).map(async id => {
             if (Object.prototype.hasOwnProperty.call(buffCache, id)) return;
             if (!buffRequests.has(id)) {
-                buffRequests.set(id, window.akeDataLoader.loadJson(`/public/Json/BuffData/${id}.json`, { priority: 'dependency' })
+                buffRequests.set(id, window.akeDataLoader.loadJson(`/public/Json/BuffData/${id}.json`, { priority: 'dependency', optional404: true })
                     .then(buff => { buffCache[id] = buff; })
                     .catch(error => {
                         if (error.status === 404) {

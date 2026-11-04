@@ -473,7 +473,7 @@
             } catch (err) {
                 console.debug('CC value index unavailable', gameId, err);
             }
-            const response = await (window.akeFetch || fetch)(url.href, { cache: 'no-cache' });
+            const response = await (window.akeFetch || fetch)(url.href, { cache: 'no-cache', akeMissingDataKind: 'json' });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const values = await response.json();
             if (values?.schemaVersion !== 1 || values.gameId !== gameId || !values.tags ||
@@ -1390,7 +1390,6 @@
         const cct = data.contingencycontracttable;
         const tagTable = data.cctagtable || {};
         const tagCount = Object.keys(getAllContractTags(cct)).length;
-        const diagnostics = getCcDiagnostics(data);
         const groupCount = cct && cct.contractGroupMap ? Object.keys(cct.contractGroupMap).length : 0;
         const showHidden = getCurrentShowHidden();
         const status = STATUS_ACCENTS[game.statusOrder] || 'permanent';
@@ -1416,7 +1415,6 @@
         let html = `
             <div class="ake-ui-detail" data-detail-kind="cc">
                 ${detailHeader?.outerHTML || ''}
-                ${diagnostics.missingTags.length || diagnostics.missingTaskGroups.length ? `<div class="ake-ui-state" role="note">${t('data.incomplete', { tags: diagnostics.missingTags.length, terms: diagnostics.missingTerms.length, groups: diagnostics.missingTaskGroups.length })}</div>` : ''}
                 ${renderActivityInfo(acc)}
                 ${renderContractGroups(cct, tagTable)}
                 <div class="ake-ui-section" id="v2ccSelectedSummary"></div>

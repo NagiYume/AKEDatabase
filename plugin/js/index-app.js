@@ -872,6 +872,7 @@
                         throw new Error(`模块 ${module.id} 必须使用 AKEUI 共享主题模板，不能加载独立样式。`);
                     }
                     activateModuleScope(module.id);
+                    dispatchModuleLifecycle('loading', module.id);
                     contentArea.replaceChildren(template.content.cloneNode(true));
                     const scripts = Array.from(contentArea.querySelectorAll('script'));
                     const prefetchedScripts = new Map();

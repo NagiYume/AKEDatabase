@@ -230,6 +230,22 @@
             ? window.resolveImagePath(raw)
             : raw;
         const result = classify(migrated);
+        if (state && result.type === 'external' && result.url.origin === new URL(state.baseUrl).origin &&
+            result.url.pathname.startsWith('/public/images/')) {
+            return resolveUrl(`${result.url.pathname}${result.url.search}${result.url.hash}`);
+        }
+        if (!state && result.type === 'shared' && result.url.pathname.startsWith('/public/images/')) {
+            let baseUrl = debugLocalMode ? localBaseUrl : defaultBaseUrl;
+            if (!debugLocalMode) {
+                try { baseUrl = normalizeBaseUrl(storage.get(BASE_URL_KEY, defaultBaseUrl)); }
+                catch { /* initialize() will discard an invalid saved source. */ }
+            }
+            const target = new URL(`${baseUrl}/`);
+            target.pathname = result.url.pathname;
+            target.search = result.url.search;
+            target.hash = result.url.hash;
+            return target.href;
+        }
         return result.type === 'shared' && result.url.pathname.startsWith('/public/images/')
             ? resolveUrl(migrated)
             : migrated;
@@ -424,12 +440,15 @@
             debugMode: debugLocalMode,
             debugLocal
         });
-        installDomAssetHooks();
-        observeDomAssets();
+        rewriteDomAssets(document);
         window.dispatchEvent(new CustomEvent('akeDataSourceReady', { detail: state }));
         return state;
     }
 
+    // Install synchronous URL routing before the asynchronous manifest request.
+    // MutationObserver alone runs after the browser may already request an image.
+    installDomAssetHooks();
+    observeDomAssets();
     const ready = initialize();
     // Startup continues while metadata is loading; consumers still receive failures.
     ready.catch(() => {});
