@@ -423,7 +423,13 @@
                     await loadCcMaps();
                     const response = await (window.akeFetch || fetch)(game.dungeonFile);
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    const dgData = await response.json();
+                    const seriesData = await response.json();
+                    const dungeon = seriesData.dungeontable?.[game.gameId];
+                    if (!dungeon) console.warn('CC dungeon relation missing', game.gameId, seriesData.dungeonSeriesId);
+                    const dgData = {
+                        ...seriesData,
+                        dungeontable: dungeon ? { [game.gameId]: dungeon } : {}
+                    };
                     await window.AKECombatData?.enrichDungeonScripts(dgData);
                     const embeddedBuffData = {};
                     Object.values(dgData.dungeontable || {}).forEach(dg => {
