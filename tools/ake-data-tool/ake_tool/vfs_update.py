@@ -10,7 +10,9 @@ import subprocess
 import tempfile
 import time
 import zipfile
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path, PurePosixPath
+from threading import Event, RLock
 
 import requests
 
@@ -54,7 +56,13 @@ class VfsUpdater:
         self.vfs = self.root / 'VFS'
         self.state_path = self.root / 'vfs-versions.json'
         self.client, self.downloader = client, downloader
-        self.token, self.progress = token, progress
+        self.token = token
+        self._progress_lock = RLock()
+        self._resource_lock = RLock()
+        self._result_lock = RLock()
+        self._file_locks = {}
+        self._progress_callback = progress
+        self.progress = self._report_progress
         self.manifests = {}
         self.patcher = None
         self.patcher_failed = False
@@ -78,6 +86,11 @@ class VfsUpdater:
                     and all(record.get(k) for k in ('gameVersion', 'seedVersion', 'hotfixVersion'))):
                 self.records[block] = {**record, 'verified': False}
 
+    def _report_progress(self, event):
+        # GUI/log/status callbacks are shared by all patch workers.
+        with self._progress_lock:
+            self._progress_callback(event)
+
     def emit(self, message):
         self.progress(ProgressEvent('download', message))
 
@@ -88,9 +101,13 @@ class VfsUpdater:
                 and record.get('seedVersion') and record.get('hotfixVersion') else 'full')
 
     def matches(self, path, entry, trusted=False):
-        return (path.is_file() and not is_linked_file(path)
-                and path.stat().st_size == entry.size
-                and (trusted or file_digest(path, token=self.token) == entry.md5.lower()))
+        with self._result_lock:
+            lock = self._file_locks.setdefault(path, RLock())
+        # Multiple targets can use one baseline: only the first worker hashes it.
+        with lock:
+            return (path.is_file() and not is_linked_file(path)
+                    and path.stat().st_size == entry.size
+                    and (trusted or file_digest(path, token=self.token) == entry.md5.lower()))
 
     def trusted_entry(self, block, latest, entry):
         record = self.records.get(block, {})
@@ -103,6 +120,11 @@ class VfsUpdater:
         _atomic_json(self.state_path, {'schema': 1, 'blocks': self.records})
 
     def _manifest(self, part):
+        with self._resource_lock:
+            self.token.raise_if_cancelled()
+            return self._load_manifest(part)
+
+    def _load_manifest(self, part):
         if part.path not in self.manifests:
             try:
                 response = self.client.session.get(part.path + '/patch.json', timeout=self.client.timeout)
@@ -119,6 +141,21 @@ class VfsUpdater:
         return self.manifests[part.path]
 
     def _hpatchz(self):
+        # Serialize provisioning and metadata requests on the shared client session.
+        # The actual patch downloads use DownloadManager's independent sessions.
+        with self._resource_lock:
+            self.token.raise_if_cancelled()
+            if self.patcher_failed:
+                raise ValidationError('本次任务的补丁工具不可用')
+            try:
+                return self._resolve_hpatchz()
+            except CancelledError:
+                raise
+            except (OSError, ValueError, KeyError, AkeToolError, requests.RequestException, zipfile.BadZipFile):
+                self.patcher_failed = True
+                raise
+
+    def _resolve_hpatchz(self):
         if self.patcher:
             return self.patcher
         explicit = os.environ.get('AKE_HPATCHZ_PATH') or shutil.which('hpatchz')
@@ -221,7 +258,9 @@ class VfsUpdater:
                     self.emit(f'补丁工具不可用，回退完整下载：{exc}')
                     return False
                 patch_path = _relative(candidate['patch'])
-                delta_entry = DownloadEntry('deltas/' + patch_path, candidate['patch_size'], '', 'Patch/' + patch_path)
+                delta_key = hashlib.sha256((part.path + '\0' + entry.name + '\0' + patch_path).encode()).hexdigest()
+                delta_entry = DownloadEntry('deltas/' + delta_key + '.patch',
+                                            candidate['patch_size'], '', 'Patch/' + patch_path)
                 self.downloader.download_entries(part.path, [delta_entry], stage_root, self.token,
                                                   self.progress, verify_md5=False)
                 delta = safe_target(stage_root, delta_entry.name)
@@ -230,7 +269,8 @@ class VfsUpdater:
                 self._apply(base, delta, staged)
                 if not self.matches(staged, entry):
                     raise ValidationError('补丁产物 MD5/大小不匹配')
-                self.patch_bytes += candidate['patch_size']
+                with self._result_lock:
+                    self.patch_bytes += candidate['patch_size']
                 self.emit(f'补丁完成：{entry.name}（{candidate["patch_size"]} / {entry.size} 字节）')
                 return True
             except CancelledError:
@@ -239,6 +279,47 @@ class VfsUpdater:
                 staged.unlink(missing_ok=True)
                 self.emit(f'补丁失败，尝试其他候选或完整文件：{entry.name}：{exc}')
         return False
+
+    def _patch_batch(self, latest, jobs, stage_root):
+        if not jobs:
+            return set()
+        # Bound hpatchz memory/disk pressure independently of the network pool.
+        concurrency = min(4, self.downloader.concurrency, len(jobs))
+        self.emit(f'并行补丁准备：{len(jobs)} 个文件，最多 {concurrency} 个下载/应用任务')
+        pending = iter(jobs)
+        dispatch_lock = RLock()
+        halted = Event()
+        patched = set()
+
+        def worker():
+            try:
+                while True:
+                    with dispatch_lock:
+                        if halted.is_set():
+                            return
+                        self.token.raise_if_cancelled()
+                        job = next(pending, None)
+                    if job is None:
+                        return
+                    entry, part, staged = job
+                    # Main manifests may include initial VFS targets too.
+                    main = latest.hotfix.parts['main']
+                    parts = [main, part] if part.name != 'main' and main.version == part.version else [part]
+                    if any(self._patch(entry, candidate, staged, stage_root) for candidate in parts):
+                        with dispatch_lock:
+                            patched.add(entry.name)
+            except BaseException:
+                halted.set()
+                raise
+
+        # Only create a bounded number of worker loops, not one future per file.
+        # On failure/cancellation, join active workers before promotion or cleanup.
+        with ThreadPoolExecutor(max_workers=concurrency, thread_name_prefix='ake-patch') as pool:
+            futures = [pool.submit(worker) for _ in range(concurrency)]
+            for future in as_completed(futures):
+                future.result()
+        self.token.raise_if_cancelled()
+        return patched
 
     def prepare(self, latest, entries, entry_parts, blocks, game_roots=()):
         """Commit versions independently; never remove bases before staging succeeds."""
@@ -279,6 +360,9 @@ class VfsUpdater:
             selected = [e for e in entries if e.name.startswith('VFS/' + BLOCK_IDS[block] + '/')]
             if not selected:
                 continue
+            targets = [safe_target(self.root, entry.name) for entry in selected]
+            if len(set(targets)) != len(targets):
+                raise ValidationError(f'VFS 区块包含重复目标路径：{block}')
             mode = self.mode(block, latest)
             previous = self.records.get(block, {})
             manifest = {e.name: [e.size, e.md5.lower()] for e in selected}
@@ -289,6 +373,7 @@ class VfsUpdater:
             stage_root = self.root / 'vfs-staging' / generation / BLOCK_IDS[block]
             staged_files = []
             remote = {}
+            patch_jobs = []
             for entry in selected:
                 self.token.raise_if_cancelled()
                 if not entry.md5 or entry.size <= 0:
@@ -319,13 +404,14 @@ class VfsUpdater:
                 staged.unlink(missing_ok=True)
                 part = entry_parts[entry.name]
                 if mode == 'patch':
-                    # The main patch manifest can also contain initial VFS targets.
-                    main = latest.hotfix.parts['main']
-                    patch_parts = [main, part] if part.name != 'main' and main.version == part.version else [part]
-                    if any(self._patch(entry, candidate_part, staged, stage_root) for candidate_part in patch_parts):
-                        counts['patched'] += 1
-                        continue
-                remote.setdefault(part.name, []).append(entry)
+                    patch_jobs.append((entry, part, staged))
+                else:
+                    remote.setdefault(part.name, []).append(entry)
+            patched = self._patch_batch(latest, patch_jobs, stage_root)
+            counts['patched'] += len(patched)
+            for entry, part, _ in patch_jobs:
+                if entry.name not in patched:
+                    remote.setdefault(part.name, []).append(entry)
             for part_name, missing in remote.items():
                 self.downloader.download_entries(latest.hotfix.parts[part_name].path, missing, stage_root,
                                                   self.token, self.progress, verify_md5=False)
