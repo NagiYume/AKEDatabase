@@ -56,8 +56,15 @@
         return String(val);
     }
 
-    function buildBlackboardValueMap(tagTerms) {
+    function buildBlackboardValueMap(tagTerms, serverBlackboards) {
         const map = {};
+        for (const board of (serverBlackboards || [])) {
+            for (const [key, value] of Object.entries(board || {})) {
+                if (key && value && !Object.prototype.hasOwnProperty.call(map, key)) {
+                    map[key] = value.strValue || value.floatValue;
+                }
+            }
+        }
         for (const term of (tagTerms || [])) {
             for (const bb of (term.blackboard || [])) {
                 if (bb.key && !Object.prototype.hasOwnProperty.call(map, bb.key)) {
@@ -71,7 +78,7 @@
     function buildAllTagValueMaps(tagTable) {
         const maps = {};
         for (const [tid, td] of Object.entries(tagTable || {})) {
-            maps[String(tid)] = buildBlackboardValueMap(td.tagTerms || []);
+            maps[String(tid)] = buildBlackboardValueMap(td.tagTerms, td.serverBlackboards);
         }
         return maps;
     }
@@ -423,7 +430,13 @@
                     await loadCcMaps();
                     const response = await (window.akeFetch || fetch)(game.dungeonFile);
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    const dgData = await response.json();
+                    const seriesData = await response.json();
+                    const dungeon = seriesData.dungeontable?.[game.gameId];
+                    if (!dungeon) console.warn('CC dungeon relation missing', game.gameId, seriesData.dungeonSeriesId);
+                    const dgData = {
+                        ...seriesData,
+                        dungeontable: dungeon ? { [game.gameId]: dungeon } : {}
+                    };
                     await window.AKECombatData?.enrichDungeonScripts(dgData);
                     const embeddedBuffData = {};
                     Object.values(dgData.dungeontable || {}).forEach(dg => {
@@ -483,14 +496,27 @@
             const referenced = getAllContractTags(data.contingencycontracttable);
             const tagTable = { ...(data.cctagtable || {}) };
             const invalid = [];
+            const languageIndices = { CH: 0, EN: 1, JP: 2, KR: 3, TC: 4, MX: 5, BR: 6, FR: 7, DE: 8, RU: 9, IT: 10, ID: 11, TH: 12, VN: 13 };
+            const languageIndex = languageIndices[window.akeI18n?.getLanguage?.()] ?? 0;
             for (const [id, record] of Object.entries(values.tags)) {
                 if (!referenced[id] || !tagTable[id]) continue;
-                if (!Array.isArray(record?.tagTerms) || record.tagTerms.some(term =>
-                    !term || typeof term !== 'object' || !Array.isArray(term.blackboard))) {
+                if (!record || typeof record !== 'object' || (record.tagTerms !== undefined &&
+                    (!Array.isArray(record.tagTerms) || record.tagTerms.some(term =>
+                        !term || typeof term !== 'object' || !Array.isArray(term.blackboard)))) ||
+                    (record.serverBlackboards !== undefined && (!Array.isArray(record.serverBlackboards) ||
+                        record.serverBlackboards.some(board => !board || typeof board !== 'object' || Array.isArray(board))))) {
                     invalid.push(id);
                     continue;
                 }
-                tagTable[id] = { ...tagTable[id], tagTerms: record.tagTerms };
+                const updated = { ...tagTable[id] };
+                if (record.tagTerms !== undefined) updated.tagTerms = record.tagTerms;
+                if (record.serverBlackboards !== undefined) updated.serverBlackboards = record.serverBlackboards;
+                for (const field of ['name', 'desc']) {
+                    const translations = record.text?.[field];
+                    const text = Array.isArray(translations) ? (translations[languageIndex] || translations[0]) : '';
+                    if (typeof text === 'string' && text) updated[field] = { ...updated[field], text };
+                }
+                tagTable[id] = updated;
             }
             data.cctagtable = tagTable;
             if (invalid.length) console.warn('CC invalid value records', gameId, invalid);
@@ -580,7 +606,7 @@
                                     const tagData = tagTable[tid] || {};
                                     const name = tagData.name?.text || (getCurrentShowHidden() ? `Tag ${tid}` : t('contract.unnamedTerm'));
                                     const terms = tagData.tagTerms || [];
-                                    const bbValueMap = buildBlackboardValueMap(terms);
+                                    const bbValueMap = buildBlackboardValueMap(terms, tagData.serverBlackboards);
                                     const desc = replacePlaceholders(tagData.desc?.text || '', bbValueMap, allValueMaps);
                                     const icon = tagData.icon || '';
                                     const roman = tagData.romanNumSuffix || '';
@@ -1440,7 +1466,7 @@
             const td = tagTable[tid];
             if (!td) return '';
             const name = td.name?.text || (getCurrentShowHidden() ? `Tag ${tid}` : t('contract.unnamedTerm'));
-            const bbMap = buildBlackboardValueMap(td.tagTerms || []);
+            const bbMap = buildBlackboardValueMap(td.tagTerms, td.serverBlackboards);
             const desc = replacePlaceholders(td.desc?.text || '', bbMap, allValueMaps);
             const score = td.score ?? 0;
             return `
@@ -1582,7 +1608,7 @@
             const hasEnemyTerm = td.tagTerms.some(t => t.termType === 1);
             if (!hasEnemyTerm) return;
             const tagName = td.name?.text || `Tag ${tid}`;
-            const bbMap = buildBlackboardValueMap(td.tagTerms || []);
+            const bbMap = buildBlackboardValueMap(td.tagTerms, td.serverBlackboards);
             const desc = replacePlaceholders(td.desc?.text || '', bbMap, allValueMaps);
             ccTagDescs.push({ tagName, desc });
         });
