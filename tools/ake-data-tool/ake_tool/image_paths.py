@@ -247,12 +247,6 @@ DEFAULT_IMAGE_CONTAINERS_FILTER = build_image_source_filter(IMAGE_SOURCE_ROOTS)
 FULL_IMAGE_SOURCE_ROOTS = minimal_image_source_paths(FULL_IMAGE_COPY_SOURCE_PATHS)
 FULL_IMAGE_CONTAINERS_FILTER = build_image_source_filter(FULL_IMAGE_SOURCE_ROOTS)
 
-# beyond-sdk 的内置容器映射缺少这个索引目录。与内置目录混合筛选时，
-# SDK 会静默丢弃它们，因此需要用一条不会命中内置映射的精确正则补充解析。
-SDK_UNMAPPED_IMAGE_SOURCE_ROOTS = (
-    "assets/beyond/dynamicassets/gameplay/ui/sprites/charremoteicon",
-)
-
 # 这些目录由旧 COPY_RULES 生成；切换到原始 assets 路径时可以安全移除。
 LEGACY_MANAGED_IMAGE_DIRS = (
     "achievement",

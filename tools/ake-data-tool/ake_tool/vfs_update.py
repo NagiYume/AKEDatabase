@@ -21,6 +21,7 @@ from .errors import AkeToolError, CancelledError, ValidationError
 from .file_copy import assert_no_linked_files, is_linked_file
 from .file_facts import file_digest, remember_digest
 from .models import DownloadEntry, ProgressEvent, null_progress
+from .parallel_files import map_files
 
 
 def identity(latest):
@@ -375,19 +376,18 @@ class VfsUpdater:
             remote = {}
             patch_jobs = []
             for entry in selected:
-                self.token.raise_if_cancelled()
                 if not entry.md5 or entry.size <= 0:
                     raise ValidationError(f'缺少 VFS 校验信息：{entry.name}')
+
+            def prepare_entry(entry):
+                self.token.raise_if_cancelled()
                 target = safe_target(self.root, entry.name)
                 if self.matches(target, entry, trusted):
-                    counts['workspace'] += 1
-                    continue
+                    return 'workspace', None
                 staged = safe_target(stage_root, entry.name)
-                staged_files.append((staged, target, entry))
                 if self.matches(staged, entry):
-                    continue
+                    return 'staged', (staged, target, entry)
                 staged.unlink(missing_ok=True)
-                copied = False
                 if mode == 'full':
                     for root in game_roots:
                         source = safe_target(root, entry.name)
@@ -396,12 +396,21 @@ class VfsUpdater:
                             shutil.copyfile(source, staged)
                             # Verify the copied snapshot, not just the mutable game source.
                             if self.matches(staged, entry):
-                                counts['copied'] += 1
-                                copied = True
-                                break
-                if copied:
-                    continue
+                                return 'copied', (staged, target, entry)
                 staged.unlink(missing_ok=True)
+                return 'missing', (staged, target, entry)
+
+            for entry, (status, paths) in zip(selected, map_files(prepare_entry, selected)):
+                if status == 'workspace':
+                    counts['workspace'] += 1
+                    continue
+                staged_files.append(paths)
+                if status == 'copied':
+                    counts['copied'] += 1
+                    continue
+                if status == 'staged':
+                    continue
+                staged = paths[0]
                 part = entry_parts[entry.name]
                 if mode == 'patch':
                     patch_jobs.append((entry, part, staged))
@@ -414,7 +423,7 @@ class VfsUpdater:
                     remote.setdefault(part.name, []).append(entry)
             for part_name, missing in remote.items():
                 self.downloader.download_entries(latest.hotfix.parts[part_name].path, missing, stage_root,
-                                                  self.token, self.progress, verify_md5=False)
+                                                  self.token, self.progress, verify_md5=True)
                 for entry in missing:
                     if not self.matches(safe_target(stage_root, entry.name), entry):
                         safe_target(stage_root, entry.name).unlink(missing_ok=True)

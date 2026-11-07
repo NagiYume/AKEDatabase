@@ -27,6 +27,7 @@ from .asset_maps import (
     validate_map_manifest,
 )
 from .config import AppConfig
+from .image_parser_identity import image_parser_digest
 from .errors import AkeToolError, CancelledError, ValidationError
 from .asset_index import (
     index_digest,
@@ -155,6 +156,10 @@ def resolve_r2_versions(latest: LatestInfo) -> tuple[str, str]:
 
 
 class ReleaseManager:
+    def _require_r2_enabled(self) -> None:
+        if not self.config.enable_r2:
+            raise ValidationError("R2 功能已关闭，发布终点为本地 public")
+
     def __init__(
         self,
         config: AppConfig,
@@ -396,6 +401,7 @@ class ReleaseManager:
         return {"counts": counts, "statuses": statuses}
 
     def _read_public_asset_index(self) -> dict[str, Any]:
+        self._require_r2_enabled()
         def report_retry(attempt: int, delay: float, error: Exception) -> None:
             self.progress(ProgressEvent(
                 "asset_compare",
@@ -723,10 +729,9 @@ class ReleaseManager:
                 if sha256_file(map_path) != str(record.get(digest_key, "")):
                     raise ValidationError(f"图片发布资格失效：{profile} 的{label} 摘要变化")
             if (
-                not self.config.image_sdk.is_file()
-                or sha256_file(self.config.image_sdk) != str(record.get("jarDigest", ""))
+                image_parser_digest() != str(record.get("parserDigest", ""))
             ):
-                raise ValidationError(f"图片发布资格失效：{profile} 的 beyond-sdk.jar 已变化")
+                raise ValidationError(f"图片发布资格失效：{profile} 的 Python 解析器已变化或旧状态需要重新解析")
         if int(record.get("fullMapEntries", -1)) < 0:
             raise ValidationError(f"图片发布资格失效：{profile} 的完整 map 计数无效")
         return record
@@ -1060,6 +1065,7 @@ class ReleaseManager:
                     source,
                     spec["kind"],
                     skip_json_manifests=spec["kind"] == "json",
+                    matcher=matcher if spec["kind"] == "images" else None,
                 )["files"]
             baseline = remote_index["datasets"].get(spec["kind"])
             if not isinstance(baseline, dict) or not isinstance(baseline.get("files"), dict):
@@ -1194,6 +1200,7 @@ class ReleaseManager:
         current_image_config: ImageParsingConfig | None = None,
         current_image_profile: str | None = None,
     ) -> dict[str, Any]:
+        self._require_r2_enabled()
         self.token.raise_if_cancelled()
         if not self.config.rclone.is_file():
             raise FileNotFoundError(f"rclone 不存在：{self.config.rclone}")
@@ -1710,6 +1717,7 @@ class ReleaseManager:
         batch_number: int,
         log_path: Path,
     ) -> int:
+        self._require_r2_enabled()
         if not paths:
             return 0
         with tempfile.NamedTemporaryFile(
@@ -1860,9 +1868,8 @@ class ReleaseManager:
                 raise
             retry_count += retries
             retry_count = int(retry_count)
-            remaining_set = set(remaining)
-            remaining_set.difference_update(current_batch)
-            remaining = sorted(remaining_set)
+            # Batches are built in the same sorted order as remaining.
+            remaining = remaining[len(current_batch):]
             completed = len(transfer_paths) - len(remaining)
             bytes_uploaded += batch_bytes
             pending.update(
@@ -2123,6 +2130,7 @@ class ReleaseManager:
         latest: LatestInfo,
         publish_latest: bool = True,
     ) -> dict[str, Any]:
+        self._require_r2_enabled()
         self.token.raise_if_cancelled()
         if not self.config.rclone.is_file():
             raise FileNotFoundError(f"rclone 不存在：{self.config.rclone}")
@@ -2286,6 +2294,7 @@ class ReleaseManager:
     def _capture_rclone_result(
         self, arguments: list[str]
     ) -> subprocess.CompletedProcess[str]:
+        self._require_r2_enabled()
         self.token.raise_if_cancelled()
         return subprocess.run(
             [str(self.config.rclone), *arguments],
@@ -2297,6 +2306,7 @@ class ReleaseManager:
         )
 
     def _stream_rclone(self, arguments: list[str], stage: str) -> None:
+        self._require_r2_enabled()
         process = subprocess.Popen(
             [str(self.config.rclone), *arguments],
             cwd=str(self.repo_root),

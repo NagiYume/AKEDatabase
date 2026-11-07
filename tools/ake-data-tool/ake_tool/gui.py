@@ -370,9 +370,13 @@ class ImageConfigWorker(QObject):
         try:
             if self.action == "load":
                 local = {profile: self.config.image_config(profile) for profile in IMAGE_PROFILES}
-                result = CloudImageConfigLoader(
-                    self.config.request_timeout, retries=self.config.retries
-                ).load(local)
+                if self.config.enable_r2 and self.config.image_read_cloud_config:
+                    result = CloudImageConfigLoader(
+                        self.config.request_timeout, retries=self.config.retries
+                    ).load(local)
+                else:
+                    result = {profile: ImageConfigResolution(value, "local_disabled", "使用本地配置")
+                              for profile, value in local.items()}
             elif self.action == "sync":
                 if self.image_config is None:
                     raise ValidationError("当前页面图片配置为空")
@@ -409,7 +413,7 @@ class AutoWatchWorker(QObject):
     def execute(self) -> None:
         state = StateStore(self.config.work_root).load()
         completed_stages = state.get("completed_stages", {})
-        completion_stage = "upload" if self.config.watch_upload_r2 else "publish"
+        completion_stage = "upload" if self.config.enable_r2 and self.config.watch_upload_r2 else "publish"
         has_published_version = completion_stage in completed_stages
         processed_version = str(state.get("hotfix_res_version", "")) if has_published_version else ""
         first_check = True
@@ -442,7 +446,7 @@ class AutoWatchWorker(QObject):
                         "validate",
                         "publish",
                     ]
-                    if self.config.watch_upload_r2:
+                    if self.config.enable_r2 and self.config.watch_upload_r2:
                         automatic_stages.append("upload")
                     current_state = StateStore(self.config.work_root).load()
                     already_completed = (
@@ -536,7 +540,19 @@ class MainWindow(QMainWindow):
         self._build_ui()
         self._load_config_into_ui()
         self._load_last_state()
+        self._apply_r2_mode()
         self._start_cloud_image_config_load()
+
+    def _apply_r2_mode(self) -> None:
+        enabled = self.config.enable_r2
+        self.tabs.setTabVisible(self.json_tab_index, enabled)
+        self.tabs.setTabVisible(self.r2_tab_index, enabled)
+        self.step_checks["upload"].setVisible(enabled)
+        self.single_step_buttons[-1].setVisible(enabled)
+        self.watch_upload_r2_check.setVisible(enabled)
+        for controls in self.image_controls.values():
+            controls["read_cloud_check"].setVisible(enabled)
+            controls["config_sync_button"].setVisible(enabled)
 
     def _build_ui(self) -> None:
         self.setWindowTitle("AKE Data Tool")
@@ -928,22 +944,18 @@ class MainWindow(QMainWindow):
         release_config_layout.addWidget(self.r2_bucket_edit, 1)
         config_root.addWidget(release_config_group)
 
-        image_config_group = QGroupBox("beyond-sdk 与游戏资源")
-        image_config_group.setMinimumHeight(315)
+        image_config_group = QGroupBox("游戏资源")
+        image_config_group.setMinimumHeight(225)
         image_config_layout = QGridLayout(image_config_group)
         image_config_layout.setContentsMargins(18, 24, 18, 18)
         image_config_layout.setColumnStretch(1, 1)
         image_config_layout.setColumnMinimumWidth(1, 760)
         image_config_layout.setHorizontalSpacing(10)
         image_config_layout.setVerticalSpacing(10)
-        self.image_sdk_edit = QLineEdit()
-        self.java_edit = QLineEdit()
         self.streaming_assets_edit = QLineEdit()
         self.persistent_edit = QLineEdit()
         self.image_work_edit = QLineEdit()
         for image_edit in (
-            self.image_sdk_edit,
-            self.java_edit,
             self.streaming_assets_edit,
             self.persistent_edit,
             self.image_work_edit,
@@ -952,34 +964,20 @@ class MainWindow(QMainWindow):
             image_edit.setMinimumHeight(40)
             image_edit.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             image_edit.setClearButtonEnabled(True)
-        image_config_layout.addWidget(QLabel("beyond-sdk.jar"), 0, 0)
-        image_config_layout.addWidget(self.image_sdk_edit, 0, 1)
+        image_config_layout.addWidget(QLabel("StreamingAssets"), 0, 0)
+        image_config_layout.addWidget(self.streaming_assets_edit, 0, 1)
         image_config_layout.addWidget(
-            self._browse_button("浏览", lambda: self._browse_file(self.image_sdk_edit, "选择 beyond-sdk.jar", "JAR (*.jar)")),
-            0,
-            2,
+            self._browse_button("浏览", lambda: self._browse_directory(self.streaming_assets_edit)), 0, 2
         )
-        image_config_layout.addWidget(QLabel("Java 命令"), 1, 0)
-        image_config_layout.addWidget(self.java_edit, 1, 1)
+        image_config_layout.addWidget(QLabel("Persistent"), 1, 0)
+        image_config_layout.addWidget(self.persistent_edit, 1, 1)
         image_config_layout.addWidget(
-            self._browse_button("浏览", lambda: self._browse_file(self.java_edit, "选择 java.exe", "Executable (*.exe)")),
-            1,
-            2,
+            self._browse_button("浏览", lambda: self._browse_directory(self.persistent_edit)), 1, 2
         )
-        image_config_layout.addWidget(QLabel("StreamingAssets"), 2, 0)
-        image_config_layout.addWidget(self.streaming_assets_edit, 2, 1)
+        image_config_layout.addWidget(QLabel("统一工作目录"), 2, 0)
+        image_config_layout.addWidget(self.image_work_edit, 2, 1)
         image_config_layout.addWidget(
-            self._browse_button("浏览", lambda: self._browse_directory(self.streaming_assets_edit)), 2, 2
-        )
-        image_config_layout.addWidget(QLabel("Persistent"), 3, 0)
-        image_config_layout.addWidget(self.persistent_edit, 3, 1)
-        image_config_layout.addWidget(
-            self._browse_button("浏览", lambda: self._browse_directory(self.persistent_edit)), 3, 2
-        )
-        image_config_layout.addWidget(QLabel("统一工作目录"), 4, 0)
-        image_config_layout.addWidget(self.image_work_edit, 4, 1)
-        image_config_layout.addWidget(
-            self._browse_button("浏览", lambda: self._browse_directory(self.image_work_edit)), 4, 2
+            self._browse_button("浏览", lambda: self._browse_directory(self.image_work_edit)), 2, 2
         )
         image_options = QHBoxLayout()
         self.image_md5_check = QCheckBox("按最新索引执行 MD5 校验（强制）")
@@ -993,7 +991,7 @@ class MainWindow(QMainWindow):
         image_options.addSpacing(16)
         image_options.addWidget(image_cleanup_label)
         image_options.addStretch()
-        image_config_layout.addLayout(image_options, 5, 0, 1, 3)
+        image_config_layout.addLayout(image_options, 3, 0, 1, 3)
         config_root.addWidget(image_config_group)
 
         config_action_row = QHBoxLayout()
@@ -1098,7 +1096,8 @@ class MainWindow(QMainWindow):
         self.check_button.clicked.connect(lambda: self._start_steps(["check"]))
         self.run_button.clicked.connect(
             lambda: self._start_steps(
-                ["check", "download", "unpack", "validate", "publish", "upload"]
+                ["check", "download", "unpack", "validate", "publish"]
+                + (["upload"] if self.config.enable_r2 else [])
             )
         )
         self.selected_button.clicked.connect(self._run_selected_steps)
@@ -1330,16 +1329,19 @@ class MainWindow(QMainWindow):
                 self.asset_json_check, checked
             )
         )
+        self.asset_json_check.toggled.connect(self._invalidate_asset_selection)
         self.asset_delta_check.toggled.connect(
             lambda checked: self._enforce_asset_selection_exclusive(
                 self.asset_delta_check, checked
             )
         )
+        self.asset_delta_check.toggled.connect(self._invalidate_asset_selection)
         self.asset_manual_check.toggled.connect(
             lambda checked: self._enforce_asset_selection_exclusive(
                 self.asset_manual_check, checked
             )
         )
+        self.asset_manual_check.toggled.connect(self._invalidate_asset_selection)
         self.asset_map_version_edit.textChanged.connect(self._invalidate_asset_selection)
         self.public_edit.textChanged.connect(self._invalidate_json_plan)
         self.r2_remote_edit.textChanged.connect(self._invalidate_json_plan)
@@ -1448,7 +1450,7 @@ class MainWindow(QMainWindow):
         title = QLabel("图片解析" if profile == IMAGE_PROFILE_STANDARD else "图片解析（完整）")
         title.setObjectName("pageTitle")
         subtitle = QLabel(
-            "合并游戏本体 VFS 与热更新覆盖，使用 beyond-sdk.jar 解析并发布到 public/images"
+            "合并游戏本体 VFS 与热更新覆盖，使用 Python 解析并发布到 public/images"
         )
         subtitle.setObjectName("subtitle")
         root.addWidget(title)
@@ -1483,7 +1485,7 @@ class MainWindow(QMainWindow):
         image_version_layout.setColumnStretch(2, 2)
         root.addWidget(image_version_group)
 
-        filter_group = QGroupBox("JAR 图片容器正则")
+        filter_group = QGroupBox("图片容器正则")
         filter_layout = QVBoxLayout(filter_group)
         filter_row = QHBoxLayout()
         filter_edit = QLineEdit()
@@ -1500,7 +1502,7 @@ class MainWindow(QMainWindow):
         filter_row.addWidget(filter_edit, 1)
         filter_row.addWidget(filter_reset_button)
         filter_layout.addLayout(filter_row)
-        filter_hint = QLabel("输入框中无需添加引号；也兼容直接粘贴完整参数。空值将使用 JAR 自身默认行为。")
+        filter_hint = QLabel("输入框中无需添加引号；也兼容直接粘贴完整参数。请填写有效的图片路径正则。")
         filter_hint.setObjectName("pathHint")
         filter_layout.addWidget(filter_hint)
 
@@ -1570,7 +1572,7 @@ class MainWindow(QMainWindow):
         specs = [
             ("image_analyze", "1. 检查最新版本/索引"),
             ("image_prepare", "2. 合并并校验 VFS"),
-            ("image_extract", "3. JAR 解析图片"),
+            ("image_extract", "3. Python 解析图片"),
             ("image_publish", "4. 发布到 public"),
         ]
         for index, (stage, text) in enumerate(specs):
@@ -1697,8 +1699,8 @@ class MainWindow(QMainWindow):
         relation_layout = QVBoxLayout(relation_group)
         relation = QLabel(
             "输入固定为统一工作目录下的 VFS/775A31D1。工具会先按最新 main/initial 索引准备并校验 "
-            "SDK 所需的全部 VFS 文件，任何文件缺失时都不会启动 SDK。解析输出位于 json-output；"
-            "发布时保留 SDK Json 数据目录的相对路径，收录全部数据目录及根目录文件；"
+            "解析所需的全部 VFS 文件，任何文件缺失时都不会启动解析。解析输出位于 json-output；"
+            "发布时保留 Json 数据目录的相对路径，收录全部数据目录及根目录文件；"
             "新增数据目录自动纳入发布，随后可在 Json 同步页面生成 R2 上传计划。"
         )
         relation.setWordWrap(True)
@@ -1735,7 +1737,7 @@ class MainWindow(QMainWindow):
         ):
             label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             label.setWordWrap(True)
-        path_layout.addWidget(QLabel("SDK 输入"), 0, 0)
+        path_layout.addWidget(QLabel("VFS 输入"), 0, 0)
         path_layout.addWidget(self.json_parse_input_value, 0, 1)
         path_layout.addWidget(QLabel("解析输出"), 1, 0)
         path_layout.addWidget(self.json_parse_output_value, 1, 1)
@@ -2049,6 +2051,12 @@ class MainWindow(QMainWindow):
                 )
 
     def _start_cloud_image_config_load(self) -> None:
+        if not self.config.enable_r2:
+            for profile in IMAGE_PROFILES:
+                self._apply_image_config_resolution(
+                    profile, ImageConfigResolution(self.config.image_config(profile),
+                                                   "local_disabled", "使用本地配置"))
+            return
         if not self.config.image_read_cloud_config:
             self._on_cloud_config_toggle(IMAGE_PROFILE_STANDARD, False)
             return
@@ -2077,6 +2085,8 @@ class MainWindow(QMainWindow):
         thread.start()
 
     def _start_image_config_sync(self, profile: str) -> None:
+        if not self.config.enable_r2:
+            return
         if self.image_config_thread is not None:
             return
         if not self._save_from_ui(show_message=False):
@@ -2230,8 +2240,6 @@ class MainWindow(QMainWindow):
             f"{self.config.r2_remote}:{self.config.r2_bucket}/public/images；"
             f"{self.config.r2_remote}:{self.config.r2_bucket}/public/Json"
         )
-        self.image_sdk_edit.setText(self.config.image_sdk_path)
-        self.java_edit.setText(self.config.java_path)
         self.streaming_assets_edit.setText(self.config.game_streaming_assets_dir)
         self.persistent_edit.setText(self.config.game_persistent_dir)
         self.image_work_edit.setText(self.config.image_work_dir)
@@ -2247,7 +2255,7 @@ class MainWindow(QMainWindow):
             checkbox = controls["read_cloud_check"]
             if isinstance(checkbox, QCheckBox):
                 checkbox.blockSignals(True)
-                checkbox.setChecked(self.config.image_read_cloud_config)
+                checkbox.setChecked(self.config.enable_r2 and self.config.image_read_cloud_config)
                 checkbox.blockSignals(False)
             local = self.config.image_config(profile)
             self._apply_image_config_resolution(
@@ -2256,6 +2264,8 @@ class MainWindow(QMainWindow):
             )
 
     def _config_from_ui(self) -> AppConfig:
+        # Hidden options are owned by config.local.json, never by a GUI control.
+        hidden = load_config(create=False)
         parts = []
         if self.main_check.isChecked():
             parts.append("main")
@@ -2277,6 +2287,9 @@ class MainWindow(QMainWindow):
         cloud_check = self.image_controls[IMAGE_PROFILE_STANDARD]["read_cloud_check"]
         assert isinstance(cloud_check, QCheckBox)
         return AppConfig(
+            enable_r2=hidden.enable_r2,
+            image_bundle_cache_gib=hidden.image_bundle_cache_gib,
+            image_parse_workers=hidden.image_parse_workers,
             appcode=self.appcode_edit.text().strip(),
             rclone_path=self.rclone_edit.text().strip(),
             public_dir=self.public_edit.text().strip(),
@@ -2290,15 +2303,14 @@ class MainWindow(QMainWindow):
             keep_job_files=self.keep_check.isChecked(),
             watch_interval=self.watch_interval_spin.value(),
             watch_update_on_start=self.watch_update_on_start_check.isChecked(),
-            watch_upload_r2=self.watch_upload_r2_check.isChecked(),
+            watch_upload_r2=(self.watch_upload_r2_check.isChecked() if hidden.enable_r2
+                             else hidden.watch_upload_r2),
             manual_version_enabled=self.manual_version_check.isChecked(),
             manual_seed_version=self.manual_version_edit.text().strip(),
             manual_rand_str=self.manual_rand_edit.text().strip(),
             manual_publish_latest=self.manual_publish_latest_check.isChecked(),
             r2_remote=self.r2_remote_edit.text().strip(),
             r2_bucket=self.r2_bucket_edit.text().strip(),
-            image_sdk_path=self.image_sdk_edit.text().strip(),
-            java_path=self.java_edit.text().strip(),
             game_streaming_assets_dir=self.streaming_assets_edit.text().strip(),
             game_persistent_dir=self.persistent_edit.text().strip(),
             image_work_dir=self.image_work_edit.text().strip(),
@@ -2306,7 +2318,8 @@ class MainWindow(QMainWindow):
             image_containers_filter=standard.image_containers_filter,
             image_filter_rules=standard.to_dict()["image_filter_rules"],
             image_parsing_configs=image_configs,
-            image_read_cloud_config=cloud_check.isChecked(),
+            image_read_cloud_config=(cloud_check.isChecked() if hidden.enable_r2
+                                     else hidden.image_read_cloud_config),
             image_map_upload_version=self.asset_map_version_edit.text().strip(),
             asset_upload_from_delta_map=(
                 self.asset_delta_check.isChecked() and bool(self._selected_image_profile())
@@ -2322,7 +2335,12 @@ class MainWindow(QMainWindow):
             config.validate(require_tool=False)
             config.validate_images(require_sources=False)
             save_config(config)
+            was_enabled = self.config.enable_r2
             self.config = config
+            self._apply_r2_mode()
+            if was_enabled and not config.enable_r2:
+                self._cloud_image_resolutions_cache = None
+                self._start_cloud_image_config_load()
             image_work_root = config.image_work_root
             self.json_parse_input_value.setText(
                 str(image_work_root / "VFS" / "775A31D1")
@@ -2398,13 +2416,16 @@ class MainWindow(QMainWindow):
     ) -> None:
         if not checked:
             return
-        for checkbox in (
-            self.asset_images_check,
-            self.asset_images_full_check,
-            self.asset_json_check,
-            self.asset_delta_check,
-            self.asset_manual_check,
-        ):
+        if source is self.asset_manual_check:
+            incompatible = (self.asset_images_check, self.asset_images_full_check,
+                            self.asset_json_check, self.asset_delta_check)
+        elif source is self.asset_images_check:
+            incompatible = (self.asset_images_full_check, self.asset_manual_check)
+        elif source is self.asset_images_full_check:
+            incompatible = (self.asset_images_check, self.asset_manual_check)
+        else:
+            incompatible = (self.asset_manual_check,)
+        for checkbox in incompatible:
             if checkbox is source or not checkbox.isChecked():
                 continue
             checkbox.blockSignals(True)
@@ -2969,10 +2990,7 @@ class MainWindow(QMainWindow):
             return
         if not self._save_from_ui(show_message=False):
             return
-        if not self.config.image_sdk.is_file():
-            QMessageBox.critical(self, "无法监听", f"beyond-sdk.jar 不存在：\n{self.config.image_sdk}")
-            return
-        if self.config.watch_upload_r2 and not self.config.rclone.is_file():
+        if self.config.enable_r2 and self.config.watch_upload_r2 and not self.config.rclone.is_file():
             QMessageBox.critical(self, "无法监听", f"rclone 不存在：\n{self.config.rclone}")
             return
 
@@ -2980,7 +2998,7 @@ class MainWindow(QMainWindow):
         self.watch_state_label.setText("监听中")
         self.watch_status_text.setText("正在启动监听…")
         self.watch_progress_bar.setRange(0, 0)
-        watch_target = "Cloudflare R2" if self.config.watch_upload_r2 else "本地 public"
+        watch_target = "Cloudflare R2" if self.config.enable_r2 and self.config.watch_upload_r2 else "本地 public"
         self._append_watch_log(
             f"开始监听，检查间隔 {self.config.watch_interval} 秒；自动发布终点为 {watch_target}"
         )
@@ -3043,7 +3061,7 @@ class MainWindow(QMainWindow):
         self.watch_progress_bar.setValue(1000)
         if isinstance(result, dict):
             self.last_success_value.setText(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-            target = "R2" if self.config.watch_upload_r2 else "public"
+            target = "R2" if self.config.enable_r2 and self.config.watch_upload_r2 else "public"
             self._append_watch_log(
                 f"自动发布到 {target} 成功："
                 f"{result.get('r2_version_id', result.get('hotfix_res_version', ''))}"
@@ -3071,7 +3089,8 @@ class MainWindow(QMainWindow):
         append_console_log(self.watch_log, message)
 
     def _run_selected_steps(self) -> None:
-        stages = [stage for stage, checkbox in self.step_checks.items() if checkbox.isChecked()]
+        stages = [stage for stage, checkbox in self.step_checks.items()
+                  if checkbox.isChecked() and (stage != "upload" or self.config.enable_r2)]
         self._start_steps(stages)
 
     def _start_steps(self, stages: list[str]) -> None:
@@ -3090,9 +3109,10 @@ class MainWindow(QMainWindow):
             return
         if not self._save_from_ui(show_message=False):
             return
-        if "unpack" in stages and not self.config.image_sdk.is_file():
-            QMessageBox.critical(self, "无法运行", f"beyond-sdk.jar 不存在：\n{self.config.image_sdk}")
-            return
+        if "upload" in stages and not self.config.enable_r2:
+            stages = [stage for stage in stages if stage != "upload"]
+            if not stages:
+                return
         if "upload" in stages and not self.config.rclone.is_file():
             QMessageBox.critical(self, "无法运行", f"rclone 不存在：\n{self.config.rclone}")
             return
