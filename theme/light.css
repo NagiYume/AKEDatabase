@@ -678,6 +678,61 @@
     font-size: 0.875rem;
     font-weight: 600;
     line-height: 1.4;
+}.app-level-settings.is-disabled .app-field:not(.app-field--toggle),
+.app-level-settings.is-disabled .app-actions {
+    display: none;
+}.app-attr-body[hidden] {
+    display: none;
+}.app-attr-body .app-attr-settings__hint {
+    margin: 0 0 12px;
+    color: var(--control-muted, var(--dialog-muted, #68798b));
+    font-size: .72rem;
+    line-height: 1.5;
+}.app-attr-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    min-width: 0;
+}.app-attr-option {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 7px 8px;
+    border: 1px solid var(--control-border, var(--dialog-border, #cbd5df));
+    border-radius: 8px;
+    background: var(--control-surface, var(--dialog-surface, #ffffff));
+    cursor: pointer;
+}.app-attr-option:hover {
+    border-color: var(--control-border-hover, var(--dialog-border, #9aa8b5));
+    background: var(--control-surface-hover, var(--dialog-header, #f2f5f8));
+}.app-attr-option input[type="checkbox"] {
+    flex: 0 0 auto;
+    margin: 2px 0 0;
+    accent-color: var(--accent-color, #1e6f9f);
+}.app-attr-option__text {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 1px;
+}.app-attr-option__name {
+    overflow: hidden;
+    color: var(--control-label, var(--dialog-text, #1e2b3c));
+    font-size: .78rem;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}.app-attr-option__id {
+    overflow: hidden;
+    color: var(--control-muted, var(--dialog-muted, #68798b));
+    font-family: Consolas, "Cascadia Mono", monospace;
+    font-size: .66rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}.app-attr-status {
+    grid-column: 1 / -1;
+    color: var(--control-muted, var(--dialog-muted, #68798b));
+    font-size: .78rem;
 }.ake-ui-control {
     width: 100%;
     min-width: 0;
@@ -4218,6 +4273,69 @@
     margin-top: 4px;
     font-family: monospace;
 }
+}
+
+/* Shared spawn-position grid and variant modifier tags. */
+.v2d-spawn-map::before,
+.v2cc-spawn-map::before {
+    --ake-map-grid-line: color-mix(in srgb, var(--border-color, #d9e0e8) 85%, transparent);
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    border-radius: inherit;
+    background-image:
+        linear-gradient(to right, transparent calc(50% - .5px), var(--ake-map-grid-line) calc(50% - .5px), var(--ake-map-grid-line) calc(50% + .5px), transparent calc(50% + .5px)),
+        linear-gradient(to bottom, transparent calc(50% - .5px), var(--ake-map-grid-line) calc(50% - .5px), var(--ake-map-grid-line) calc(50% + .5px), transparent calc(50% + .5px));
+    background-position: 50% 50%;
+    background-size: var(--grid-cell-x, 10%) 100%, 100% var(--grid-cell-z, 10%);
+    content: '';
+    pointer-events: none;
+}
+.v2d-variant-bonus {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px 8px;
+    margin: 6px 0;
+    padding: 6px 8px;
+    border: 1px solid color-mix(in srgb, var(--accent-color, #1e6f9f) 28%, var(--border-color, #d9e0e8));
+    border-radius: var(--ake-ui-radius-sm, 6px);
+    background: color-mix(in srgb, var(--accent-color, #1e6f9f) 6%, var(--ake-ui-surface, #fff));
+    color: var(--text-color, #1e2b3c);
+    font-size: .76rem;
+}
+.v2d-variant-bonus__item {
+    display: inline-flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: var(--ake-ui-surface, #fff);
+}
+.v2d-variant-bonus__attr {
+    font-weight: 600;
+}
+.v2d-variant-bonus__value {
+    color: var(--accent-color, #1e6f9f);
+    font-variant-numeric: tabular-nums;
+}
+.v2d-variant-bonus__zone {
+    padding: 0 4px;
+    border-radius: 4px;
+    background: var(--ake-ui-surface-muted, #f2f4f8);
+    color: var(--desc-color, #5b6f86);
+    font-size: .68rem;
+}
+.v2d-modifier-zone {
+    display: inline-block;
+    margin-left: 3px;
+    padding: 0 4px;
+    border-radius: 4px;
+    background: var(--ake-ui-surface-muted, #f2f4f8);
+    color: var(--desc-color, #5b6f86);
+    font-size: .68rem;
+    font-weight: 400;
 }
 
 /* Source: theme/season_tower.css */

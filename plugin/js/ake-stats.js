@@ -10,7 +10,7 @@
         BaseFinalMultiplier: 8
     };
 
-    const DEFAULT_ATTR_DISPLAY_ORDER = [0, 1, 2, 3, 20, 21, 27, 12, 8, 9, 10, 11, 15];
+    const DEFAULT_ATTR_DISPLAY_ORDER = [0, 1, 2, 3, 20, 21, 27, 12, 8, 9, 10, 11, 94, 95, 96, 97, 98, 99];
     const MULTIPLIER_MODIFIER_TYPES = new Set([1, 4, 6, 8]);
 
     function compactNumber(value) {
@@ -108,6 +108,10 @@
         const opts = options || {};
         const displayOrder = opts.displayOrder || DEFAULT_ATTR_DISPLAY_ORDER;
         const excludedAttrTypes = new Set(opts.excludeAttrTypes || []);
+        const allowedAttrTypes = opts.allowedAttrTypes !== undefined
+            ? new Set((opts.allowedAttrTypes || []).map(Number))
+            : null;
+        const isAllowed = attrType => allowedAttrTypes === null || allowedAttrTypes.has(Number(attrType));
         const getAttrName = opts.getAttrName || (attrType => window.akeI18n.t('modules.character.attributeFallback', { name: attrType }));
         const baseAttrs = {};
         const baseSources = {};
@@ -141,9 +145,16 @@
             }
         }
 
+        displayOrder.forEach(attrType => {
+            if (excludedAttrTypes.has(attrType) || baseAttrs[attrType] !== undefined) return;
+            baseAttrs[attrType] = 0;
+            baseSources[attrType] = 'default';
+        });
+
         const result = {};
         const details = {};
         const addResult = attrType => {
+            if (!isAllowed(attrType)) return;
             const name = getAttrName(attrType);
             const finalValue = baseAttrs[attrType];
             const relevant = (modifiers || []).filter(modifier => modifier.attrType === attrType);

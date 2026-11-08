@@ -197,6 +197,37 @@
                 if (btn) btn.addEventListener('click', showHomePage);
             }
 
+            const DEFAULT_ENEMY_ATTR_TYPES = Object.freeze([0, 1, 2, 3, 20, 21, 27, 12, 8, 9, 10, 11, 94, 95, 96, 97, 98, 99]);
+
+            function normalizeEnemyAttrTypes(value) {
+                if (!Array.isArray(value)) return [...DEFAULT_ENEMY_ATTR_TYPES];
+                const seen = new Set();
+                const result = [];
+                value.forEach(raw => {
+                    const type = Number(raw);
+                    if (!Number.isInteger(type) || type < 0 || seen.has(type)) return;
+                    seen.add(type);
+                    result.push(type);
+                });
+                return result.sort((a, b) => a - b);
+            }
+
+            function loadEnemyAttrSettingsFromStorage() {
+                try {
+                    const raw = storage.get('akedata-enemyAttrSettings');
+                    if (raw !== null && raw !== undefined && raw !== '') {
+                        const parsed = JSON.parse(raw);
+                        return {
+                            enabled: parsed?.enabled === true,
+                            types: normalizeEnemyAttrTypes(parsed?.types)
+                        };
+                    }
+                } catch {
+                    // Fall through to defaults.
+                }
+                return { enabled: false, types: [...DEFAULT_ENEMY_ATTR_TYPES] };
+            }
+
             let config = {
                 language: window.akeI18n?.getLanguage?.() || 'CH',
                 theme: 'light',
@@ -212,6 +243,7 @@
                     enemyLevels: '1,20,40,60,80,90',
                     skillLevels: [true, false, false, false, false, false, false, false, true, true, true, true]
                 },
+                enemyAttrSettings: loadEnemyAttrSettingsFromStorage(),
                 keepUrlSync: true,
                 unlockedTokens: []
             };
@@ -1086,6 +1118,153 @@
                 return uniqueSorted.join(',');
             }
 
+            let enemyAttrSettingsSection = null;
+
+            function updateLevelSettingsVisibility() {
+                const section = document.getElementById('modalLevelsEnabled')?.closest('.app-section');
+                const enabled = document.getElementById('modalLevelsEnabled');
+                if (!section || !enabled) return;
+                section.classList.toggle('is-disabled', !enabled.checked);
+            }
+
+            function ensureLevelSettingsResetButton() {
+                const section = document.getElementById('modalLevelsEnabled')?.closest('.app-section');
+                if (!section) return;
+                section.classList.add('app-level-settings');
+                const enabled = document.getElementById('modalLevelsEnabled');
+                if (enabled && !enabled.dataset.akeLevelToggleBound) {
+                    enabled.dataset.akeLevelToggleBound = 'true';
+                    enabled.addEventListener('change', updateLevelSettingsVisibility);
+                }
+                if (!section.querySelector('#resetLevelSettingsBtn')) {
+                    const actions = document.createElement('div');
+                    actions.className = 'app-actions';
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.id = 'resetLevelSettingsBtn';
+                    button.className = 'ake-ui-button ake-ui-button--secondary';
+                    button.textContent = tr('settings.levels.reset');
+                    actions.append(button);
+                    section.append(actions);
+                    button.addEventListener('click', () => {
+                        document.getElementById('modalLevelsEnabled').checked = true;
+                        document.getElementById('modalCharacterLevels').value = '1,20,40,60,80,90';
+                        document.getElementById('modalWeaponLevels').value = '1,20,40,60,80,90';
+                        document.getElementById('modalEnemyLevels').value = '1,20,40,60,80,90';
+                        document.getElementById('modalSkillLevels').value = '1,9,10,11,12';
+                        updateLevelSettingsVisibility();
+                    });
+                }
+                updateLevelSettingsVisibility();
+            }
+
+            function setEnemyAttrBodyVisible(visible) {
+                const body = document.getElementById('modalEnemyAttrBody');
+                if (body) body.hidden = !visible;
+            }
+
+            function ensureEnemyAttrSettingsSection() {
+                if (enemyAttrSettingsSection?.isConnected) return enemyAttrSettingsSection;
+                const levelsSection = document.getElementById('modalLevelsEnabled')?.closest('.app-section');
+                if (!levelsSection) return null;
+                const section = document.createElement('section');
+                section.className = 'app-section';
+                section.dataset.akeAttrSettings = 'true';
+                section.innerHTML = `
+                    <h4 class="app-section-title">
+                        <svg class="app-section-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16M8 4v4M16 10v4M11 16v4"/></svg>
+                        <span data-i18n="settings.enemyAttrs.title">settings.enemyAttrs.title</span>
+                    </h4>
+                    <div class="app-field app-field--toggle">
+                        <label class="app-field-label" for="modalEnemyAttrEnabled" data-i18n="settings.enemyAttrs.enabled">settings.enemyAttrs.enabled</label>
+                        <input class="ake-ui-switch" type="checkbox" id="modalEnemyAttrEnabled">
+                    </div>
+                    <div class="app-attr-body" id="modalEnemyAttrBody" hidden>
+                        <p class="app-help app-attr-settings__hint" data-i18n="settings.enemyAttrs.hint">settings.enemyAttrs.hint</p>
+                        <div class="app-attr-grid" id="modalEnemyAttrGrid"><span class="app-attr-status" data-i18n="settings.enemyAttrs.loading">settings.enemyAttrs.loading</span></div>
+                        <div class="app-actions">
+                            <button class="ake-ui-button ake-ui-button--secondary" id="resetEnemyAttrSettingsBtn" type="button" data-i18n="settings.enemyAttrs.reset">settings.enemyAttrs.reset</button>
+                        </div>
+                    </div>`;
+                levelsSection.insertAdjacentElement('afterend', section);
+                window.akeI18n?.translateDOM(section);
+                section.querySelector('#modalEnemyAttrEnabled')?.addEventListener('change', event => {
+                    setEnemyAttrBodyVisible(event.target.checked);
+                });
+                section.querySelector('#resetEnemyAttrSettingsBtn')?.addEventListener('click', () => {
+                    const enabled = document.getElementById('modalEnemyAttrEnabled');
+                    if (enabled) enabled.checked = false;
+                    setEnemyAttrBodyVisible(false);
+                    setEnemyAttrCheckboxes(DEFAULT_ENEMY_ATTR_TYPES);
+                });
+                enemyAttrSettingsSection = section;
+                return section;
+            }
+
+            function setEnemyAttrCheckboxes(types) {
+                const grid = document.getElementById('modalEnemyAttrGrid');
+                if (!grid) return;
+                const selected = new Set((Array.isArray(types) ? types : []).map(Number));
+                grid.querySelectorAll('input[data-attr-type]').forEach(input => {
+                    input.checked = selected.has(Number(input.dataset.attrType));
+                });
+            }
+
+            async function renderEnemyAttrSettings() {
+                const section = ensureEnemyAttrSettingsSection();
+                const grid = section?.querySelector('#modalEnemyAttrGrid');
+                if (!grid) return;
+                const enabled = section.querySelector('#modalEnemyAttrEnabled');
+                if (enabled) {
+                    enabled.checked = config.enemyAttrSettings.enabled === true;
+                    setEnemyAttrBodyVisible(enabled.checked);
+                }
+                if (grid.dataset.loaded === 'true') {
+                    setEnemyAttrCheckboxes(config.enemyAttrSettings.types);
+                    return;
+                }
+                try {
+                    const maps = await window.akeLoadMaps();
+                    if (!grid.isConnected) return;
+                    const attrMap = maps?.ATTR_MAP || {};
+                    const attrEnMap = maps?.ATTR_MAP_EN || {};
+                    const types = Object.keys(attrMap).map(Number)
+                        .filter(type => Number.isInteger(type))
+                        .sort((a, b) => a - b);
+                    grid.replaceChildren();
+                    types.forEach(type => {
+                        const label = document.createElement('label');
+                        label.className = 'app-attr-option';
+                        const input = document.createElement('input');
+                        input.type = 'checkbox';
+                        input.dataset.attrType = String(type);
+                        const text = document.createElement('span');
+                        text.className = 'app-attr-option__text';
+                        const name = document.createElement('span');
+                        name.className = 'app-attr-option__name';
+                        name.textContent = `${type}.${attrMap[type] || attrMap[String(type)] || ''}`;
+                        const id = document.createElement('span');
+                        id.className = 'app-attr-option__id';
+                        id.textContent = attrEnMap[type] || attrEnMap[String(type)] || '';
+                        name.title = name.textContent;
+                        id.title = id.textContent;
+                        text.append(name, id);
+                        label.append(input, text);
+                        grid.append(label);
+                    });
+                    grid.dataset.loaded = 'true';
+                    setEnemyAttrCheckboxes(config.enemyAttrSettings.types);
+                } catch (error) {
+                    if (!grid.isConnected) return;
+                    grid.replaceChildren();
+                    const status = document.createElement('span');
+                    status.className = 'app-attr-status';
+                    status.textContent = tr('settings.enemyAttrs.loadFailed');
+                    grid.append(status);
+                    console.warn('无法加载怪物属性列表。', error);
+                }
+            }
+
             function updateTokenStatus() {
                 const statusEl = document.getElementById('tokenStatus');
                 if (!statusEl) return;
@@ -1136,6 +1315,8 @@
                 }
                 updateTokenStatus();
 
+                ensureLevelSettingsResetButton();
+                void renderEnemyAttrSettings();
                 settingsModal.hidden = false;
             }
 
@@ -1162,6 +1343,19 @@
                 config.levelSettings.skillLevels = Array.from({ length: 12 }, (_, i) => skillLevelNums.includes(i + 1));
 
                 storage.set('akedata-levelSettings', JSON.stringify(config.levelSettings));
+
+                const enemyAttrEnabled = document.getElementById('modalEnemyAttrEnabled');
+                if (enemyAttrEnabled) config.enemyAttrSettings.enabled = enemyAttrEnabled.checked;
+                const enemyAttrGrid = document.getElementById('modalEnemyAttrGrid');
+                if (enemyAttrGrid?.dataset.loaded === 'true') {
+                    config.enemyAttrSettings.types = [...enemyAttrGrid.querySelectorAll('input[data-attr-type]:checked')]
+                        .map(input => Number(input.dataset.attrType))
+                        .filter(Number.isInteger)
+                        .sort((a, b) => a - b);
+                }
+                if (enemyAttrEnabled || enemyAttrGrid) {
+                    storage.set('akedata-enemyAttrSettings', JSON.stringify(config.enemyAttrSettings));
+                }
 
                 const modalShowExportCheck = document.getElementById('modalShowExportCheck');
                 if (modalShowExportCheck) {
@@ -2107,6 +2301,13 @@
                         document.getElementById('modalWeaponLevels').value = '1,20,40,60,80,90';
                         document.getElementById('modalEnemyLevels').value = '1,20,40,60,80,90';
                         document.getElementById('modalSkillLevels').value = '1,9,10,11,12';
+                        updateLevelSettingsVisibility();
+                        config.enemyAttrSettings = { enabled: false, types: [...DEFAULT_ENEMY_ATTR_TYPES] };
+                        storage.set('akedata-enemyAttrSettings', JSON.stringify(config.enemyAttrSettings));
+                        const enemyAttrEnabled = document.getElementById('modalEnemyAttrEnabled');
+                        if (enemyAttrEnabled) enemyAttrEnabled.checked = false;
+                        setEnemyAttrBodyVisible(false);
+                        setEnemyAttrCheckboxes(config.enemyAttrSettings.types);
                         document.getElementById('modalThemeSelect').value = 'light';
                         document.getElementById('modalShowHiddenCheck').checked = false;
                         document.getElementById('modalShowExportCheck').checked = true;
@@ -2383,6 +2584,10 @@
                 getConfig: () => ({ ...config }),
                 getModules: () => allModules.map(module => ({ ...module })),
                 getLevelSettings: () => ({ ...config.levelSettings }),
+                getEnemyAttrSettings: () => ({
+                    enabled: config.enemyAttrSettings.enabled === true,
+                    types: [...config.enemyAttrSettings.types]
+                }),
                 showHomePage,
                 isTokenUnlocked: (token) => {
                     if (!token) return true;
