@@ -3,7 +3,7 @@
         const ccT = window.akeI18n.scope('modules.cc');
         const commonT = window.akeI18n.scope('common');
         const monumentT = window.akeI18n.scope('modules.monument');
-        const ATTR_DISPLAY_ORDER = [0, 1, 2, 3, 20, 21, 27, 12, 8, 9, 10, 11, 15];
+        const ATTR_DISPLAY_ORDER = [0, 1, 2, 3, 20, 21, 27, 12, 8, 9, 10, 11, 94, 95, 96, 97, 98, 99];
         let allSeries = [];
         let rawAllSeries = [];
         let activeSeriesId = null;
@@ -598,20 +598,34 @@
             return list.childElementCount ? list.outerHTML : '';
         }
 
+        function getEnemyAttrDisplayOrder() {
+            const settings = window.akeData?.getEnemyAttrSettings?.();
+            if (!settings || settings.enabled !== true) return ATTR_DISPLAY_ORDER;
+            const selected = new Set((settings.types || []).map(Number).filter(type => Number.isInteger(type) && type >= 0));
+            const order = ATTR_DISPLAY_ORDER.filter(type => selected.has(type));
+            [...selected].sort((a, b) => a - b).forEach(type => {
+                if (!order.includes(type)) order.push(type);
+            });
+            return order;
+        }
+
         function getEnemyStatsAtLevel(attrTemplateData, enemyLevel, modifiers) {
+            const displayOrder = getEnemyAttrDisplayOrder();
             return window.AKEStats.getEnemyStatsAtLevel(attrTemplateData, enemyLevel, modifiers, {
+                displayOrder,
+                allowedAttrTypes: displayOrder,
                 getAttrName,
-                includeModifierOnlyAttrs: true,
-                excludeAttrTypes: LEGACY_ELEMENT_RESISTANCE_ATTR_TYPES
+                includeModifierOnlyAttrs: true
             });
         }
 
         function getEnemyStatDetailsAtLevel(attrTemplateData, enemyLevel, modifiers) {
+            const displayOrder = getEnemyAttrDisplayOrder();
             return window.AKEStats.getEnemyStatDetailsAtLevel(attrTemplateData, enemyLevel, modifiers, {
-                displayOrder: ATTR_DISPLAY_ORDER,
+                displayOrder,
+                allowedAttrTypes: displayOrder,
                 getAttrName,
-                includeModifierOnlyAttrs: false,
-                excludeAttrTypes: LEGACY_ELEMENT_RESISTANCE_ATTR_TYPES
+                includeModifierOnlyAttrs: false
             });
         }
 

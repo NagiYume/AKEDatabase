@@ -4,8 +4,7 @@
     const commonT = window.akeI18n.scope('common');
     const MODULE_ID = 'season_tower';
     const DIFFICULTIES = { 1: t('normal'), 2: t('hard'), 3: t('brutal') };
-    const ATTR_ORDER = [0, 1, 2, 3, 20, 21, 27, 12, 8, 9, 10, 11, 15];
-    const LEGACY_ELEMENT_RESISTANCE_ATTR_TYPES = window.AKEEnemyRenderer.LEGACY_ELEMENT_RESISTANCE_ATTR_TYPES;
+    const ATTR_ORDER = [0, 1, 2, 3, 20, 21, 27, 12, 8, 9, 10, 11, 94, 95, 96, 97, 98, 99];
 
     const root = document.getElementById('seasonTowerModule');
     const list = document.getElementById('seasonTowerList');
@@ -153,12 +152,24 @@
         return detail && window.renderRawValueTip ? window.renderRawValueTip(display, detail) : display;
     }
 
+    function getEnemyAttrDisplayOrder() {
+        const settings = window.akeData?.getEnemyAttrSettings?.();
+        if (!settings || settings.enabled !== true) return ATTR_ORDER;
+        const selected = new Set((settings.types || []).map(Number).filter(type => Number.isInteger(type) && type >= 0));
+        const order = ATTR_ORDER.filter(type => selected.has(type));
+        [...selected].sort((a, b) => a - b).forEach(type => {
+            if (!order.includes(type)) order.push(type);
+        });
+        return order;
+    }
+
     function getEnemyStatDetails(attrTemplate, level, modifiers) {
+        const displayOrder = getEnemyAttrDisplayOrder();
         return window.AKEStats.getEnemyStatDetailsAtLevel(attrTemplate, level, modifiers, {
-            displayOrder: ATTR_ORDER,
+            displayOrder,
+            allowedAttrTypes: displayOrder,
             getAttrName: type => attrMap[type] || t('attribute', { id: type }),
-            includeModifierOnlyAttrs: false,
-            excludeAttrTypes: LEGACY_ELEMENT_RESISTANCE_ATTR_TYPES
+            includeModifierOnlyAttrs: false
         });
     }
 
