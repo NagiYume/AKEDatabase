@@ -4220,6 +4220,69 @@
 }
 }
 
+/* Shared spawn-position grid and variant modifier tags. */
+.v2d-spawn-map::before,
+.v2cc-spawn-map::before {
+    --ake-map-grid-line: color-mix(in srgb, var(--border-color, #d9e0e8) 85%, transparent);
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    border-radius: inherit;
+    background-image:
+        linear-gradient(to right, transparent calc(50% - .5px), var(--ake-map-grid-line) calc(50% - .5px), var(--ake-map-grid-line) calc(50% + .5px), transparent calc(50% + .5px)),
+        linear-gradient(to bottom, transparent calc(50% - .5px), var(--ake-map-grid-line) calc(50% - .5px), var(--ake-map-grid-line) calc(50% + .5px), transparent calc(50% + .5px));
+    background-position: 50% 50%;
+    background-size: var(--grid-cell-x, 10%) 100%, 100% var(--grid-cell-z, 10%);
+    content: '';
+    pointer-events: none;
+}
+.v2d-variant-bonus {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px 8px;
+    margin: 6px 0;
+    padding: 6px 8px;
+    border: 1px solid color-mix(in srgb, var(--accent-color, #1e6f9f) 28%, var(--border-color, #d9e0e8));
+    border-radius: var(--ake-ui-radius-sm, 6px);
+    background: color-mix(in srgb, var(--accent-color, #1e6f9f) 6%, var(--ake-ui-surface, #fff));
+    color: var(--text-color, #1e2b3c);
+    font-size: .76rem;
+}
+.v2d-variant-bonus__item {
+    display: inline-flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: var(--ake-ui-surface, #fff);
+}
+.v2d-variant-bonus__attr {
+    font-weight: 600;
+}
+.v2d-variant-bonus__value {
+    color: var(--accent-color, #1e6f9f);
+    font-variant-numeric: tabular-nums;
+}
+.v2d-variant-bonus__zone {
+    padding: 0 4px;
+    border-radius: 4px;
+    background: var(--ake-ui-surface-muted, #f2f4f8);
+    color: var(--desc-color, #5b6f86);
+    font-size: .68rem;
+}
+.v2d-modifier-zone {
+    display: inline-block;
+    margin-left: 3px;
+    padding: 0 4px;
+    border-radius: 4px;
+    background: var(--ake-ui-surface-muted, #f2f4f8);
+    color: var(--desc-color, #5b6f86);
+    font-size: .68rem;
+    font-weight: 400;
+}
+
 /* Source: theme/season_tower.css */
 @scope (body[data-ake-module="season_tower"]) {.ake-ui-directory[data-ake-module="season-tower"] {
 

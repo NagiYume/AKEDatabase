@@ -172,8 +172,12 @@
                     const modeKey = { 'Parallel': 'parallel', 'Sequence': 'sequence', 'PartKilled': 'partKilled', 'AllKilled': 'allKilled', 'Deadline': 'deadline' }[g.groupMode];
                     const modeLabel = modeKey ? t(`spawnModes.${modeKey}`) : g.groupMode;
                     let conditionText = '', targetGroupKey = '';
-                    if (g.groupMode === 'PartKilled' && g.groupModeTargetKey) { conditionText = t('spawnConditions.partKilled', { group: g.groupModeTargetKey, count: g.groupModeKillCount }); targetGroupKey = g.groupModeTargetKey; }
-                    else if (g.groupMode === 'AllKilled' && g.groupModeTargetKey) { conditionText = t('spawnConditions.allKilled', { group: g.groupModeTargetKey }); targetGroupKey = g.groupModeTargetKey; }
+                    if (g.groupModeTargetKey && (g.groupMode === 'PartKilled' || g.groupMode === 'AllKilled')) {
+                        targetGroupKey = g.groupModeTargetKey;
+                        if (g.groupMode === 'AllKilled') conditionText = t('spawnConditions.allKilledSpawn', { group: targetGroupKey });
+                        else if (g.groupModeKillCount > 0) conditionText = t('spawnConditions.partKilledSpawn', { group: targetGroupKey, count: g.groupModeKillCount });
+                        else conditionText = t('spawnConditions.defeatedSpawn', { group: targetGroupKey });
+                    }
                     g.spawns.forEach(spawn => { allSpawns.push({ spawn, group: g, modeLabel, conditionText, targetGroupKey }); });
                 });
                 const posCount = {};
@@ -192,10 +196,13 @@
                     const intervalStr = spawn.spawnInterval > 0 ? t('spawn.interval', { seconds: spawn.spawnInterval.toFixed(1) }) : '';
                     const warnStr = spawn.preWarnTime > 0 ? t('spawn.preWarning', { seconds: spawn.preWarnTime.toFixed(1) }) : '';
                     const faceStr = spawn.faceMainCharacter ? t('spawn.faceMainCharacter') : '';
+                    const groupLabel = conditionText
+                        ? t('spawn.groupCondition', { group: g.groupKey, condition: conditionText })
+                        : t('spawn.groupMode', { group: g.groupKey, mode: modeLabel, condition: '' });
                     const tipLines = [
                         `<b>${escH(spawn.name)} ×${spawn.count} Lv.${spawn.level}</b>`,
                         t('spawn.coordinates', { position: posStr, radius: randomStr }),
-                        t('spawn.groupMode', { group: g.groupKey, mode: modeLabel, condition: conditionText ? ` · ${conditionText}` : '' }),
+                        groupLabel,
                         [delayStr, intervalStr, warnStr, faceStr].filter(Boolean).join(' · ')
                     ].filter(Boolean);
                     const offsetPct = (0.3 * 100 / (2 * halfX)).toFixed(2);
@@ -208,11 +215,11 @@
                 });
             });
 
-            const coordInfo = moduleId !== 'monument' || getCurrentShowHidden()
-                ? `<div class="v2d-map-coords">X: ${minX.toFixed(0)} ~ ${maxX.toFixed(0)}  Z: ${minZ.toFixed(0)} ~ ${maxZ.toFixed(0)}</div>`
-                : '';
+            const coordInfo = `<div class="v2d-map-coords">X: ${minX.toFixed(0)} ~ ${maxX.toFixed(0)}  Z: ${minZ.toFixed(0)} ~ ${maxZ.toFixed(0)}</div>`;
             const unitPct = (100 / (2 * halfX)).toFixed(2);
-            return `<div class="v2d-spawn-map-container"><div class="v2d-spawn-map" style="--unit:${unitPct}%"><div class="v2d-map-center"></div>${mapSpotsHtml}</div>${coordInfo}</div>`;
+            const gridX = (100 / rangeX).toFixed(4);
+            const gridZ = (100 / rangeZ).toFixed(4);
+            return `<div class="v2d-spawn-map-container"><div class="v2d-spawn-map" style="--unit:${unitPct}%;--grid-cell-x:${gridX}%;--grid-cell-z:${gridZ}%"><div class="v2d-map-center"></div>${mapSpotsHtml}</div>${coordInfo}</div>`;
         }
 
         function parseDungeonWaves(dungeon) {
@@ -240,11 +247,14 @@
                     let maxAlive = 0;
                     let hasPause = false;
                     Object.entries(wave.groupMap || {}).forEach(([mapIdx, group]) => {
+                        const groupMode = group.groupMode || 'Sequence';
+                        const previousGroupKey = groups[groups.length - 1]?.groupKey || '';
                         const groupInfo = {
                             groupKey: group.groupKey || mapIdx,
                             groupId: group.groupId,
-                            groupMode: group.groupMode || 'Sequence',
-                            groupModeTargetKey: group.groupModeTargetKey || '',
+                            groupMode,
+                            groupModeTargetKey: group.groupModeTargetKey
+                                || ((groupMode === 'PartKilled' || groupMode === 'AllKilled') ? previousGroupKey : ''),
                             groupModeKillCount: group.groupModeKillCount || 0,
                             maxCount: (group.limitGroupMaxCount && group.groupMaxCount > 0) ? group.groupMaxCount : 0,
                             timestamp: group.timestamp || 0,
@@ -304,7 +314,20 @@
         }
 
         function formatAttrModifiers(modifiers) {
-            return window.AKEEnemyRenderer.summarizeModifiers(modifiers, getAttrName);
+            return window.AKEEnemyRenderer.summarizeModifiers(modifiers, getAttrName, getModifierZoneLabel);
+        }
+
+        function getModifierZoneLabel(modifierType) {
+            const key = window.AKEEnemyRenderer.modifierZoneKey(modifierType);
+            return key ? ccT(`modifierZones.${key}`) : ccT('modifierZones.unknown', { type: modifierType });
+        }
+
+        function renderVariantBonus(modifiers) {
+            return window.AKEEnemyRenderer.renderVariantBonus(modifiers, {
+                label: ccT('modifierSources.variant'),
+                getAttrName,
+                getZoneLabel: modifierType => window.AKEEnemyRenderer.modifierZoneKey(modifierType) || String(modifierType)
+            });
         }
 
         function formatPlainValue(val) {
@@ -628,10 +651,12 @@
 
             const showHidden = getCurrentShowHidden();
             const modifierSummaryHtml = showHidden ? '' : window.AKEEnemyRenderer.renderModifierSources([
-                ['born', [...inlineModifiers, ...ownBuffModifiers]],
+                ['variant', inlineModifiers],
+                ['born', ownBuffModifiers],
                 ['buff', libraryBuffModifiers],
                 ['dungeon', scriptModifiers]
             ], formatAttrModifiers, key => ccT(`modifierSources.${key}`));
+            const variantBonusHtml = showHidden ? renderVariantBonus(inlineModifiers) : '';
 
             const allBuffIds = [...new Set([...ownBuffs, ...libBuffs.map(b => b.buffId)])];
             const buffBbMap = {};
@@ -698,7 +723,7 @@
                 nickname,
                 level: enemyLevel,
                 descriptionHtml: desc ? parseText(desc) : '',
-                extraHtml: `${modifierSummaryHtml}${buffTagsHtml}${scriptBuffTagsHtml}`,
+                extraHtml: `${variantBonusHtml}${modifierSummaryHtml}${buffTagsHtml}${scriptBuffTagsHtml}`,
                 flags,
                 statState,
                 formatStatValue,
