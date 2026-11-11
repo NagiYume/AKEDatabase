@@ -1535,11 +1535,12 @@ class ReleaseManager:
             )
             if physical_changes:
                 action = (
-                    "只上传新增或变更文件，不删除历史图片"
+                    "图片传输阶段已完成，准备更新资产索引；不删除历史图片"
                     if dataset.get("kind") == "images"
                     else "先删除远端多余项，再上传新增或变更文件"
                 )
-                self.progress(ProgressEvent("asset_upload", f"开始同步{label}；{action}"))
+                message = action if dataset.get("kind") == "images" else f"开始同步{label}；{action}"
+                self.progress(ProgressEvent("asset_upload", message))
                 if dataset.get("kind") != "images":
                     self._sync_local_asset_dataset(dataset)
             else:
