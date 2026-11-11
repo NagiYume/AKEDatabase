@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
-from .asset_maps import AssetMapHistoryLoader, sha256_file
+from .asset_maps import AssetMapHistory, AssetMapHistoryLoader, sha256_file
 from .config import TOOL_ROOT, AppConfig
 from .downloader import BLOCK_IDS, DownloadManager, entries_for_blocks, safe_target
 from .errors import AkeToolError, ValidationError
@@ -178,6 +178,7 @@ class ImageAssetPipeline:
         image_profile: str = IMAGE_PROFILE_STANDARD,
         image_config: ImageParsingConfig | None = None,
         map_history_loader: AssetMapHistoryLoader | None = None,
+        ignore_image_map: bool = False,
     ) -> None:
         self.config = config
         self.progress = progress
@@ -200,6 +201,7 @@ class ImageAssetPipeline:
         self._log_path: Path | None = None
         self.image_profile = normalize_image_profile(image_profile)
         self.image_config = image_config or config.image_config(self.image_profile)
+        self.ignore_image_map = ignore_image_map
         self.image_matcher = ImagePathMatcher(self.image_config)
         self.output_root = config.image_work_root / "output" / self.image_profile
         self.map_history_loader = map_history_loader or AssetMapHistoryLoader(
@@ -1031,7 +1033,7 @@ class ImageAssetPipeline:
         asset_version = f"{game_version}@{hotfix_main_version}"
         self._emit(
             "image_extract",
-            f"增量模式：profile={self.image_profile}，版本={asset_version}，"
+            f"{'无视 map 全部导出' if self.ignore_image_map else '增量模式'}：profile={self.image_profile}，版本={asset_version}，"
             f"manifest={self.map_history_loader.manifest_url}",
         )
         history_profiles = (
@@ -1039,16 +1041,29 @@ class ImageAssetPipeline:
             if self.image_profile == IMAGE_PROFILE_FULL
             else (self.image_profile,)
         )
-        history_by_profile = self.map_history_loader.load_many(
-            history_profiles,
-            self.config.image_work_root / "map-cache",
-        )
+        if self.ignore_image_map:
+            history_by_profile = {
+                profile: AssetMapHistory(
+                    profile=profile, profile_key=profile,
+                    manifest_url=self.map_history_loader.manifest_url,
+                    bootstrap=True, source="ignored",
+                )
+                for profile in history_profiles
+            }
+            self._emit("image_extract", "无视 map 导出已开启：不读取历史 map，导出所有匹配图片")
+        else:
+            history_by_profile = self.map_history_loader.load_many(
+                history_profiles,
+                self.config.image_work_root / "map-cache",
+            )
         history = history_by_profile[self.image_profile]
         comparison_histories = tuple(
             item for item in history_by_profile.values() if not item.bootstrap
         )
         comparison_bootstrap = not comparison_histories
         for item in history_by_profile.values():
+            if self.ignore_image_map:
+                continue
             if item.bootstrap:
                 self._emit(
                     "image_extract",
@@ -1068,12 +1083,12 @@ class ImageAssetPipeline:
                     else f"{item.profile_key} 历史 map 缓存未命中，已下载校验并缓存：{item.map_path}"
                 ),
             )
-        if comparison_bootstrap:
+        if comparison_bootstrap and not self.ignore_image_map:
             self._emit(
                 "image_extract",
                 "所有比对用历史 map 均不存在，首次引导将导出完整当前 map",
             )
-        elif self.image_profile == IMAGE_PROFILE_FULL:
+        elif not self.ignore_image_map and self.image_profile == IMAGE_PROFILE_FULL:
             compared = " + ".join(item.profile_key for item in comparison_histories)
             self._emit(
                 "image_extract",
@@ -1212,6 +1227,11 @@ class ImageAssetPipeline:
                 _stop_image_process(process)
         if metrics is None:
             raise AkeToolError("Python 图片解析器未返回 map 差分统计")
+        if metrics.get("failures", 0):
+            raise ValidationError(f'图片构图存在 {metrics["failures"]} 个错误，拒绝发布')
+        if metrics.get("warnings", 0):
+            self._emit("image_extract", f'图片构图有 {metrics["warnings"]} 条未解析外部引用；'
+                       f'内容可能不完整，详见 {run_root / "unresolved-cabs.json"}')
         if image_parser_digest() != parser_digest:
             raise ValidationError("图片解析期间 Python 解析器发生变化，拒绝合并输出")
 
@@ -1308,7 +1328,7 @@ class ImageAssetPipeline:
             "image_comparison_history_versions": {
                 item.profile: item.version for item in comparison_histories
             },
-            "image_map_bootstrap": comparison_bootstrap,
+            "image_map_bootstrap": comparison_bootstrap and not self.ignore_image_map,
             "image_map_manifest_url": history.manifest_url,
             "image_map_skipped_entries": metrics["skipped"],
             "image_map_invalid_current_hashes": metrics["invalidCurrent"],

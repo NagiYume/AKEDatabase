@@ -45,6 +45,7 @@ def parse_bundle(job):
     original_find_file = env.find_file
     env._ake_builtin_asset_files = set()
     env._ake_builtin_excluded = Counter()
+    env._ake_missing_cabs = Counter()
 
     def find_file(name, is_dependency=True):
         if name.lower() not in ('unity default resources', 'unity_builtin_extra'):
@@ -99,9 +100,10 @@ def parse_bundle(job):
                 candidates[0].parse_as_object().image.save(temporary, format='PNG', optimize=True)
             records.append((entry, str(temporary) if temporary is not None else None))
     builtin_counts = env._ake_builtin_excluded
+    missing_cabs = env._ake_missing_cabs
     env = None
     objects = None
     _processed += 1
     if _processed % 25 == 0:
         gc.collect()
-    return records, observed, os.getpid(), _cache_stats(), builtin_counts
+    return records, observed, os.getpid(), _cache_stats(), builtin_counts, missing_cabs

@@ -6,6 +6,7 @@ import base64
 from collections import Counter, defaultdict
 from concurrent.futures import ProcessPoolExecutor
 import gc
+import json
 import multiprocessing
 import os
 from pathlib import Path, PurePosixPath
@@ -73,9 +74,11 @@ def main():
     print(f'[image-stage] 清单匹配 {len(selected)} 项，涉及 {len(groups)} 个 Bundle', flush=True)
     all_entries, delta = [], []
     seen, outputs = {}, {}
+    collisions = []
     observed_types = Counter()
     worker_cache_stats = {}
     builtin_excluded = Counter()
+    missing_cabs = Counter()
     skipped = 0
     workers = int(os.environ.get('AKE_IMAGE_PARSE_WORKERS', '4'))
     if not 1 <= workers <= 32:
@@ -99,10 +102,11 @@ def main():
             pending.append((job[0], pool.submit(parse_bundle, job)))
         while pending:
             number, future = pending.pop(0)
-            records, observed, worker_id, cache_stats, builtin_counts = future.result()
+            records, observed, worker_id, cache_stats, builtin_counts, missing_counts = future.result()
             worker_cache_stats[worker_id] = cache_stats
             observed_types.update(observed)
             builtin_excluded.update(builtin_counts)
+            missing_cabs.update(missing_counts)
             job = next(jobs, None)
             if job is not None:
                 pending.append((job[0], pool.submit(parse_bundle, job)))
@@ -137,13 +141,15 @@ def main():
                     raise ValueError(f'输出路径越界：{relative}')
                 previous = outputs.get(relative.as_posix().casefold())
                 if previous is not None:
-                    if previous != entry.hash:
-                        raise ValueError(f'不同图片指向同一输出路径：{relative}')
+                    if previous[0] != entry.hash:
+                        collisions.append({'path': relative.as_posix(), 'keptHash': previous[0],
+                                           'keptContainer': previous[1], 'skippedHash': entry.hash,
+                                           'skippedContainer': entry.container})
                     Path(temporary).unlink(missing_ok=True)
                     continue
                 target.parent.mkdir(parents=True, exist_ok=True)
                 os.replace(temporary, target)
-                outputs[relative.as_posix().casefold()] = entry.hash
+                outputs[relative.as_posix().casefold()] = (entry.hash, entry.container)
             if number % 25 == 0 or number == len(groups):
                 print(f'[image-stage] Bundle {number}/{len(groups)}，map {len(all_entries)}，导出 {len(outputs)}', flush=True)
     shutil.rmtree(scratch)
@@ -158,9 +164,22 @@ def main():
     if builtin_excluded:
         print('[image-stage] Unity 内置资源不属于 VFS map：' + ', '.join(
             f'{name}={count}' for name, count in sorted(builtin_excluded.items())), flush=True)
+    if missing_cabs:
+        report = [{'cab': key[0], 'asset': key[1], 'fileId': key[2],
+                   'pathId': key[3], 'count': count}
+                  for key, count in sorted(missing_cabs.items())]
+        (args.run / 'unresolved-cabs.json').write_text(
+            json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
+        print(f'[image-stage] 警告：{len(report)} 条外部 CAB 引用未解析，详见 unresolved-cabs.json；'
+              '与 SDK 一样跳过这些引用，无法确认其内容', flush=True)
+    if collisions:
+        (args.run / 'output-collisions.json').write_text(
+            json.dumps(collisions, ensure_ascii=False, indent=2), encoding='utf-8')
+        print(f'[image-stage] 输出路径冲突 {len(collisions)} 条，保留首个文件；'
+              '详见 output-collisions.json', flush=True)
     print(f'AKE_MAP_RESULT|full={len(all_entries)}|old={old_count}'
           f'|oldHashes={len(old)}|delta={len(delta)}|skipped={skipped}'
-          f'|invalidCurrent=0|normalizedSources=0|warnings=0|failures=0', flush=True)
+          f'|invalidCurrent=0|normalizedSources=0|warnings={sum(missing_cabs.values())}|failures=0', flush=True)
 
 
 if __name__ == '__main__':

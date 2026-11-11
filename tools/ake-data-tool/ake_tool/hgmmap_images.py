@@ -10,8 +10,8 @@ from .native_asset_map import AssetEntry, object_hash
 def preload_objects(environment, asset_path):
     """Resolve the root AssetBundle's preload slice for a manifest asset.
 
-    Unresolved pointers and malformed ranges fail the entire selection: silently
-    dropping one would make a subsequent incremental map unsafe to publish.
+    Named missing external CABs are recorded as warnings, matching the SDK;
+    malformed pointers and all other missing dependencies still fail.
     """
     wanted = asset_path.replace('\\', '/').casefold()
     index = getattr(environment, '_ake_preload_index', None)
@@ -29,7 +29,26 @@ def preload_objects(environment, asset_path):
         if start < 0 or size < 0 or start + size > len(bundle.m_PreloadTable):
             raise ValueError(f'资源预加载表范围无效：{asset_path}')
         pointers = [info.asset, *bundle.m_PreloadTable[start:start + size]]
-        found.extend(pointer.deref() for pointer in pointers if pointer)
+        for pointer in pointers:
+            if not pointer:
+                continue
+            try:
+                found.append(pointer.deref())
+            except (FileNotFoundError, KeyError) as exc:
+                owner = getattr(pointer, 'assetsfile', None)
+                externals = getattr(owner, 'externals', ())
+                file_id = pointer.m_FileID
+                external = externals[file_id - 1].path if 0 < file_id <= len(externals) else ''
+                missing = getattr(environment, '_ake_missing_cabs', None)
+                if missing is not None and isinstance(exc, FileNotFoundError) and external.lower().startswith('archive:/cab-'):
+                    missing[(external.lower().rsplit('/', 1)[-1], asset_path,
+                             file_id, pointer.m_PathID)] += 1
+                    continue
+                raise FileNotFoundError(
+                    f'资源 {asset_path} 的预加载引用无法解析：'
+                    f'file_id={file_id}, path_id={pointer.m_PathID}, '
+                    f'owner={getattr(owner, "name", "")}, external={external}：{exc}'
+                ) from exc
     if not found:
         raise ValueError(f'Bundle 中没有资源容器：{asset_path}')
     return list({(id(obj.assets_file), obj.path_id): obj for obj in found}.values())

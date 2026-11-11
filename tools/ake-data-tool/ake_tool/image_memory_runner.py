@@ -4,6 +4,14 @@ from __future__ import annotations
 from collections import OrderedDict
 import runpy
 import os
+import sys
+from pathlib import Path
+
+_unity_root = Path(__file__).resolve().parent.parent / 'vendor' / 'UnityPy'
+if not (_unity_root / 'UnityPy' / '__init__.py').is_file():
+    raise RuntimeError('UnityPy 子模块未初始化，请运行 git submodule update --init --recursive')
+sys.path.insert(0, str(_unity_root))
+os.environ['PYTHONPATH'] = str(_unity_root) + os.pathsep + os.environ.get('PYTHONPATH', '')
 
 from UnityPy.endfield import EndfieldVFS
 

@@ -241,12 +241,14 @@ class ImageAssetWorker(QObject):
         config: AppConfig,
         image_profile: str = IMAGE_PROFILE_STANDARD,
         image_config: ImageParsingConfig | None = None,
+        ignore_image_map: bool = False,
     ) -> None:
         super().__init__()
         self.stages = stages
         self.config = config
         self.image_profile = image_profile
         self.image_config = image_config
+        self.ignore_image_map = ignore_image_map
         self.token = CancellationToken()
 
     def cancel(self) -> None:
@@ -261,6 +263,7 @@ class ImageAssetWorker(QObject):
                 token=self.token,
                 image_profile=self.image_profile,
                 image_config=self.image_config,
+                ignore_image_map=self.ignore_image_map,
             ).run_steps(self.stages)
             self.succeeded.emit(result)
         except CancelledError:
@@ -1596,6 +1599,10 @@ class MainWindow(QMainWindow):
             single_buttons.append(single)
         root.addWidget(steps_group)
 
+        ignore_map_check = QCheckBox("无视map导出")
+        ignore_map_check.setToolTip("忽略历史 map 差异，导出所有符合当前正则的图片；重启后自动关闭。")
+        root.addWidget(ignore_map_check)
+
         actions = QHBoxLayout()
         run_all_button = QPushButton("一键解析并发布")
         run_all_button.setObjectName("primaryButton")
@@ -1659,6 +1666,7 @@ class MainWindow(QMainWindow):
                 "config_detail_label": config_detail_label,
                 "config_sync_button": config_sync_button,
                 "step_checks": step_checks,
+                "ignore_map_check": ignore_map_check,
                 "step_status": step_status,
                 "single_buttons": single_buttons,
                 "run_all_button": run_all_button,
@@ -3335,6 +3343,10 @@ class MainWindow(QMainWindow):
                 if self._image_task_kind == "image"
                 else None
             ),
+            ignore_image_map=(
+                self.image_controls[self._image_active_profile]["ignore_map_check"].isChecked()
+                if self._image_task_kind == "image" else False
+            ),
         )
         worker.moveToThread(thread)
         thread.started.connect(worker.execute)
@@ -3562,6 +3574,7 @@ class MainWindow(QMainWindow):
                 "rule_clear_button",
                 "rule_table",
                 "read_cloud_check",
+                "ignore_map_check",
                 "config_sync_button",
             ):
                 widget = controls[key]
