@@ -263,9 +263,9 @@
                     });
                     if (lv > 0) {
                         levels.push(lv);
-                        const hpDetail = window.AKEStats.analyzeAttrWithModifiers(hp, mods, 1);
-                        const atkDetail = window.AKEStats.analyzeAttrWithModifiers(atk, mods, 2);
-                        const defDetail = window.AKEStats.analyzeAttrWithModifiers(def, mods, 3);
+                        const hpDetail = window.AKEStats.analyzeAttrWithModifiers(hp, bornBuffModifiers, 1, inlineModifiers);
+                        const atkDetail = window.AKEStats.analyzeAttrWithModifiers(atk, bornBuffModifiers, 2, inlineModifiers);
+                        const defDetail = window.AKEStats.analyzeAttrWithModifiers(def, bornBuffModifiers, 3, inlineModifiers);
                         hpArr.push(hpDetail.value); atkArr.push(atkDetail.value); defArr.push(defDetail.value);
                         hpDetails.push({ ...hpDetail, name: getAttrName(1) });
                         atkDetails.push({ ...atkDetail, name: getAttrName(2) });
@@ -277,11 +277,11 @@
 
                 const variantFullAttrs = buildBaseAttrSnapshot(rawData, variantAttrTemplateId);
                 const variantFullAttrDetails = {};
-                if (!isBase && mods.length > 0) {
+                if (mods.length > 0) {
                     Object.keys(variantFullAttrs).forEach(key => {
                         const at = attrTypeReverse[key];
                         if (at !== undefined && mods.some(m => m.attrType === at)) {
-                            const detail = window.AKEStats.analyzeAttrWithModifiers(variantFullAttrs[key], mods, at);
+                            const detail = window.AKEStats.analyzeAttrWithModifiers(variantFullAttrs[key], bornBuffModifiers, at, inlineModifiers);
                             variantFullAttrs[key] = detail.value;
                             variantFullAttrDetails[key] = { ...detail, name: getMetaLabel(key) };
                         }

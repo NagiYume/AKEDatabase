@@ -410,7 +410,7 @@
             await attachContractValues(data, game.gameId);
             if (requestId !== detailRequestId) return;
             const diagnostics = getCcDiagnostics(data);
-            if (diagnostics.missingTags.length || diagnostics.missingTaskGroups.length) console.warn('CC data relations', game.gameId, diagnostics);
+            if (diagnostics.missingTags.length || diagnostics.missingTaskGroups.length || diagnostics.unmappedTerms.length) console.warn('CC data relations', game.gameId, diagnostics);
             else if (diagnostics.missingTerms.length) console.debug('CC effect parameters unavailable', game.gameId, diagnostics.missingTerms);
             currentData = data;
             currentGame = game;
@@ -604,7 +604,7 @@
                                     const tid = String(tag.tagId);
                                     const tagData = tagTable[tid] || {};
                                     const name = tagData.name?.text || (getCurrentShowHidden() ? `Tag ${tid}` : t('contract.unnamedTerm'));
-                                    const terms = tagData.tagTerms || [];
+                                    const terms = (tagData.tagTerms || []).filter(term => !term.mappingUnavailable);
                                     const bbValueMap = buildBlackboardValueMap(terms, tagData.serverBlackboards);
                                     const desc = replacePlaceholders(tagData.desc?.text || '', bbValueMap, allValueMaps);
                                     const icon = tagData.icon || '';
@@ -933,13 +933,14 @@
         });
     }
 
-    function getEnemyStatDetailsAtLevel(attrTemplateData, enemyLevel, modifiers) {
+    function getEnemyStatDetailsAtLevel(attrTemplateData, enemyLevel, modifiers, variantModifiers = []) {
         const displayOrder = getEnemyAttrDisplayOrder();
         return window.AKEStats.getEnemyStatDetailsAtLevel(attrTemplateData, enemyLevel, modifiers, {
             displayOrder,
             allowedAttrTypes: displayOrder,
             getAttrName: attrType => ccAttrMap[attrType] || t('attributeFallback', { type: attrType }),
-            includeModifierOnlyAttrs: false
+            variantModifiers,
+            includeModifierOnlyAttrs: true
         });
     }
 
@@ -1065,7 +1066,7 @@
         const ownBuffModifiers = ownBuffs.flatMap(id => getBuffModifiers(id, []));
         const libraryBuffModifiers = libBuffs.flatMap(b => getBuffModifiers(b.buffId, b.blackboard));
         const buffModifiers = [...ownBuffModifiers, ...libraryBuffModifiers];
-        const allModifiers = [...inlineModifiers, ...buffModifiers];
+        const allModifiers = buffModifiers;
         const scriptModifiers = (scriptedBuffs || []).flatMap(b => getBuffModifiers(b.buffId, b.blackboard));
 
         const flags = [];
@@ -1089,6 +1090,7 @@
             attrData,
             level: enemyLevel,
             baseModifiers: allModifiers,
+            variantModifiers: inlineModifiers,
             scriptModifiers,
             getDetails: getEnemyStatDetailsAtLevel
         });
@@ -1445,6 +1447,7 @@
         return {
             missingTags: ids.filter(id => !tags[id]),
             missingTerms: ids.filter(id => tags[id] && !Array.isArray(tags[id].tagTerms)),
+            unmappedTerms: ids.filter(id => (tags[id]?.tagTerms || []).some(term => term.mappingUnavailable)),
             missingTaskGroups: [...new Set(tasks.map(task => task.taskGroupId || '').filter(id => !data.activitycontingencycontracttaskgrouptable?.[id]))]
         };
     }
@@ -1521,7 +1524,7 @@
         `;
     }
 
-    function getSelectedTagEnemyModifiers() {
+    function getSelectedTagEnemyModifiers(enemyId) {
         if (!currentData) return { modifiers: [], tagBuffs: [] };
         const tagTable = currentData.cctagtable || {};
         const modifiers = [];
@@ -1532,11 +1535,12 @@
             const tagName = td.name?.text || `Tag ${tid}`;
             td.tagTerms.forEach(term => {
                 if (term.termType !== 1) return;
+                if (term.enemyIdPrefix && !String(enemyId || '').startsWith(term.enemyIdPrefix)) return;
                 const bb = {};
                 (term.blackboard || []).forEach(b => { bb[b.key] = b.value; });
                 const buff = ccBuffCache[term.buffId];
-                if (!buff?.attributeModifier?.attributeModifiers?.length) return;
-                buff.attributeModifier.attributeModifiers.forEach(mod => {
+                if (!buff) return;
+                (buff.attributeModifier?.attributeModifiers || []).forEach(mod => {
                     const attrType = ccAttrNameToId[mod.attributeType];
                     if (attrType === undefined) return;
                     const mt = FORMULA_TO_MODTYPE[mod.formulaItem];
@@ -1551,6 +1555,19 @@
                     const formulaName = mod.formulaItem;
                     tagBuffs.push({ tagName, attrName, formulaName, value: val });
                 });
+                (buff.buffEventAction || []).forEach(event => {
+                    if (event.buffEvent !== 'DuringBuffEnable') return;
+                    (event.actions || []).forEach(group => (group.actionData || []).forEach(action => {
+                        if (!action.isEnable || !action.$type?.startsWith('Beyond.Gameplay.Core.OverrideRawAttributeAction+Data')) return;
+                        (action.attributeOverrides || []).forEach(override => {
+                            const attrType = ccAttrNameToId[override.attributeType];
+                            const param = override.overrideValue || {};
+                            const value = param.useBlackboardKey ? bb[param.blackboardKey] : param.value;
+                            if (attrType === undefined || typeof value !== 'number') return;
+                            modifiers.push({ attrType, attrValue: value, modifierType: 9 });
+                        });
+                    }));
+                });
             });
         });
         return { modifiers, tagBuffs };
@@ -1562,15 +1579,13 @@
         if (!enemyLists.length) return;
 
         const dungeons = currentDungeonData.dungeontable || {};
-        const { modifiers: tagModifiers } = getSelectedTagEnemyModifiers();
-
         const ccTagBuffs = [];
         selectedTagIds.forEach(tid => {
             const td = (currentData.cctagtable || {})[tid];
             if (!td || !td.tagTerms) return;
             td.tagTerms.forEach(term => {
                 if (term.termType !== 1) return;
-                ccTagBuffs.push({ buffId: term.buffId, blackboard: term.blackboard || [] });
+                if (term.buffId) ccTagBuffs.push({ buffId: term.buffId, blackboard: term.blackboard || [], enemyIdPrefix: term.enemyIdPrefix });
             });
         });
 
@@ -1581,6 +1596,8 @@
                 const enemyId = card.dataset.enemyId;
                 const enemyLevel = parseInt(card.dataset.enemyLevel, 10) || 60;
                 if (!enemyId) return;
+                const { modifiers: tagModifiers } = getSelectedTagEnemyModifiers(enemyId);
+                const applicableTagBuffs = ccTagBuffs.filter(buff => !buff.enemyIdPrefix || enemyId.startsWith(buff.enemyIdPrefix));
 
                 const enemyConfig = dg.enemyTable?.[enemyId] || {};
                 const attrTable = dg.enemyAttributeTemplateTable || {};
@@ -1593,11 +1610,11 @@
                 const ownBuffModifiers = ownBuffs.flatMap(id => getBuffModifiers(id, []));
                 const libraryBuffModifiers = libBuffs.flatMap(b => getBuffModifiers(b.buffId, b.blackboard));
                 const buffModifiers = [...ownBuffModifiers, ...libraryBuffModifiers];
-                const allModifiers = [...inlineModifiers, ...buffModifiers, ...tagModifiers];
+                const allModifiers = [...buffModifiers, ...tagModifiers];
                 const scriptBuffs = JSON.parse(card.dataset.scriptBuffs || '[]');
                 const scriptModifiers = scriptBuffs.flatMap(b => getBuffModifiers(b.buffId, b.blackboard));
 
-                const statResult = getEnemyStatDetailsAtLevel(attrData, enemyLevel, allModifiers);
+                const statResult = getEnemyStatDetailsAtLevel(attrData, enemyLevel, allModifiers, inlineModifiers);
                 const stats = statResult?.values || {};
                 const attrGrid = card.querySelector('.v2d-attr-grid');
                 if (attrGrid && stats) {
@@ -1607,7 +1624,7 @@
                     });
                     attrGrid.innerHTML = statsHtml;
                 }
-                const scriptResult = scriptModifiers.length ? getEnemyStatDetailsAtLevel(attrData, enemyLevel, [...allModifiers, ...scriptModifiers]) : null;
+                const scriptResult = scriptModifiers.length ? getEnemyStatDetailsAtLevel(attrData, enemyLevel, [...allModifiers, ...scriptModifiers], inlineModifiers) : null;
                 const scriptStats = scriptResult?.values || null;
                 const changedScriptStats = scriptStats ? Object.fromEntries(Object.entries(scriptStats).filter(([key, val]) => val !== stats?.[key])) : {};
                 const scriptStatsEl = card.querySelector('.v2d-script-stats');
@@ -1616,7 +1633,7 @@
                 else if (scriptStatsHtml) card.insertAdjacentHTML('beforeend', scriptStatsHtml);
 
                 const newBuffTagsHtml = getCurrentShowHidden()
-                    ? `${renderVariantBonus(inlineModifiers)}${buildEnemyBuffTagsHtml(ownBuffs, libBuffs, ccTagBuffs)}`
+                    ? buildEnemyBuffTagsHtml(ownBuffs, libBuffs, applicableTagBuffs)
                     : renderModifierSources([
                         ['variant', inlineModifiers],
                         ['born', ownBuffModifiers],
