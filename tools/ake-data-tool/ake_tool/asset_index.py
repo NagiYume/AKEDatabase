@@ -12,6 +12,7 @@ from .errors import ValidationError
 from .file_copy import is_linked_file
 from .file_facts import cached_fact, file_digest, file_identity, remember_fact
 from .image_paths import ImageParsingConfig, ImagePathMatcher, IMAGE_PROFILES
+from .parallel_files import map_files
 
 
 INDEX_SCHEMA_VERSION = 2
@@ -242,19 +243,28 @@ def _read_json_meta(path: Path, relative: str) -> dict[str, Any] | None:
     return None
 
 
-def scan_dataset(root: Path, kind: str, skip_json_manifests: bool = False) -> dict[str, Any]:
+def scan_dataset(root: Path, kind: str, skip_json_manifests: bool = False,
+                 matcher: ImagePathMatcher | None = None) -> dict[str, Any]:
     root = root.resolve()
     if not root.is_dir():
         raise FileNotFoundError(f"数据目录不存在：{root}")
-    files: dict[str, dict[str, Any]] = {}
+    candidates = []
     for path in sorted(item for item in root.rglob("*") if item.is_file()):
         relative = validate_relative_path(path.relative_to(root).as_posix())
         if skip_json_manifests and path.name == JSON_MANIFEST_NAME:
             continue
-        meta = _json_meta(path, relative) if kind == "json" else None
-        files[relative] = _file_record(path, root, meta)
-    if not files:
+        candidates.append((path, relative))
+    if not candidates:
         raise ValidationError(f"数据目录为空：{root}")
+    if matcher is not None:
+        candidates = [(path, relative) for path, relative in candidates if matcher.matches(relative)]
+
+    def record(item):
+        path, relative = item
+        meta = _json_meta(path, relative) if kind == "json" else None
+        return relative, _file_record(path, root, meta)
+
+    files = dict(map_files(record, candidates))
     return {"root": f"public/{'Json' if kind == 'json' else 'images'}", "files": files}
 
 
@@ -268,7 +278,7 @@ def scan_selected_dataset(
     root = root.resolve()
     if not root.is_dir():
         raise FileNotFoundError(f"数据目录不存在：{root}")
-    files: dict[str, dict[str, Any]] = {}
+    candidates = []
     invalid: list[str] = []
     for raw_path in sorted(set(paths)):
         relative = validate_relative_path(raw_path, "差分图片路径")
@@ -278,8 +288,7 @@ def scan_selected_dataset(
             continue
         if skip_json_manifests and candidate.name == JSON_MANIFEST_NAME:
             continue
-        meta = _json_meta(candidate, relative) if kind == "json" else None
-        files[relative] = _file_record(candidate, root, meta)
+        candidates.append((candidate, relative))
     if invalid:
         sample = "、".join(invalid[:5])
         suffix = "" if len(invalid) <= 5 else f" 等 {len(invalid)} 项"
@@ -287,7 +296,14 @@ def scan_selected_dataset(
             f"差分图片范围中有 {len(invalid)} 个本地文件缺失、非普通文件或路径无效：{sample}{suffix}；"
             "请重新执行图片解析和图片发布"
         )
-    return {"root": f"public/{'Json' if kind == 'json' else 'images'}", "files": files}
+
+    def record(item):
+        candidate, relative = item
+        meta = _json_meta(candidate, relative) if kind == "json" else None
+        return relative, _file_record(candidate, root, meta)
+
+    return {"root": f"public/{'Json' if kind == 'json' else 'images'}",
+            "files": dict(map_files(record, candidates))}
 
 
 def build_asset_index(
@@ -315,7 +331,6 @@ def build_asset_index(
 def validate_asset_index(value: Any, allow_v1: bool = True) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValidationError("资产索引根节点不是对象")
-    value = deepcopy(value)
     schema = int(value.get("schemaVersion", 0) or 0)
     converted_v1 = schema == 1 and allow_v1
     if schema == 1 and allow_v1:
@@ -335,7 +350,7 @@ def validate_asset_index(value: Any, allow_v1: bool = True) -> dict[str, Any]:
     datasets = value.get("datasets")
     if not isinstance(datasets, dict) or not datasets:
         raise ValidationError("资产索引缺少 datasets")
-    result = deepcopy(value)
+    result = {key: deepcopy(item) for key, item in value.items() if key != "datasets"}
     result["schemaVersion"] = INDEX_SCHEMA_VERSION
     result["revision"] = str(value.get("revision", ""))
     result["updatedAt"] = str(value.get("updatedAt", ""))
@@ -369,7 +384,7 @@ def validate_asset_index(value: Any, allow_v1: bool = True) -> dict[str, Any]:
             if "meta" in record and not isinstance(record.get("meta"), dict):
                 raise ValidationError(f"资产索引记录 meta 无效：{path}")
             clean[path] = record
-        clean_dataset = deepcopy(dataset)
+        clean_dataset = {key: deepcopy(item) for key, item in dataset.items() if key != "files"}
         clean_dataset["root"] = str(dataset.get("root", ""))
         clean_dataset["files"] = clean
         result["datasets"][kind] = clean_dataset
@@ -607,12 +622,11 @@ def merge_asset_index(
     revision: str,
 ) -> dict[str, Any]:
     result = validate_asset_index(remote_index, allow_v1=False)
-    result = deepcopy(result)
     result["revision"] = revision
     result["updatedAt"] = revision
     for plan in dataset_plans:
         kind = str(plan["kind"])
-        dataset = deepcopy(result["datasets"][kind])
+        dataset = result["datasets"][kind]
         dataset["files"] = merge_dataset_records(
             dataset["files"], plan["current_files"], plan, asset_version
         )

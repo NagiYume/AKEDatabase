@@ -10,6 +10,7 @@ from pathlib import Path
 from .errors import ValidationError
 from .file_facts import cached_fact, file_digest, file_identity, remember_digest
 from .models import CancellationToken
+from .parallel_files import map_files
 
 
 def is_linked_file(path: Path) -> bool:
@@ -138,6 +139,7 @@ def sync_tree_contents(source: Path, target: Path,
         target.unlink()
     target.mkdir(parents=True, exist_ok=True)
     expected = set()
+    jobs = []
     for path in files:
         if token is not None:
             token.raise_if_cancelled()
@@ -149,7 +151,13 @@ def sync_tree_contents(source: Path, target: Path,
                 parent.unlink()
         if destination.is_dir():
             shutil.rmtree(destination)
-        sync_file_contents(path, destination, token)
+        jobs.append((path, destination))
+
+    def sync_job(job):
+        sync_file_contents(job[0], job[1], token)
+
+    for _ in map_files(sync_job, jobs):
+        pass
     for path in sorted(target.rglob("*"), key=lambda item: len(item.parts), reverse=True):
         if token is not None:
             token.raise_if_cancelled()

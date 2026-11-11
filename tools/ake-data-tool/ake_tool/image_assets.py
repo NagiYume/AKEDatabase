@@ -8,6 +8,7 @@ import queue
 import re
 import shutil
 import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -15,7 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
-from .asset_maps import AssetMapHistoryLoader, sha256_file
+from .asset_maps import AssetMapHistory, AssetMapHistoryLoader, sha256_file
 from .config import TOOL_ROOT, AppConfig
 from .downloader import BLOCK_IDS, DownloadManager, entries_for_blocks, safe_target
 from .errors import AkeToolError, ValidationError
@@ -51,15 +52,34 @@ from .models import (
 )
 from .release import resolve_r2_versions
 from .unpacker import format_command
-from .sdk_launch import sdk_command
+from .image_parser_identity import image_parser_digest
 from .json_unpacker import resolve_json_runtime, run_json_export
 from .vfs_validation_cache import VfsValidationCache, latest_identity
 from .vfs_update import VfsUpdater
 
 
 IMAGE_BLOCKS = ("Bundle", "InitialBundle", "BundleManifest")
-IMAGE_RUNNER_SOURCE = Path(__file__).with_name("BeyondSdkImageRunner.java")
-VFS_KEY_RUNNER_SOURCE = Path(__file__).with_name("BeyondSdkVfsKeyRunner.java")
+
+
+def _stop_image_process(process: subprocess.Popen) -> None:
+    """Stop the worker and any Windows venv launcher child on cancellation."""
+    if process.poll() is not None:
+        return
+    if os.name == "nt":
+        try:
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                check=False, timeout=10,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    if process.poll() is None:
+        process.kill()
+    process.wait()
+
+
 # Json 宿主所需的表、字符串池和哈希依赖；统一由准备流程提供。
 JSON_BLOCKS = (
     "TableCfg",
@@ -158,6 +178,7 @@ class ImageAssetPipeline:
         image_profile: str = IMAGE_PROFILE_STANDARD,
         image_config: ImageParsingConfig | None = None,
         map_history_loader: AssetMapHistoryLoader | None = None,
+        ignore_image_map: bool = False,
     ) -> None:
         self.config = config
         self.progress = progress
@@ -180,6 +201,7 @@ class ImageAssetPipeline:
         self._log_path: Path | None = None
         self.image_profile = normalize_image_profile(image_profile)
         self.image_config = image_config or config.image_config(self.image_profile)
+        self.ignore_image_map = ignore_image_map
         self.image_matcher = ImagePathMatcher(self.image_config)
         self.output_root = config.image_work_root / "output" / self.image_profile
         self.map_history_loader = map_history_loader or AssetMapHistoryLoader(
@@ -913,118 +935,74 @@ class ImageAssetPipeline:
             return
         copy_file_contents(source, target, self.token)
 
-    def _resolve_vfs_key(
-        self,
-        latest: LatestInfo,
-        runtime_root: Path,
-    ) -> str:
-        cache_path = runtime_root / ".vfs-key.json"
-        game_assembly = runtime_root / "GameAssembly.dll"
-        if cache_path.is_file() and game_assembly.is_file():
-            try:
-                cached = json.loads(cache_path.read_text(encoding="utf-8"))
-                assembly_stat = game_assembly.stat()
-                candidate = str(cached["key"])
-                decoded = base64.b64decode(candidate, validate=True)
-                if (
-                    len(decoded) == 32
-                    and int(cached["game_assembly_size"]) == assembly_stat.st_size
-                    and int(cached["game_assembly_mtime_ns"]) == assembly_stat.st_mtime_ns
-                ):
-                    self._emit("image_extract", f"使用已缓存的 VFS key：{cache_path}")
-                    return candidate
-            except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError):
-                pass
-
-        if not VFS_KEY_RUNNER_SOURCE.is_file():
-            raise FileNotFoundError(f"beyond-sdk VFS key 启动器不存在：{VFS_KEY_RUNNER_SOURCE}")
-        command = [
-            self.config.java_path,
-            "--enable-native-access=ALL-UNNAMED",
-            "--class-path",
-            str(self.config.image_sdk),
-            str(VFS_KEY_RUNNER_SOURCE),
-            str(self.vfs_root),
-            str(runtime_root),
-            latest.seed.seed_version,
-            latest.seed.package_path,
-        ]
-        self._emit("image_extract", f"隔离获取 VFS key：{format_command(command)}")
+    def _resolve_vfs_key(self, latest: LatestInfo, runtime_root: Path) -> str:
+        # Use the same uniquely versioned complete runtime as the Json host.
+        runtime = resolve_json_runtime(
+            self.config.image_work_root, latest.seed.game_version, latest.seed.seed_version
+        )
+        command = [sys.executable, "-u", "-m", "ake_tool.json_host.image_key",
+                   str(runtime), str(runtime_root / "image-key-persistent" /
+                                     self._safe_version(latest.seed.seed_version))]
+        self._emit("image_extract", f"使用 Python 宿主获取 VFS key：{runtime}")
         process = subprocess.Popen(
-            command,
-            cwd=self.config.image_sdk.parent,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
+            command, cwd=TOOL_ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, encoding="utf-8", errors="replace",
+            env={**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONDONTWRITEBYTECODE": "1"},
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         lines: queue.Queue[str | None] = queue.Queue()
 
         def read_output() -> None:
             assert process.stdout is not None
-            for line in process.stdout:
-                lines.put(line.rstrip())
-            lines.put(None)
+            try:
+                for line in process.stdout:
+                    lines.put(line.rstrip())
+            finally:
+                lines.put(None)
 
-        threading.Thread(target=read_output, daemon=True).start()
-        encoded_key: str | None = None
+        reader = threading.Thread(target=read_output, daemon=True)
+        reader.start()
+        encoded_key = None
+        deadline = time.monotonic() + 300
         try:
-            while encoded_key is None:
-                if self.token.is_cancelled:
-                    self.token.raise_if_cancelled()
+            while True:
+                self.token.raise_if_cancelled()
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("Python VFS key 宿主超时")
                 try:
                     line = lines.get(timeout=0.2)
                 except queue.Empty:
-                    if process.poll() is not None:
-                        break
                     continue
                 if line is None:
                     break
                 if line.startswith("VFS_KEY_BASE64="):
+                    if encoded_key is not None:
+                        raise AkeToolError("Python VFS key 宿主返回多个 key")
                     candidate = line.removeprefix("VFS_KEY_BASE64=").strip()
                     try:
                         decoded = base64.b64decode(candidate, validate=True)
                     except ValueError as exc:
-                        raise AkeToolError("beyond-sdk 返回了无效的 VFS key") from exc
+                        raise AkeToolError("Python VFS key 宿主返回无效 key") from exc
                     if len(decoded) != 32:
-                        raise AkeToolError(f"beyond-sdk 返回的 VFS key 长度错误：{len(decoded)}")
+                        raise AkeToolError("Python VFS key 宿主返回的 key 长度错误")
                     encoded_key = candidate
                 elif line:
                     self._emit("image_extract", line)
+            if process.wait() != 0 or encoded_key is None:
+                raise AkeToolError("Python VFS key 宿主失败或没有返回 key")
+            return encoded_key
         finally:
             if process.poll() is None:
-                process.kill()
-            process.wait()
-        if encoded_key is None:
-            raise AkeToolError(f"beyond-sdk 未返回 VFS key，退出码 {process.returncode}")
-        assembly_stat = game_assembly.stat()
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = cache_path.with_name(f".{cache_path.name}.tmp-{os.getpid()}")
-        temporary.write_text(
-            json.dumps(
-                {
-                    "game_assembly_size": assembly_stat.st_size,
-                    "game_assembly_mtime_ns": assembly_stat.st_mtime_ns,
-                    "key": encoded_key,
-                },
-                ensure_ascii=True,
-                indent=2,
-            ),
-            encoding="utf-8",
-        )
-        os.replace(temporary, cache_path)
-        return encoded_key
+                _stop_image_process(process)
+            reader.join(timeout=5)
+            if process.stdout is not None:
+                process.stdout.close()
 
     def extract(self) -> dict[str, Any]:
         self.config.validate_images(require_sources=False)
         latest = self._require_latest_state("image_prepared")
-        if not self.config.image_sdk.is_file():
-            raise FileNotFoundError(f"beyond-sdk.jar 不存在：{self.config.image_sdk}")
         if not self.vfs_root.is_dir():
             raise FileNotFoundError(f"尚未准备图片 VFS：{self.vfs_root}")
-        if not IMAGE_RUNNER_SOURCE.is_file():
-            raise FileNotFoundError(f"beyond-sdk 图片本地启动器不存在：{IMAGE_RUNNER_SOURCE}")
         runtime_root = (
             self.config.image_work_root
             / "il2cpp-host-runtime"
@@ -1032,11 +1010,30 @@ class ImageAssetPipeline:
         )
         self._assert_vfs_is_independent()
         encoded_vfs_key = self._resolve_vfs_key(latest, runtime_root)
+        runtime = resolve_json_runtime(self.config.image_work_root, latest.seed.game_version,
+                                       latest.seed.seed_version)
+        builtin_root = runtime / "Endfield_Data" / "Resources"
+        if not (builtin_root / "unity default resources").is_file():
+            game_data = self.config.streaming_assets_root.parent
+            candidate = game_data / "Resources"
+            game_assembly = game_data.parent / "GameAssembly.dll"
+            runtime_assembly = runtime / "GameAssembly.dll"
+            if (self.config.game_streaming_assets_dir.strip()
+                    and (candidate / "unity default resources").is_file()
+                    and game_assembly.is_file()
+                    and game_assembly.stat().st_size == runtime_assembly.stat().st_size
+                    and sha256_file(game_assembly) == sha256_file(runtime_assembly)):
+                builtin_root = candidate
+        if (builtin_root / "unity default resources").is_file():
+            self._emit("image_extract", f"Unity 内置资源目录：{builtin_root}")
+        else:
+            builtin_root = None
+            self._emit("image_extract", "未找到与当前运行时匹配的 Unity 内置资源；如需内置对象将停止并提示")
         game_version, hotfix_main_version = resolve_r2_versions(latest)
         asset_version = f"{game_version}@{hotfix_main_version}"
         self._emit(
             "image_extract",
-            f"增量模式：profile={self.image_profile}，版本={asset_version}，"
+            f"{'无视 map 全部导出' if self.ignore_image_map else '增量模式'}：profile={self.image_profile}，版本={asset_version}，"
             f"manifest={self.map_history_loader.manifest_url}",
         )
         history_profiles = (
@@ -1044,16 +1041,29 @@ class ImageAssetPipeline:
             if self.image_profile == IMAGE_PROFILE_FULL
             else (self.image_profile,)
         )
-        history_by_profile = self.map_history_loader.load_many(
-            history_profiles,
-            self.config.image_work_root / "map-cache",
-        )
+        if self.ignore_image_map:
+            history_by_profile = {
+                profile: AssetMapHistory(
+                    profile=profile, profile_key=profile,
+                    manifest_url=self.map_history_loader.manifest_url,
+                    bootstrap=True, source="ignored",
+                )
+                for profile in history_profiles
+            }
+            self._emit("image_extract", "无视 map 导出已开启：不读取历史 map，导出所有匹配图片")
+        else:
+            history_by_profile = self.map_history_loader.load_many(
+                history_profiles,
+                self.config.image_work_root / "map-cache",
+            )
         history = history_by_profile[self.image_profile]
         comparison_histories = tuple(
             item for item in history_by_profile.values() if not item.bootstrap
         )
         comparison_bootstrap = not comparison_histories
         for item in history_by_profile.values():
+            if self.ignore_image_map:
+                continue
             if item.bootstrap:
                 self._emit(
                     "image_extract",
@@ -1073,12 +1083,12 @@ class ImageAssetPipeline:
                     else f"{item.profile_key} 历史 map 缓存未命中，已下载校验并缓存：{item.map_path}"
                 ),
             )
-        if comparison_bootstrap:
+        if comparison_bootstrap and not self.ignore_image_map:
             self._emit(
                 "image_extract",
                 "所有比对用历史 map 均不存在，首次引导将导出完整当前 map",
             )
-        elif self.image_profile == IMAGE_PROFILE_FULL:
+        elif not self.ignore_image_map and self.image_profile == IMAGE_PROFILE_FULL:
             compared = " + ".join(item.profile_key for item in comparison_histories)
             self._emit(
                 "image_extract",
@@ -1101,10 +1111,8 @@ class ImageAssetPipeline:
         remote_map = run_root / "assets.remote.map"
         containers_filter = self.image_config.image_containers_filter
         started = time.monotonic()
-        command = sdk_command(
-            self.config.java_path, self.config.image_sdk, IMAGE_RUNNER_SOURCE,
-            work_root=run_root,
-        ) + [
+        parser_digest = image_parser_digest()
+        command = [sys.executable, "-u", "-m", "ake_tool.image_memory_runner"] + [
             str(self.vfs_root),
             str(run_root),
             str(delta_output),
@@ -1121,20 +1129,27 @@ class ImageAssetPipeline:
                     str(standard_history.entry_count if standard_history.map_path else 0),
                 ]
             )
+        if builtin_root is not None:
+            command.extend(["--unity-resources", str(builtin_root)])
         self._emit("image_extract", f"containers_filter：{containers_filter}")
         self._emit("image_extract", f"执行命令：{format_command(command)}")
-        self._emit("image_extract", "启动 beyond-sdk.jar：一次构图、一次原生 map 差分、最多一次导出…")
+        self._emit("image_extract", "启动 Python 图片解析：按清单筛选并逐 Bundle 构图导出…")
         process_env = os.environ.copy()
         process_env["PERLICA_VFS_KEY_BASE64"] = encoded_vfs_key
+        process_env["PYTHONIOENCODING"] = "utf-8"
+        process_env["PYTHONDONTWRITEBYTECODE"] = "1"
+        process_env["AKE_IMAGE_BUNDLE_CACHE_GIB"] = str(self.config.image_bundle_cache_gib)
+        process_env["AKE_IMAGE_PARSE_WORKERS"] = str(self.config.image_parse_workers)
         process = subprocess.Popen(
             command,
-            cwd=self.config.image_sdk.parent,
+            cwd=TOOL_ROOT,
             env=process_env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
             encoding="utf-8",
             errors="replace",
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         lines: queue.Queue[str | None] = queue.Queue()
         metrics: dict[str, int] | None = None
@@ -1152,11 +1167,7 @@ class ImageAssetPipeline:
         try:
             while process.poll() is None or not reader_finished:
                 if self.token.is_cancelled:
-                    process.terminate()
-                    try:
-                        process.wait(timeout=5)
-                    except subprocess.TimeoutExpired:
-                        process.kill()
+                    _stop_image_process(process)
                     self.token.raise_if_cancelled()
                 try:
                     line = lines.get(timeout=0.2)
@@ -1171,7 +1182,7 @@ class ImageAssetPipeline:
                                 )
                             }
                         except (ValueError, TypeError) as exc:
-                            raise AkeToolError("beyond-sdk 返回了无效的 map 差分统计") from exc
+                            raise AkeToolError("Python 图片解析器返回了无效的 map 差分统计") from exc
                         self._emit("image_extract", line)
                     elif line:
                         self._emit("image_extract", line)
@@ -1210,19 +1221,26 @@ class ImageAssetPipeline:
                         self._emit("image_extract", f"解析进程仍在运行，暂时无法统计输出：{exc}")
                     next_progress = time.monotonic() + 30
             if process.returncode:
-                raise AkeToolError(f"beyond-sdk.jar 图片解析失败，退出码 {process.returncode}")
+                raise AkeToolError(f"Python 图片解析失败，退出码 {process.returncode}")
         finally:
             if process.poll() is None:
-                process.kill()
+                _stop_image_process(process)
         if metrics is None:
-            raise AkeToolError("beyond-sdk 未返回原生 map 差分统计")
+            raise AkeToolError("Python 图片解析器未返回 map 差分统计")
+        if metrics.get("failures", 0):
+            raise ValidationError(f'图片构图存在 {metrics["failures"]} 个错误，拒绝发布')
+        if metrics.get("warnings", 0):
+            self._emit("image_extract", f'图片构图有 {metrics["warnings"]} 条未解析外部引用；'
+                       f'内容可能不完整，详见 {run_root / "unresolved-cabs.json"}')
+        if image_parser_digest() != parser_digest:
+            raise ValidationError("图片解析期间 Python 解析器发生变化，拒绝合并输出")
 
         elapsed = time.monotonic() - started
         full_map = run_root / "assets.full.map"
         delta_map = run_root / "assets.delta.map"
         for label, path in (("完整", full_map), ("增量", delta_map), ("远端候选", remote_map)):
             if not path.is_file() or path.stat().st_size == 0:
-                raise ValidationError(f"beyond-sdk 未生成有效的{label}原生 map：{path}")
+                raise ValidationError(f"Python 图片解析器未生成有效的{label}原生 map：{path}")
         expected_history_entries = sum(
             item.entry_count for item in comparison_histories
         )
@@ -1242,7 +1260,7 @@ class ImageAssetPipeline:
             else 0
         )
         if metrics["delta"] > 0 and delta_file_count == 0:
-            raise ValidationError("增量 map 非空，但 SDK delta-output/assets 中没有素材")
+            raise ValidationError("增量 map 非空，但 delta-output/assets 中没有素材")
         if delta_asset_root.is_dir():
             assert_no_linked_files(delta_asset_root, "图片增量解析输出 assets")
         delta_export_paths = _delta_export_paths(delta_asset_root)
@@ -1283,7 +1301,7 @@ class ImageAssetPipeline:
             "image_publish_authorized": True,
             "image_authorization_steps": ["image_analyze", "image_prepare", "image_extract"],
             "image_version_identity": list(self._version_identity(latest)),
-            "image_jar_digest": sha256_file(self.config.image_sdk),
+            "image_parser_digest": parser_digest,
             # Compatibility fields: full-history scans are no longer performed.
             "image_output_digest": "",
             "image_persistent_files": None,
@@ -1310,7 +1328,7 @@ class ImageAssetPipeline:
             "image_comparison_history_versions": {
                 item.profile: item.version for item in comparison_histories
             },
-            "image_map_bootstrap": comparison_bootstrap,
+            "image_map_bootstrap": comparison_bootstrap and not self.ignore_image_map,
             "image_map_manifest_url": history.manifest_url,
             "image_map_skipped_entries": metrics["skipped"],
             "image_map_invalid_current_hashes": metrics["invalidCurrent"],
@@ -1351,8 +1369,8 @@ class ImageAssetPipeline:
             }[key]
             if not path.is_file() or sha256_file(path) != authorization.get(digest_key):
                 raise ValidationError(f"图片发布授权失效：{label} 缺失或摘要变化")
-        if sha256_file(self.config.image_sdk) != authorization.get("jarDigest"):
-            raise ValidationError("图片发布授权失效：beyond-sdk.jar 已变化")
+        if image_parser_digest() != authorization.get("parserDigest"):
+            raise ValidationError("图片发布授权失效：Python 解析器已变化或旧状态需要重新解析")
         version_values = self._cached_image_version_values(state, authorization)
         asset_version = str(authorization.get("assetVersion", "")).strip()
         if not re.fullmatch(
@@ -1524,7 +1542,7 @@ class ImageAssetPipeline:
                 "hotfixVersion": str(values.get("image_hotfix_version", "")),
                 "versionIdentity": list(values.get("image_version_identity", [])),
                 "completedSteps": list(values.get("image_authorization_steps", [])),
-                "jarDigest": str(values.get("image_jar_digest", "")),
+                "parserDigest": str(values.get("image_parser_digest", "")),
                 "outputRoot": str(values.get("image_output_path", "")),
                 "outputDigest": str(values.get("image_output_digest", "")),
                 "persistentFiles": values.get("image_persistent_files"),

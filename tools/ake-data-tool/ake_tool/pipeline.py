@@ -93,7 +93,8 @@ class Pipeline:
         return latest
 
     def run(self) -> dict[str, Any]:
-        return self.run_steps(list(PIPELINE_STAGES))
+        return self.run_steps([stage for stage in PIPELINE_STAGES
+                               if stage != "upload" or self.config.enable_r2])
 
     def run_steps(self, stages: list[str]) -> dict[str, Any]:
         stages = list(dict.fromkeys(stages))
@@ -102,6 +103,8 @@ class Pipeline:
             raise ValueError(f"未知流程步骤：{', '.join(invalid)}")
         if not stages:
             raise ValueError("没有选择任何流程步骤")
+        if "upload" in stages and not self.config.enable_r2:
+            raise ValueError("R2 功能已关闭，发布终点为本地 public")
         self.config.validate(require_tool="unpack" in stages)
         if "upload" in stages and not self.config.rclone.is_file():
             raise FileNotFoundError(f"rclone 不存在：{self.config.rclone}")
