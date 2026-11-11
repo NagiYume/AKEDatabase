@@ -389,6 +389,14 @@ def validate_asset_index(value: Any, allow_v1: bool = True) -> dict[str, Any]:
         clean_dataset["files"] = clean
         result["datasets"][kind] = clean_dataset
     cc_data = result.get("ccData")
+    dump_data = result.get('dumpData')
+    if dump_data is not None:
+        if not isinstance(dump_data, dict) or dump_data.get('root') != 'public/Dump' or not isinstance(dump_data.get('files'), dict):
+            raise ValidationError('Dump 资产索引结构无效')
+        for raw_path, record in dump_data['files'].items():
+            path = validate_relative_path(raw_path, 'Dump 索引路径')
+            if not isinstance(record, dict) or not isinstance(record.get('size'), int) or isinstance(record.get('size'), bool) or record['size'] < 0 or not MD5_PATTERN.fullmatch(str(record.get('md5', ''))) or not ASSET_VERSION_PATTERN.fullmatch(str(record.get('version', ''))):
+                raise ValidationError(f'Dump 索引记录无效：{path}')
     if cc_data is not None:
         if not isinstance(cc_data, dict) or cc_data.get("root") != "public" or not isinstance(cc_data.get("files"), dict):
             raise ValidationError("合约数值索引结构无效")

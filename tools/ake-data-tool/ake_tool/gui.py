@@ -314,6 +314,7 @@ class AssetUploadWorker(QObject):
         image_profile: str = "",
         image_config: ImageParsingConfig | None = None,
         manual_update: bool = False,
+        include_globalbuff: bool = False,
     ) -> None:
         super().__init__()
         self.action = action
@@ -324,6 +325,7 @@ class AssetUploadWorker(QObject):
         self.image_profile = image_profile
         self.image_config = image_config
         self.manual_update = manual_update
+        self.include_globalbuff = include_globalbuff
         self.token = CancellationToken()
 
     @pyqtSlot()
@@ -337,6 +339,7 @@ class AssetUploadWorker(QObject):
                     image_profile=self.image_profile or None,
                     image_config=self.image_config,
                     manual_update=self.manual_update,
+                    include_globalbuff=self.include_globalbuff,
                 )
             elif self.action == "sync":
                 result = manager.sync_assets(
@@ -625,6 +628,14 @@ class MainWindow(QMainWindow):
         json_parse_scroll.setFrameShape(QFrame.Shape.NoFrame)
         json_parse_scroll.setWidget(json_parse_page)
         self.tabs.addTab(json_parse_scroll, "Json 解析")
+
+        globalbuff_page = QWidget()
+        globalbuff_root = QVBoxLayout(globalbuff_page)
+        globalbuff_root.setContentsMargins(20, 18, 20, 18)
+        globalbuff_scroll = QScrollArea()
+        globalbuff_scroll.setWidgetResizable(True)
+        globalbuff_scroll.setWidget(globalbuff_page)
+        self.tabs.addTab(globalbuff_scroll, "GlobalBuff 解析")
 
         json_page = QWidget()
         json_page.setMinimumWidth(1120)
@@ -1113,6 +1124,7 @@ class MainWindow(QMainWindow):
         self._build_image_page(image_root, IMAGE_PROFILE_STANDARD)
         self._build_image_page(full_image_root, IMAGE_PROFILE_FULL)
         self._build_json_parse_page(json_parse_root)
+        self._build_globalbuff_page(globalbuff_root)
         self._build_json_page(json_root)
         self._build_r2_page(r2_root)
 
@@ -1171,6 +1183,7 @@ class MainWindow(QMainWindow):
         self.asset_images_check = QCheckBox("图片素材")
         self.asset_images_full_check = QCheckBox("图片素材（全部）")
         self.asset_json_check = QCheckBox("Json 数据")
+        self.asset_globalbuff_check = QCheckBox("GlobalBuff 数据")
         self.asset_images_check.setChecked(False)
         self.asset_images_full_check.setChecked(False)
         self.asset_json_check.setChecked(True)
@@ -1185,6 +1198,7 @@ class MainWindow(QMainWindow):
         selection_layout.addWidget(self.asset_images_check)
         selection_layout.addWidget(self.asset_images_full_check)
         selection_layout.addWidget(self.asset_json_check)
+        selection_layout.addWidget(self.asset_globalbuff_check)
         selection_layout.addWidget(self.asset_delta_check)
         selection_layout.addWidget(self.asset_manual_check)
         selection_layout.addStretch()
@@ -1215,7 +1229,7 @@ class MainWindow(QMainWindow):
         policy_group = QGroupBox("同步策略")
         policy_layout = QVBoxLayout(policy_group)
         policy = QLabel(
-            "比较操作读取 R2 根目录 asset-sync-index.json，按路径、大小和 MD5 比较本地图片与 Json 数据；"
+            "比较操作读取 R2 根目录 asset-sync-index.json，按路径、大小和 MD5 比较本地图片、Json 与 GlobalBuff 数据；"
             "Json 子目录 manifest.json 仅作兼容保留，不再由本工具生成或更新。正式同步会复用当前差异计划，并先删除远端多余对象，"
             "再上传新增或变更文件。比较和正式同步都会检查整个 R2 Bucket，"
             "预计或实际占用超过 10 GB 时只会提醒，不会阻止上传。图片只比较所选 profile 的正则作用域，"
@@ -1333,6 +1347,8 @@ class MainWindow(QMainWindow):
             )
         )
         self.asset_json_check.toggled.connect(self._invalidate_asset_selection)
+        self.asset_globalbuff_check.toggled.connect(lambda checked: self._enforce_asset_selection_exclusive(self.asset_globalbuff_check, checked))
+        self.asset_globalbuff_check.toggled.connect(self._invalidate_asset_selection)
         self.asset_delta_check.toggled.connect(
             lambda checked: self._enforce_asset_selection_exclusive(
                 self.asset_delta_check, checked
@@ -1692,6 +1708,76 @@ class MainWindow(QMainWindow):
         )
         config_sync_button.clicked.connect(lambda: self._start_image_config_sync(profile))
         filter_edit.textChanged.connect(lambda _text, selected=profile: self._image_config_edited(selected))
+
+    def _build_globalbuff_page(self, root: QVBoxLayout) -> None:
+        title = QLabel('GlobalBuff 解析')
+        title.setObjectName('pageTitle')
+        root.addWidget(title)
+        hint = QLabel('检查并准备 Bundle VFS，使用匹配版本的游戏运行时解析 GlobalBuff，发布至 public/Dump/GlobalBuffData；可在资产上传中独立勾选。')
+        hint.setWordWrap(True)
+        root.addWidget(hint)
+        steps = QGroupBox('GlobalBuff 流程 · 可勾选组合运行，也可单步执行')
+        step_layout = QGridLayout(steps)
+        self.globalbuff_step_status = {}
+        self.globalbuff_step_checks = {}
+        self.globalbuff_single_buttons = []
+        specs = [('globalbuff_analyze', '1. 检查最新版本/索引'),
+                 ('globalbuff_prepare', '2. 准备并校验 Bundle VFS'),
+                 ('globalbuff_extract', '3. 解析 GlobalBuff'),
+                 ('globalbuff_publish', '4. 发布到 public/Dump')]
+        for index, (stage, label) in enumerate(specs):
+            card = QFrame()
+            card.setObjectName('stepCard')
+            layout = QVBoxLayout(card)
+            check = QCheckBox(label)
+            check.setChecked(True)
+            status = QLabel('待运行')
+            status.setObjectName('stepStatus')
+            button = QPushButton('单步执行')
+            button.clicked.connect(lambda _checked=False, selected=stage: self._start_image_steps([selected]))
+            layout.addWidget(check)
+            layout.addWidget(status)
+            layout.addWidget(button)
+            step_layout.addWidget(card, 0, index)
+            self.globalbuff_step_checks[stage] = check
+            self.globalbuff_step_status[stage] = status
+            self.globalbuff_single_buttons.append(button)
+        root.addWidget(steps)
+        actions = QHBoxLayout()
+        self.globalbuff_run_button = QPushButton('一键解析并发布')
+        self.globalbuff_selected_button = QPushButton('运行勾选步骤')
+        self.globalbuff_cancel_button = QPushButton('取消')
+        self.globalbuff_cancel_button.setEnabled(False)
+        self.globalbuff_run_button.clicked.connect(lambda: self._start_image_steps(list(self.globalbuff_step_checks)))
+        self.globalbuff_selected_button.clicked.connect(lambda: self._start_image_steps(
+            [stage for stage, check in self.globalbuff_step_checks.items() if check.isChecked()]))
+        self.globalbuff_cancel_button.clicked.connect(self._cancel_image_task)
+        actions.addWidget(self.globalbuff_run_button)
+        actions.addWidget(self.globalbuff_selected_button)
+        actions.addWidget(self.globalbuff_cancel_button)
+        actions.addStretch()
+        root.addLayout(actions)
+        self.globalbuff_status_label = QLabel('就绪')
+        root.addWidget(self.globalbuff_status_label)
+        self.globalbuff_progress_bar = QProgressBar()
+        self.globalbuff_progress_bar.setRange(0, 1000)
+        self.globalbuff_progress_bar.setValue(0)
+        root.addWidget(self.globalbuff_progress_bar)
+        self.globalbuff_version_label = QLabel('游戏：—　Seed：—　Hotfix：—　待下载：—')
+        self.globalbuff_version_label.setWordWrap(True)
+        root.addWidget(self.globalbuff_version_label)
+        self.globalbuff_paths_label = QLabel()
+        self.globalbuff_paths_label.setWordWrap(True)
+        self.globalbuff_paths_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.globalbuff_paths_label.setText(
+            f"VFS：{self.config.image_work_root / 'VFS'}\n"
+            f"解析输出：{self.config.image_work_root / 'globalbuff-output' / 'GlobalBuffData'}\n"
+            f"发布目标：{self.config.public_root / 'Dump' / 'GlobalBuffData'}")
+        root.addWidget(self.globalbuff_paths_label)
+        self.globalbuff_log = QPlainTextEdit()
+        self.globalbuff_log.setReadOnly(True)
+        self.globalbuff_log.setMaximumBlockCount(5000)
+        root.addWidget(self.globalbuff_log, 1)
 
     def _build_json_parse_page(self, root: QVBoxLayout) -> None:
         title = QLabel("Json 解析")
@@ -2426,7 +2512,7 @@ class MainWindow(QMainWindow):
             return
         if source is self.asset_manual_check:
             incompatible = (self.asset_images_check, self.asset_images_full_check,
-                            self.asset_json_check, self.asset_delta_check)
+                            self.asset_json_check, self.asset_globalbuff_check, self.asset_delta_check)
         elif source is self.asset_images_check:
             incompatible = (self.asset_images_full_check, self.asset_manual_check)
         elif source is self.asset_images_full_check:
@@ -2536,7 +2622,7 @@ class MainWindow(QMainWindow):
 
     def _asset_plan_ready(self) -> bool:
         include_json, include_images = self._asset_selection()
-        return include_json or include_images
+        return include_json or include_images or self.asset_globalbuff_check.isChecked()
 
     def _refresh_asset_action_buttons(self) -> None:
         idle = not any(
@@ -2576,7 +2662,8 @@ class MainWindow(QMainWindow):
         sync_note = (
             "手动更新将按远端索引全量比较并同步图片和 Json，不提交图片 Map。"
             if plan.get("manual_update")
-            else "图片资产与索引确认后，完整 map 会先上传，manifest 最后提交。"
+            else "图片资产与索引确认后，完整 map 会先上传，manifest 最后提交。" if plan.get('include_images')
+            else "将按所选范围同步数据并更新资产索引。"
         )
         answer = QMessageBox.warning(
             self,
@@ -2590,7 +2677,8 @@ class MainWindow(QMainWindow):
             f"图片比较方式：{'手动全量比较' if plan.get('manual_update') else ('差分 Map' if plan.get('image_delta_upload_enabled') else '全量索引比较')}\n"
             f"差分文件总数：{plan.get('image_delta_export_file_count', 0)}\n"
             f"实际待上传数量：{counts.get('upload', 0) + counts.get('overwrite', 0)}\n"
-            f"Json 比较：{'完整目录比较' if include_json else '未选择'}\n"
+            f"普通 Json 比较：{'完整目录比较' if include_json else '未选择'}\n"
+            f"GlobalBuff 比较：{'已选择' if plan.get('include_globalbuff') else '未选择'}\n"
             f"正式资产版本：{plan.get('asset_version') or '—'}\n"
             f"Map 上传版本：{plan.get('image_map_upload_version') or '—'}\n"
             f"Map 文件：{plan.get('image_map_upload_file') or '—'}\n"
@@ -2599,7 +2687,7 @@ class MainWindow(QMainWindow):
             f"过程中峰值：{int(plan.get('peak_projected_total_bytes', 0)) / 1_000_000_000:.2f} GB"
             "（10 GB 仅作提醒）\n\n"
             + "差异来自 data.akedata.wiki 最新资产索引；同步成功后会更新该索引。\n"
-            + "图片只会新增/覆盖且不会删除历史对象；Json 按差异同步。"
+            + "图片只会新增/覆盖且不会删除历史对象；Json 和 GlobalBuff 在各自所选范围内按差异同步。"
             + sync_note
             + "是否继续？",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
@@ -2624,8 +2712,9 @@ class MainWindow(QMainWindow):
             return
         include_json, include_images = self._asset_selection()
         image_profile = self._selected_image_profile()
-        if not (include_json or include_images):
-            QMessageBox.warning(self, "未选择资产", "请至少选择图片素材或 Json 数据。")
+        include_globalbuff = self.asset_globalbuff_check.isChecked()
+        if not (include_json or include_images or include_globalbuff):
+            QMessageBox.warning(self, "未选择资产", "请至少选择图片、Json 或 GlobalBuff 数据。")
             return
         if action == "sync" and (
             not self._asset_plan_ready() or not self._json_plan_result
@@ -2650,6 +2739,9 @@ class MainWindow(QMainWindow):
                 return
             sources.append(str(json_root))
             remotes.append(f"{self.config.r2_remote}:{self.config.r2_bucket}/public/Json")
+        if include_globalbuff:
+            sources.append(str(self.config.public_root / 'Dump' / 'GlobalBuffData'))
+            remotes.append(f"{self.config.r2_remote}:{self.config.r2_bucket}/public/Dump/GlobalBuffData")
         self.json_source_value.setText("；".join(sources))
         self.json_remote_value.setText("；".join(remotes))
         self._json_action = action
@@ -2675,6 +2767,7 @@ class MainWindow(QMainWindow):
                 self.image_effective_configs[image_profile] if image_profile else None
             ),
             manual_update=self.asset_manual_check.isChecked(),
+            include_globalbuff=include_globalbuff,
         )
         worker.moveToThread(thread)
         thread.started.connect(worker.execute)
@@ -3279,7 +3372,7 @@ class MainWindow(QMainWindow):
         if not stages:
             QMessageBox.warning(self, "没有步骤", "请至少勾选一个素材流程步骤。")
             return
-        stage_kinds = {"json" if stage.startswith("json_") else "image" for stage in stages}
+        stage_kinds = {"json" if stage.startswith("json_") else "globalbuff" if stage.startswith("globalbuff_") else "image" for stage in stages}
         if len(stage_kinds) != 1:
             QMessageBox.warning(self, "步骤类型不一致", "图片与 Json 步骤必须在各自分页中运行。")
             return
@@ -3305,8 +3398,8 @@ class MainWindow(QMainWindow):
         self._image_requested_stages = stages
         self._image_active_stage = ""
         status_map = (
-            self.json_parse_step_status
-            if self._image_task_kind == "json"
+            self.globalbuff_step_status if self._image_task_kind == 'globalbuff' else
+            self.json_parse_step_status if self._image_task_kind == "json"
             else self.image_controls[self._image_active_profile]["step_status"]
         )
         assert isinstance(status_map, dict)
@@ -3314,7 +3407,11 @@ class MainWindow(QMainWindow):
             if stage in stages:
                 label.setText("等待")
                 label.setStyleSheet("")
-        if self._image_task_kind == "json":
+        if self._image_task_kind == 'globalbuff':
+            self.globalbuff_status_label.setText('正在启动 GlobalBuff 任务…')
+            self.globalbuff_progress_bar.setRange(0, 0)
+            self.globalbuff_log.appendPlainText(f"开始执行步骤：{', '.join(stages)}")
+        elif self._image_task_kind == "json":
             self.json_parse_progress_bar.setRange(0, 0)
             self.json_parse_percent_label.setText("")
             self.json_parse_status_label.setText("正在启动 Json 任务…")
@@ -3367,7 +3464,9 @@ class MainWindow(QMainWindow):
 
     def _cancel_image_task(self) -> None:
         if self.image_worker is not None:
-            if self._image_task_kind == "json":
+            if self._image_task_kind == 'globalbuff':
+                self.globalbuff_status_label.setText('正在取消…')
+            elif self._image_task_kind == "json":
                 self.json_parse_status_label.setText("正在取消…")
             else:
                 status = self.image_controls[self._image_active_profile]["status_label"]
@@ -3376,6 +3475,27 @@ class MainWindow(QMainWindow):
             self.image_worker.cancel()
 
     def _on_image_progress(self, event: ProgressEvent) -> None:
+        if self._image_task_kind == 'globalbuff':
+            old_stage = self._image_active_stage
+            if old_stage and event.stage in self._image_requested_stages:
+                if self._image_requested_stages.index(event.stage) < self._image_requested_stages.index(old_stage):
+                    self.globalbuff_log.appendPlainText(event.message)
+                    return
+            self.globalbuff_status_label.setText(event.message)
+            if event.stage in self.globalbuff_step_status and event.stage in self._image_requested_stages:
+                if self._image_active_stage and self._image_active_stage != event.stage:
+                    self.globalbuff_step_status[self._image_active_stage].setText('完成')
+                self._image_active_stage = event.stage
+                self.globalbuff_step_status[event.stage].setText('运行中')
+            elif not self._image_active_stage and self._image_requested_stages:
+                self._image_active_stage = self._image_requested_stages[0]
+            if event.total > 0:
+                self.globalbuff_progress_bar.setRange(0, 1000)
+                self.globalbuff_progress_bar.setValue(round(1000 * min(1, event.current / event.total)))
+            else:
+                self.globalbuff_progress_bar.setRange(0, 0)
+            self.globalbuff_log.appendPlainText(event.message)
+            return
         is_json = event.stage.startswith("json_")
         controls = self.image_controls[self._image_active_profile]
         status_map = self.json_parse_step_status if is_json else controls["step_status"]
@@ -3417,6 +3537,25 @@ class MainWindow(QMainWindow):
             self._image_last_message = event.message
 
     def _on_image_success(self, result: object) -> None:
+        if self._image_task_kind == 'globalbuff':
+            for stage in self._image_requested_stages:
+                self.globalbuff_step_status[stage].setText('完成')
+            self.globalbuff_progress_bar.setRange(0, 1000)
+            self.globalbuff_progress_bar.setValue(1000)
+            self.globalbuff_status_label.setText('所选 GlobalBuff 步骤已完成')
+            if isinstance(result, dict):
+                self.globalbuff_version_label.setText(
+                    f"游戏：{result.get('globalbuff_game_version', '—')}　"
+                    f"Seed：{result.get('globalbuff_seed_version', '—')}　"
+                    f"Hotfix：{result.get('globalbuff_hotfix_version', '—')}　"
+                    f"待下载：{result.get('globalbuff_remote_files', '—')} 个")
+            self.globalbuff_paths_label.setText(
+                f"VFS：{self.config.image_work_root / 'VFS'}\n"
+                f"解析输出：{self.config.image_work_root / 'globalbuff-output' / 'GlobalBuffData'}\n"
+                f"发布目标：{self.config.public_root / 'Dump' / 'GlobalBuffData'}")
+            self.globalbuff_log.appendPlainText(json.dumps(result, ensure_ascii=False, indent=2))
+            self._invalidate_asset_selection()
+            return
         is_json = self._image_task_kind == "json"
         controls = self.image_controls[self._image_active_profile]
         progress_bar = self.json_parse_progress_bar if is_json else controls["progress_bar"]
@@ -3467,6 +3606,15 @@ class MainWindow(QMainWindow):
                     self._refresh_image_upload_eligibility()
 
     def _on_image_failure(self, message: str) -> None:
+        if self._image_task_kind == 'globalbuff':
+            if self._image_active_stage in self.globalbuff_step_status:
+                self.globalbuff_step_status[self._image_active_stage].setText('失败')
+            self.globalbuff_progress_bar.setRange(0, 1000)
+            self.globalbuff_progress_bar.setValue(0)
+            self.globalbuff_status_label.setText('GlobalBuff 解析失败')
+            self.globalbuff_log.appendPlainText(message)
+            QMessageBox.critical(self, 'GlobalBuff 解析失败', message)
+            return
         is_json = self._image_task_kind == "json"
         controls = self.image_controls[self._image_active_profile]
         progress_bar = self.json_parse_progress_bar if is_json else controls["progress_bar"]
@@ -3492,6 +3640,13 @@ class MainWindow(QMainWindow):
         QMessageBox.critical(self, "Json 任务失败" if is_json else "图片任务失败", message)
 
     def _on_image_cancelled(self) -> None:
+        if self._image_task_kind == 'globalbuff':
+            if self._image_active_stage in self.globalbuff_step_status:
+                self.globalbuff_step_status[self._image_active_stage].setText('已取消')
+            self.globalbuff_progress_bar.setRange(0, 1000)
+            self.globalbuff_progress_bar.setValue(0)
+            self.globalbuff_status_label.setText('GlobalBuff 解析已取消')
+            return
         is_json = self._image_task_kind == "json"
         controls = self.image_controls[self._image_active_profile]
         progress_bar = self.json_parse_progress_bar if is_json else controls["progress_bar"]
@@ -3593,6 +3748,11 @@ class MainWindow(QMainWindow):
         self.json_parse_run_all_button.setEnabled(available)
         self.json_parse_run_selected_button.setEnabled(available)
         self.json_parse_cancel_button.setEnabled(image_busy and self._image_task_kind == "json")
+        self.globalbuff_run_button.setEnabled(available)
+        self.globalbuff_selected_button.setEnabled(available)
+        for button in self.globalbuff_single_buttons:
+            button.setEnabled(available)
+        self.globalbuff_cancel_button.setEnabled(image_busy and self._image_task_kind == 'globalbuff')
         self.manual_version_check.setEnabled(available)
         self._update_manual_version_controls(
             self.manual_version_check.isChecked() and available
@@ -3600,6 +3760,7 @@ class MainWindow(QMainWindow):
         self.r2_refresh_button.setEnabled(available)
         self._update_r2_delete_button()
         self.asset_json_check.setEnabled(available)
+        self.asset_globalbuff_check.setEnabled(available)
         self.asset_manual_check.setEnabled(available)
         self._refresh_image_upload_eligibility()
         include_json, _ = self._asset_selection()

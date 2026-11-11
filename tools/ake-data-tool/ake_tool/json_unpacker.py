@@ -102,3 +102,66 @@ def run_json_export(source: Path, output: Path, runtime: Path, token: Cancellati
                 process.wait()
         reader.join(timeout=5)
         process.stdout.close()
+
+
+def run_globalbuff_export(source: Path, output: Path, runtime: Path, token: CancellationToken,
+                          progress, *, key, limit=0, names=(), timeout=1800, idle_timeout=300) -> dict:
+    if os.name != 'nt':
+        raise ValidationError('GlobalBuff 解析需要 Windows x64 Python')
+    if output.exists() and any(output.iterdir()):
+        raise ValidationError(f'GlobalBuff 解析必须使用空的独立输出目录：{output}')
+    command = [sys.executable, '-u', '-m', 'ake_tool.globalbuff_export',
+               '--vfs', str(source), '--output', str(output), '--runtime', str(runtime)]
+    if limit:
+        command.extend(('--limit', str(limit)))
+    for name in names:
+        command.extend(('--name', name))
+    process = subprocess.Popen(command, cwd=Path(__file__).resolve().parents[1],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8',
+        errors='replace', creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+        env={**os.environ, 'PYTHONIOENCODING': 'utf-8', 'PYTHONDONTWRITEBYTECODE': '1',
+             'AKE_GLOBALBUFF_VFS_KEY': key})
+    lines = queue.Queue()
+    def read_output():
+        try:
+            for line in process.stdout:
+                lines.put(line.rstrip())
+        finally:
+            lines.put(None)
+    reader = threading.Thread(target=read_output, daemon=True)
+    reader.start()
+    started = last_progress = time.monotonic()
+    report = None
+    ended = False
+    try:
+        while not ended or process.poll() is None:
+            token.raise_if_cancelled()
+            if time.monotonic() - started > timeout or time.monotonic() - last_progress > idle_timeout:
+                raise TimeoutError('GlobalBuff 解析超时')
+            try:
+                line = lines.get(timeout=0.2)
+            except queue.Empty:
+                continue
+            if line is None:
+                ended = True
+                continue
+            last_progress = time.monotonic()
+            if line.startswith('AKE_GLOBALBUFF_RESULT '):
+                report = json.loads(line.removeprefix('AKE_GLOBALBUFF_RESULT '))
+            else:
+                progress(line)
+        code = process.wait()
+        files = list((output / 'GlobalBuffData').glob('*.json'))
+        if code or not isinstance(report, dict) or not report.get('selected') or len(files) != report['selected']:
+            raise AkeToolError(f'GlobalBuff 解析失败或结果不完整（退出码 {code}）')
+        return {**report, 'seconds': round(time.monotonic() - started, 2)}
+    finally:
+        if process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+        reader.join(timeout=5)
+        process.stdout.close()

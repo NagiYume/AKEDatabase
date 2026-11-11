@@ -53,7 +53,7 @@ from .models import (
 from .release import resolve_r2_versions
 from .unpacker import format_command
 from .image_parser_identity import image_parser_digest
-from .json_unpacker import resolve_json_runtime, run_json_export
+from .json_unpacker import resolve_json_runtime, run_json_export, run_globalbuff_export
 from .vfs_validation_cache import VfsValidationCache, latest_identity
 from .vfs_update import VfsUpdater
 
@@ -533,6 +533,7 @@ class ImageAssetPipeline:
             cached = (
                 self._version_values(latest)
                 if prefix == "image"
+                else self._globalbuff_versions(latest) if prefix == 'globalbuff'
                 else self._json_version_values(latest)
             )
             if all(str(state.get(key, "")) == value for key, value in cached.items()):
@@ -618,6 +619,10 @@ class ImageAssetPipeline:
             "json_prepare",
             "json_extract",
             "json_publish",
+            "globalbuff_extract",
+            "globalbuff_analyze",
+            "globalbuff_prepare",
+            "globalbuff_publish",
         }
         result: dict[str, Any] = {}
         try:
@@ -625,6 +630,8 @@ class ImageAssetPipeline:
                 if stage not in allowed:
                     raise ValidationError(f"未知素材流程步骤：{stage}")
                 self.token.raise_if_cancelled()
+                if stage.startswith('globalbuff_'):
+                    self._emit(stage, f'开始 {stage}')
                 if stage == "image_analyze":
                     result.update(self.analyze())
                 elif stage == "image_prepare":
@@ -641,6 +648,14 @@ class ImageAssetPipeline:
                     result.update(self.extract_json())
                 elif stage == "json_publish":
                     result.update(self.publish_json())
+                elif stage == "globalbuff_extract":
+                    result.update(self.extract_globalbuff())
+                elif stage == "globalbuff_analyze":
+                    result.update(self.analyze_globalbuff())
+                elif stage == "globalbuff_prepare":
+                    result.update(self.prepare_globalbuff_vfs())
+                elif stage == "globalbuff_publish":
+                    result.update(self.publish_globalbuff())
                 result["last_stage"] = stage
                 if stage.startswith("image_"):
                     result.update(
@@ -650,6 +665,13 @@ class ImageAssetPipeline:
                             "image_run_id": self._active_run_id,
                         }
                     )
+                if stage in ('globalbuff_analyze', 'globalbuff_prepare'):
+                    keys = ['globalbuff_extracted_hotfix_version', 'globalbuff_published_hotfix_version',
+                            'globalbuff_published_files']
+                    if stage == 'globalbuff_analyze':
+                        keys.extend(('globalbuff_prepared', 'globalbuff_prepared_hotfix_version'))
+                    for key in keys:
+                        result.pop(key, None)
                 self._save_state(result)
         except Exception as exc:
             failed_stage = stage if "stage" in locals() else "asset"
@@ -870,6 +892,150 @@ class ImageAssetPipeline:
         expected = "、".join(str(path) for path in candidates)
         raise ValidationError(f"Json 解析输出中未找到包含文件的数据目录，已检查：{expected}")
 
+    def _globalbuff_versions(self, latest: LatestInfo) -> dict[str, str]:
+        return {key.replace('image_', 'globalbuff_', 1): value
+                for key, value in self._version_values(latest).items()}
+
+    def analyze_globalbuff(self) -> dict[str, Any]:
+        self.config.validate_images(require_sources=False)
+        state = self._load_state()
+        for key in ('globalbuff_prepared', 'globalbuff_prepared_hotfix_version',
+                    'globalbuff_extracted_hotfix_version', 'globalbuff_published_hotfix_version',
+                    'globalbuff_published_files'):
+            state.pop(key, None)
+        self._write_state_data(state)
+        plan = self._get_resource_plan(IMAGE_BLOCKS, 'globalbuff_analyze', 'GlobalBuff')
+        latest = plan['latest']
+        counts = plan['source_counts']
+        self._emit('globalbuff_analyze', f"游戏 {latest.seed.seed_version}，Hotfix {latest.hotfix.res_version}；"
+                   f"工作目录可复用 {counts['workspace']} 个文件，需下载 {counts['remote']} 个")
+        return {'globalbuff_file_count': len(plan['entries']), 'globalbuff_remote_files': counts['remote'],
+                'globalbuff_remote_bytes': sum(e.size for e in plan['remote_entries']),
+                **self._globalbuff_versions(latest), **self._latest_runtime_values('globalbuff', latest)}
+
+    def prepare_globalbuff_vfs(self) -> dict[str, Any]:
+        self._emit('globalbuff_prepare', '正在准备并校验 Bundle VFS')
+        state = self._load_state()
+        for key in ('globalbuff_prepared', 'globalbuff_prepared_hotfix_version',
+                    'globalbuff_extracted_hotfix_version', 'globalbuff_published_hotfix_version',
+                    'globalbuff_published_files'):
+            state.pop(key, None)
+        self._write_state_data(state)
+        plan = self._get_resource_plan(IMAGE_BLOCKS, 'globalbuff_analyze', 'GlobalBuff')
+        latest = plan['latest']
+        counts = self._prepare_work_vfs(plan, IMAGE_BLOCKS, 'globalbuff_prepare')
+        return {'globalbuff_prepared': True, 'globalbuff_prepared_hotfix_version': latest.hotfix.res_version,
+                'globalbuff_vfs_update_counts': counts, **self._globalbuff_versions(latest),
+                **self._latest_runtime_values('globalbuff', latest)}
+
+    def extract_globalbuff(self) -> dict[str, Any]:
+        """Use only a complete, version-matched already prepared bundle VFS."""
+        latest = self._cached_latest_from_state('globalbuff', 'globalbuff_prepared_hotfix_version',
+                                                '请先准备并校验 GlobalBuff VFS')
+        updater = VfsUpdater(self.config.image_work_root, self.client, self.downloader,
+                             self.token, legacy_records=self.config.vfs_validation_records)
+        identity = latest_identity(latest)
+        for block in IMAGE_BLOCKS:
+            record = updater.records.get(block, {})
+            files = record.get('files')
+            if record.get('verified') is not True or any(record.get(k) != v for k, v in identity.items()) or not isinstance(files, dict) or not files:
+                raise ValidationError(f'GlobalBuff 需要同版本已校验的 {block} VFS，请先准备 GlobalBuff VFS')
+            for name, facts in files.items():
+                self.token.raise_if_cancelled()
+                if not isinstance(facts, list) or len(facts) != 2:
+                    raise ValidationError(f'{block} VFS 记录无效：{name}')
+                if not name.startswith(f'VFS/{BLOCK_IDS[block]}/'):
+                    raise ValidationError(f'{block} VFS 路径不属于对应区块：{name}')
+                entry = DownloadEntry(name=name, size=int(facts[0]), md5=str(facts[1]))
+                if not updater.matches(safe_target(self.config.image_work_root, name), entry, trusted=True):
+                    raise ValidationError(f'{block} VFS 文件缺失或大小不符：{name}')
+        runtime = resolve_json_runtime(self.config.image_work_root, latest.seed.game_version, latest.seed.seed_version)
+        runs = self.config.image_work_root / 'globalbuff-runs'
+        run = runs / (datetime.now().strftime('%Y%m%d-%H%M%S') + '-' + uuid.uuid4().hex[:8])
+        self._assert_vfs_is_independent()
+        if runs.is_symlink() or getattr(runs, 'is_junction', lambda: False)():
+            raise ValidationError(f'GlobalBuff 历史输出目录是链接：{runs}')
+        if self.config.image_work_root.resolve() not in runs.resolve().parents:
+            raise ValidationError(f'GlobalBuff 输出路径不在工作目录内：{runs}')
+        output = self.config.image_work_root / 'globalbuff-output'
+        state = self._load_state()
+        state.pop('globalbuff_output_path', None)
+        state.pop('globalbuff_asset_version', None)
+        state.pop('globalbuff_extracted_hotfix_version', None)
+        state.pop('globalbuff_published_hotfix_version', None)
+        state.pop('globalbuff_published_files', None)
+        self._write_state_data(state)
+        if output.exists():
+            assert_no_linked_files(output, 'GlobalBuff 输出')
+            runs.mkdir(parents=True, exist_ok=True)
+            if self.config.image_work_root.resolve() not in output.resolve().parents:
+                raise ValidationError(f'拒绝移动工作目录之外的 GlobalBuff 输出：{output}')
+            output.rename(runs / ('previous-' + uuid.uuid4().hex))
+        self._emit('globalbuff_extract', f'解析 GlobalBuff，运行时：{runtime}；输出：{run}')
+        self._emit('globalbuff_extract', '索引资源清单并初始化游戏序列化器，请稍候')
+        key = self._resolve_vfs_key(latest, self.config.image_work_root / 'il2cpp-host-runtime' / latest.seed.game_version,
+                                    stage='globalbuff_extract')
+        report = run_globalbuff_export(self.vfs_root, run, runtime, self.token,
+                                       lambda line: self._emit('globalbuff_extract', line), key=key)
+        if report.get('partial'):
+            raise ValidationError('样本结果不可用于正式上传')
+        game_version, main_version = resolve_r2_versions(latest)
+        report.update(identity, assetVersion=f'{game_version}@{main_version}', blocks=IMAGE_BLOCKS)
+        duplicate_ids = report.get('duplicateIds', {})
+        if duplicate_ids:
+            self._emit('globalbuff_extract', f'发现 {len(duplicate_ids)} 个内部 ID 对应多个资产；已按资产文件名分别保留，详情见解析报告')
+        (run / 'export-report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+        run.rename(output)
+        return {'globalbuff_output_path': str(output), 'globalbuff_count': report['selected'],
+                'globalbuff_asset_version': f'{game_version}@{main_version}',
+                'globalbuff_extracted_hotfix_version': latest.hotfix.res_version,
+                **self._globalbuff_versions(latest)}
+
+    def publish_globalbuff(self) -> dict[str, Any]:
+        from .release import globalbuff_files
+        state = self._load_state()
+        version = str(state.get('globalbuff_asset_version', ''))
+        if not state.get('globalbuff_extracted_hotfix_version') or not version:
+            raise ValidationError('请先完成 GlobalBuff 解析')
+        output = self.config.image_work_root / 'globalbuff-output'
+        if state.get('globalbuff_extracted_hotfix_version') != state.get('globalbuff_hotfix_version'):
+            raise ValidationError('GlobalBuff 提取结果版本与当前准备版本不一致，请重新解析')
+        latest = self._cached_latest_from_state('globalbuff', 'globalbuff_prepared_hotfix_version',
+                                                '请先准备并校验 GlobalBuff VFS')
+        updater = VfsUpdater(self.config.image_work_root, self.client, self.downloader,
+                             self.token, legacy_records=self.config.vfs_validation_records)
+        identity = latest_identity(latest)
+        for block in IMAGE_BLOCKS:
+            record = updater.records.get(block, {})
+            if record.get('verified') is not True or any(record.get(k) != v for k, v in identity.items()):
+                raise ValidationError(f'GlobalBuff 来源区块 {block} 已变化，请重新解析')
+        files = globalbuff_files(output, version)
+        source = output / 'GlobalBuffData'
+        dump_root = self.config.public_root / 'Dump'
+        target = dump_root / 'GlobalBuffData'
+        if dump_root.is_symlink() or getattr(dump_root, 'is_junction', lambda: False)():
+            raise ValidationError(f'public/Dump 不能是链接：{dump_root}')
+        assert_no_linked_files(target, 'public/Dump/GlobalBuffData')
+        if dump_root.resolve() != (self.config.public_root.resolve() / 'Dump'):
+            raise ValidationError('public/Dump 路径不安全')
+        state.pop('globalbuff_published_hotfix_version', None)
+        state.pop('globalbuff_published_files', None)
+        self._write_state_data(state)
+        target.mkdir(parents=True, exist_ok=True)
+        for name in files:
+            self.token.raise_if_cancelled()
+            sync_file_contents(source / name, target / name, self.token)
+        count = len(files)
+        from .asset_index import scan_dataset
+        published = scan_dataset(target, 'json')['files']
+        if any(published.get(name) != record for name, record in files.items()):
+            raise ValidationError('GlobalBuff 本地发布后校验不一致，拒绝记录发布成功')
+        leftover = len(set(published) - set(files))
+        self._emit('globalbuff_publish', f'已发布 {count} 个文件到 {target}；保留其他已有文件 {leftover} 个')
+        return {'globalbuff_published_files': files, 'globalbuff_publish_path': str(target),
+                'globalbuff_published_hotfix_version': state['globalbuff_extracted_hotfix_version'],
+                'globalbuff_asset_version': version}
+
     def publish_json(self) -> dict[str, Any]:
         state = self._load_state()
         if not state.get("json_extracted_hotfix_version"):
@@ -935,7 +1101,7 @@ class ImageAssetPipeline:
             return
         copy_file_contents(source, target, self.token)
 
-    def _resolve_vfs_key(self, latest: LatestInfo, runtime_root: Path) -> str:
+    def _resolve_vfs_key(self, latest: LatestInfo, runtime_root: Path, stage: str = 'image_extract') -> str:
         # Use the same uniquely versioned complete runtime as the Json host.
         runtime = resolve_json_runtime(
             self.config.image_work_root, latest.seed.game_version, latest.seed.seed_version
@@ -943,7 +1109,7 @@ class ImageAssetPipeline:
         command = [sys.executable, "-u", "-m", "ake_tool.json_host.image_key",
                    str(runtime), str(runtime_root / "image-key-persistent" /
                                      self._safe_version(latest.seed.seed_version))]
-        self._emit("image_extract", f"使用 Python 宿主获取 VFS key：{runtime}")
+        self._emit(stage, f"使用 Python 宿主获取 VFS key：{runtime}")
         process = subprocess.Popen(
             command, cwd=TOOL_ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             text=True, encoding="utf-8", errors="replace",
@@ -987,7 +1153,7 @@ class ImageAssetPipeline:
                         raise AkeToolError("Python VFS key 宿主返回的 key 长度错误")
                     encoded_key = candidate
                 elif line:
-                    self._emit("image_extract", line)
+                    self._emit(stage, line)
             if process.wait() != 0 or encoded_key is None:
                 raise AkeToolError("Python VFS key 宿主失败或没有返回 key")
             return encoded_key
@@ -1633,6 +1799,25 @@ class ImageAssetPipeline:
             current.pop("json_published_hotfix_version", None)
         elif last_stage == "json_extract":
             current.pop("json_published_hotfix_version", None)
+        elif last_stage == 'globalbuff_analyze':
+            for key in ('globalbuff_prepared', 'globalbuff_prepared_hotfix_version',
+                        'globalbuff_extracted_hotfix_version', 'globalbuff_published_hotfix_version',
+                        'globalbuff_published_files'):
+                current.pop(key, None)
+        elif last_stage == 'globalbuff_prepare':
+            for key in ('globalbuff_extracted_hotfix_version', 'globalbuff_published_hotfix_version',
+                        'globalbuff_published_files'):
+                current.pop(key, None)
+        elif last_stage == 'globalbuff_extract':
+            current.pop('globalbuff_published_hotfix_version', None)
+            current.pop('globalbuff_published_files', None)
+        elif last_stage == 'globalbuff_publish':
+            current.pop('globalbuff_published_hotfix_version', None)
+            current.pop('globalbuff_published_files', None)
+            # State retains the durable publication receipt; the worker result
+            # and GUI log should not contain hundreds of file records.
+            current.update(values)
+            values.pop('globalbuff_published_files', None)
         current["schemaVersion"] = 3
         current["profiles"] = profiles
         current.update(values)
