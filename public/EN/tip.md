@@ -1,10 +1,24 @@
 # Special Announcement
 
-AKEData `v1.3.7` restores first-season Contingency Contract indicator values, adds missing-data notifications, and improves asset requests during the initial page load.
+AKEData `v1.3.8` improves second-season Contingency Contract indicators and enemy attributes, updates attribute calculations, and adds display preferences.
 
 AKEData has moved to www.akedata.wiki. The former domain, akedata.top, now redirects here.
 
 # AKEData Version Changelog
+
+### v1.3.8
+
+#### Contingency Contract
+
+- Added the available second-season indicator text, blackboard values, and Buff mappings. Selecting indicators updates applicable enemy Buffs and calculable attributes.
+- Fixed enemy configurations from different contracts being mixed and variant bonuses being duplicated when toggling indicators.
+- Unavailable indicators and blackboard entries without identified Buffs remain unresolved. Dynamic and conditional effects remain subject to in-game behavior.
+
+#### Enemy attributes and dungeons
+
+- Apply enemy variant modifiers before Buffs. Bonuses in the same multiplier zone are added, while final multipliers are multiplied separately.
+- Updated attribute calculations and displays in Enemies, Dungeons, Contingency Contract, Umbral Monument, and War Echoes. Formula details retain the distinction between variant and Buff stages.
+- Added settings to choose displayed enemy attributes and improved defaults, missing attributes, and reset behavior.
 
 ### v1.3.7
 

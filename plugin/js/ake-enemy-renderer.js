@@ -31,10 +31,11 @@
     function calculateStats(options) {
         const baseModifiers = options.baseModifiers || [];
         const scriptModifiers = options.scriptModifiers || [];
-        const baseResult = options.getDetails(options.attrData, options.level, baseModifiers);
+        const variantModifiers = options.variantModifiers || [];
+        const baseResult = options.getDetails(options.attrData, options.level, baseModifiers, variantModifiers);
         const stats = baseResult?.values || {};
         const scriptResult = scriptModifiers.length
-            ? options.getDetails(options.attrData, options.level, [...baseModifiers, ...scriptModifiers])
+            ? options.getDetails(options.attrData, options.level, [...baseModifiers, ...scriptModifiers], variantModifiers)
             : null;
         const scriptStats = scriptResult?.values || null;
         const changedStats = scriptStats

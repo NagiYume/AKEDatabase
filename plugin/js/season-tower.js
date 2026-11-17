@@ -163,12 +163,13 @@
         return order;
     }
 
-    function getEnemyStatDetails(attrTemplate, level, modifiers) {
+    function getEnemyStatDetails(attrTemplate, level, modifiers, variantModifiers = []) {
         const displayOrder = getEnemyAttrDisplayOrder();
         return window.AKEStats.getEnemyStatDetailsAtLevel(attrTemplate, level, modifiers, {
             displayOrder,
             allowedAttrTypes: displayOrder,
             getAttrName: type => attrMap[type] || t('attribute', { id: type }),
+            variantModifiers,
             includeModifierOnlyAttrs: false
         });
     }
@@ -226,7 +227,7 @@
         const display = data.enemyDisplay[enemy.templateId] || {};
         const attrTemplate = data.enemyAttrs[enemy.attrTemplateId] || {};
         const ownBuffs = enemy.bornBuffs || [];
-        const modifiers = [...(enemy.attrModifiers || [])];
+        const modifiers = [];
         ownBuffs.forEach(id => modifiers.push(...buffModifiers(id, [])));
         (libraryBuffs || []).forEach(buff => modifiers.push(...buffModifiers(buff.buffId, buff.blackboard)));
         const scriptedModifiers = (scriptedBuffs || []).flatMap(buff => buffModifiers(buff.buffId, buff.blackboard));
@@ -238,6 +239,7 @@
             attrData: attrTemplate,
             level,
             baseModifiers: modifiers,
+            variantModifiers: enemy.attrModifiers || [],
             scriptModifiers: scriptedModifiers,
             getDetails: getEnemyStatDetails
         });

@@ -619,12 +619,13 @@
             });
         }
 
-        function getEnemyStatDetailsAtLevel(attrTemplateData, enemyLevel, modifiers) {
+        function getEnemyStatDetailsAtLevel(attrTemplateData, enemyLevel, modifiers, variantModifiers = []) {
             const displayOrder = getEnemyAttrDisplayOrder();
             return window.AKEStats.getEnemyStatDetailsAtLevel(attrTemplateData, enemyLevel, modifiers, {
                 displayOrder,
                 allowedAttrTypes: displayOrder,
                 getAttrName,
+                variantModifiers,
                 includeModifierOnlyAttrs: false
             });
         }
@@ -655,7 +656,7 @@
             const ownBuffModifiers = ownBuffs.flatMap(id => getBuffModifiers(id, []));
             const libraryBuffModifiers = libBuffs.flatMap(b => getBuffModifiers(b.buffId, b.blackboard));
             const buffModifiers = [...ownBuffModifiers, ...libraryBuffModifiers];
-            const allModifiers = [...inlineModifiers, ...buffModifiers];
+            const allModifiers = buffModifiers;
             const scriptModifiers = (scriptedBuffs || []).flatMap(b => getBuffModifiers(b.buffId, b.blackboard));
 
             const flags = [];
@@ -727,6 +728,7 @@
                 attrData,
                 level: enemyLevel,
                 baseModifiers: allModifiers,
+                variantModifiers: inlineModifiers,
                 scriptModifiers,
                 getDetails: getEnemyStatDetailsAtLevel
             });

@@ -27,11 +27,13 @@ from .asset_maps import (
     validate_map_manifest,
 )
 from .config import AppConfig
+from .image_parser_identity import image_parser_digest
 from .errors import AkeToolError, CancelledError, ValidationError
 from .asset_index import (
     index_digest,
     _json_meta,
     merge_asset_index,
+    merge_dataset_records,
     plan_dataset_changes,
     scan_selected_dataset,
     scan_dataset,
@@ -48,6 +50,7 @@ from .image_paths import (
 )
 from .models import CancellationToken, LatestInfo, ProgressCallback, ProgressEvent
 from .public_http import public_download_headers, read_public_bytes
+from .file_copy import assert_no_linked_files
 
 
 COMMON_RCLONE_ARGS = [
@@ -64,6 +67,55 @@ ASSET_PROBE_WORKERS = 32
 ASSET_PROBE_REPEATS = 2
 PUBLIC_IMAGE_BASE_URL = "https://data.akedata.wiki/public/images"
 TOOL_ROOT = Path(__file__).resolve().parent.parent
+
+
+def globalbuff_files(root: Path, asset_version: str) -> dict[str, Any]:
+    report_path = root / 'export-report.json'
+    assert_no_linked_files(root, 'GlobalBuff 解析输出')
+    try:
+        report = json.loads(report_path.read_text(encoding='utf-8'))
+    except (OSError, ValueError) as exc:
+        raise ValidationError('缺少完整 GlobalBuff 解析报告，请先重新解析') from exc
+    if report.get('partial') is not False or not report.get('selected'):
+        raise ValidationError('GlobalBuff 解析结果不完整')
+    if report.get('assetVersion') != asset_version:
+        raise ValidationError('GlobalBuff 解析版本与当前资产版本不一致，请重新解析')
+    if not isinstance(report.get('vfsRoot'), str) or not report['vfsRoot'].strip() or Path(report['vfsRoot']).resolve() != (root.parent / 'VFS').resolve():
+        raise ValidationError('GlobalBuff VFS 来源与工作目录不一致')
+    directory = root / 'GlobalBuffData'
+    files = scan_dataset(directory, 'json')['files']
+    facts = report.get('files')
+    if not isinstance(facts, dict) or set(files) != set(facts) or len(files) != report['selected']:
+        raise ValidationError('GlobalBuff 文件清单与解析报告不一致')
+    for name, record in files.items():
+        fact = facts[name]
+        if not isinstance(fact, dict) or record['size'] != fact.get('size') or sha256_file(directory / name) != fact.get('sha256'):
+            raise ValidationError(f'GlobalBuff 文件内容与解析报告不一致：{name}')
+    return files
+
+
+def published_globalbuff_files(config: AppConfig, asset_version: str) -> dict[str, Any]:
+    try:
+        state = json.loads((config.image_work_root / 'image-state.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError) as exc:
+        raise ValidationError('缺少 GlobalBuff 本地发布状态') from exc
+    if (state.get('globalbuff_asset_version') != asset_version
+            or not state.get('globalbuff_published_hotfix_version')
+            or state.get('globalbuff_published_hotfix_version') != state.get('globalbuff_hotfix_version')):
+        raise ValidationError('请先发布同版本的 GlobalBuff 数据到 public/Dump')
+    root = config.public_root / 'Dump'
+    if root.is_symlink() or getattr(root, 'is_junction', lambda: False)() or root.resolve() != config.public_root.resolve() / 'Dump':
+        raise ValidationError('public/Dump 路径不安全')
+    assert_no_linked_files(root / 'GlobalBuffData', 'public/Dump/GlobalBuffData')
+    expected = state.get('globalbuff_published_files')
+    if not isinstance(expected, dict) or not expected:
+        raise ValidationError('缺少 GlobalBuff 本地发布文件清单')
+    paths = [f'GlobalBuffData/{name}' for name in expected]
+    scanned = scan_selected_dataset(root, 'json', paths)['files']
+    files = {path.removeprefix('GlobalBuffData/'): record for path, record in scanned.items()}
+    if files != expected:
+        raise ValidationError('public/Dump/GlobalBuffData 与发布记录不一致，请重新发布')
+    return files
 
 
 def build_manifest(
@@ -155,6 +207,10 @@ def resolve_r2_versions(latest: LatestInfo) -> tuple[str, str]:
 
 
 class ReleaseManager:
+    def _require_r2_enabled(self) -> None:
+        if not self.config.enable_r2:
+            raise ValidationError("R2 功能已关闭，发布终点为本地 public")
+
     def __init__(
         self,
         config: AppConfig,
@@ -396,6 +452,7 @@ class ReleaseManager:
         return {"counts": counts, "statuses": statuses}
 
     def _read_public_asset_index(self) -> dict[str, Any]:
+        self._require_r2_enabled()
         def report_retry(attempt: int, delay: float, error: Exception) -> None:
             self.progress(ProgressEvent(
                 "asset_compare",
@@ -723,10 +780,9 @@ class ReleaseManager:
                 if sha256_file(map_path) != str(record.get(digest_key, "")):
                     raise ValidationError(f"图片发布资格失效：{profile} 的{label} 摘要变化")
             if (
-                not self.config.image_sdk.is_file()
-                or sha256_file(self.config.image_sdk) != str(record.get("jarDigest", ""))
+                image_parser_digest() != str(record.get("parserDigest", ""))
             ):
-                raise ValidationError(f"图片发布资格失效：{profile} 的 beyond-sdk.jar 已变化")
+                raise ValidationError(f"图片发布资格失效：{profile} 的 Python 解析器已变化或旧状态需要重新解析")
         if int(record.get("fullMapEntries", -1)) < 0:
             raise ValidationError(f"图片发布资格失效：{profile} 的完整 map 计数无效")
         return record
@@ -844,7 +900,7 @@ class ReleaseManager:
             raise ValidationError("索引上传后回读不一致")
         return {"updated": len(plan["updates"]), "revision": now, "digest": index_digest(verified)}
 
-    def _asset_specs(self, include_json: bool, include_images: bool) -> list[dict[str, Any]]:
+    def _asset_specs(self, include_json: bool, include_images: bool, include_globalbuff: bool = False) -> list[dict[str, Any]]:
         specs: list[dict[str, Any]] = []
         if include_images:
             specs.append(
@@ -864,6 +920,10 @@ class ReleaseManager:
                     "remote": self.json_remote,
                 }
             )
+        if include_globalbuff:
+            specs.append({'kind': 'dump', 'label': 'GlobalBuff',
+                          'source': self.config.public_root / 'Dump',
+                          'remote': f'{self.remote_base}/public/Dump'})
         if not specs:
             raise ValidationError("请至少选择图片或 Json 资产")
         return specs
@@ -910,7 +970,10 @@ class ReleaseManager:
         datasets = asset_index.get("datasets")
         if not isinstance(datasets, dict):
             raise ValidationError("asset-sync-index.json 缺少 datasets，无法汇总资产大小")
-        for dataset in datasets.values():
+        all_datasets = list(datasets.values())
+        if isinstance(asset_index.get('dumpData'), dict):
+            all_datasets.append(asset_index['dumpData'])
+        for dataset in all_datasets:
             files = dataset.get("files") if isinstance(dataset, dict) else None
             if not isinstance(files, dict):
                 raise ValidationError("asset-sync-index.json 数据集缺少 files，无法汇总资产大小")
@@ -956,15 +1019,18 @@ class ReleaseManager:
         image_profile: str | None = None,
         image_config: ImageParsingConfig | None = None,
         manual_update: bool = False,
+        include_globalbuff: bool = False,
     ) -> dict[str, Any]:
         self.token.raise_if_cancelled()
         manual_update = bool(manual_update)
+        if manual_update and include_globalbuff:
+            raise ValidationError('手动更新不能与 GlobalBuff 同时选择')
         if not manual_update and not self.config.rclone.is_file():
             raise FileNotFoundError(f"rclone 不存在：{self.config.rclone}")
         if manual_update:
             include_json = True
             include_images = True
-        specs = self._asset_specs(include_json, include_images)
+        specs = self._asset_specs(include_json, include_images, include_globalbuff)
         if local_compare:
             raise ValidationError("本地差异比对已停用；资产比较必须读取 data 站最新索引")
         self.progress(
@@ -1041,7 +1107,7 @@ class ReleaseManager:
         datasets: list[dict[str, Any]] = []
         for spec in specs:
             source = Path(spec["source"])
-            if not source.is_dir():
+            if not source.is_dir() and spec['kind'] != 'dump':
                 raise FileNotFoundError(f"本地{spec['label']}目录不存在：{source}")
             if spec["kind"] == "images" and image_delta_upload_enabled:
                 current = scan_selected_dataset(
@@ -1055,16 +1121,63 @@ class ReleaseManager:
                         f"本地存在并纳入比较：{len(current)} 个；未扫描差分范围外的图片",
                     )
                 )
+            elif spec['kind'] == 'json':
+                current = scan_dataset(source, 'json', skip_json_manifests=True)['files']
+            elif spec['kind'] == 'dump':
+                current = {f'GlobalBuffData/{p}': value for p, value in published_globalbuff_files(self.config, asset_version).items()}
             else:
                 current = scan_dataset(
                     source,
                     spec["kind"],
                     skip_json_manifests=spec["kind"] == "json",
+                    matcher=matcher if spec["kind"] == "images" else None,
                 )["files"]
-            baseline = remote_index["datasets"].get(spec["kind"])
+            baseline = remote_index.get('dumpData') if spec['kind'] == 'dump' else remote_index["datasets"].get(spec["kind"])
+            if baseline is None and spec['kind'] == 'dump':
+                baseline = {'root': 'public/Dump', 'files': {}}
             if not isinstance(baseline, dict) or not isinstance(baseline.get("files"), dict):
                 raise ValidationError(f"R2 根索引缺少{spec['label']}数据集")
             previous = baseline["files"]
+            if spec['kind'] == 'dump':
+                # A root index may have been created before Dump was indexed.
+                # Do not assume those remote objects are absent: inventory their
+                # exact names and require readable metadata before planning writes.
+                actual = self._capture_rclone_result([
+                    'lsjson', str(spec['remote']) + '/GlobalBuffData', '--recursive', '--hash',
+                    '--s3-no-check-bucket',
+                ])
+                if actual.returncode != 0:
+                    raise ValidationError('无法读取远端 GlobalBuff 列表，拒绝推测远端为空')
+                try:
+                    remote_rows = json.loads(actual.stdout)
+                except (ValueError, TypeError) as exc:
+                    raise ValidationError('远端 GlobalBuff 列表不是有效 JSON') from exc
+                if not isinstance(remote_rows, list):
+                    raise ValidationError('远端 GlobalBuff 列表结构无效')
+                remote_paths = set()
+                for row in remote_rows:
+                    if not isinstance(row, dict) or row.get('IsDir'):
+                        continue
+                    relative = self._validate_relative_path_list([str(row.get('Path', ''))], '远端 GlobalBuff 路径')[0]
+                    path = 'GlobalBuffData/' + relative
+                    if path in remote_paths:
+                        raise ValidationError(f'远端 GlobalBuff 路径重复：{path}')
+                    remote_paths.add(path)
+                indexed_paths = {p for p in previous if p.startswith('GlobalBuffData/')}
+                if remote_paths != indexed_paths:
+                    raise ValidationError('远端 GlobalBuff 内容与资产索引不一致，请先核对远端文件和索引')
+                for row in remote_rows:
+                    if not isinstance(row, dict) or row.get('IsDir'):
+                        continue
+                    path = 'GlobalBuffData/' + str(row['Path']).replace('\\', '/')
+                    indexed = previous[path]
+                    if row.get('Size') != indexed.get('size'):
+                        raise ValidationError(f'远端 GlobalBuff 大小与索引不一致：{path}')
+                    hashes = row.get('Hashes') or {}
+                    md5 = next((str(v).lower() for k, v in hashes.items() if str(k).lower() == 'md5'), '') if isinstance(hashes, dict) else ''
+                    if not md5 or md5 != indexed.get('md5'):
+                        raise ValidationError(f'远端 GlobalBuff MD5 缺失或与索引不一致：{path}')
+                previous = {p: value for p, value in previous.items() if p.startswith('GlobalBuffData/')}
             if spec["kind"] == "images" and image_delta_upload_enabled:
                 previous = {
                     path: previous[path]
@@ -1133,6 +1246,7 @@ class ReleaseManager:
                     "delete_paths": delete_paths,
                     "index_update_paths": index_update_paths,
                     "current_files": current,
+                    "asset_version": asset_version,
                 }
             )
         storage = self._storage_projection(datasets, remote_index)
@@ -1140,6 +1254,7 @@ class ReleaseManager:
             self.progress(ProgressEvent("asset_compare", storage["storage_warning"]))
         return {
             "include_json": include_json,
+            "include_globalbuff": include_globalbuff,
             "include_images": include_images,
             "manual_update": manual_update,
             "compare_mode": "remote",
@@ -1175,8 +1290,14 @@ class ReleaseManager:
                 "manual" if include_images and self.config.image_map_upload_version.strip() else "official"
             ),
             "datasets": datasets,
-            "source": "；".join(str(item["source"]) for item in datasets),
-            "remote": "；".join(str(item["remote"]) for item in datasets),
+            "source": "；".join(
+                path for item in datasets for path in (
+                    [str(Path(item['source']) / 'GlobalBuffData') if item['kind'] == 'dump' else str(item['source'])]
+                )),
+            "remote": "；".join(
+                path for item in datasets for path in (
+                    [str(item['remote']) + '/GlobalBuffData' if item['kind'] == 'dump' else str(item['remote'])]
+                )),
             "local_files": sum(int(item["local_files"]) for item in datasets),
             "local_bytes": sum(int(item["local_bytes"]) for item in datasets),
             "total_changes": sum(counts.values()),
@@ -1194,6 +1315,7 @@ class ReleaseManager:
         current_image_config: ImageParsingConfig | None = None,
         current_image_profile: str | None = None,
     ) -> dict[str, Any]:
+        self._require_r2_enabled()
         self.token.raise_if_cancelled()
         if not self.config.rclone.is_file():
             raise FileNotFoundError(f"rclone 不存在：{self.config.rclone}")
@@ -1203,7 +1325,7 @@ class ReleaseManager:
         if compare_mode != "remote":
             raise ValidationError("资产比较计划的比对方式无效，请重新比较")
         expected_specs = self._asset_specs(
-            bool(plan.get("include_json")), bool(plan.get("include_images"))
+            bool(plan.get("include_json")), bool(plan.get("include_images")), bool(plan.get('include_globalbuff'))
         )
         datasets = plan.get("datasets")
         if not isinstance(datasets, list) or len(datasets) != len(expected_specs):
@@ -1211,13 +1333,28 @@ class ReleaseManager:
         for dataset, expected in zip(datasets, expected_specs):
             if not isinstance(dataset, dict):
                 raise ValidationError("资产比较计划格式无效")
+            if dataset.get('kind') != expected['kind']:
+                raise ValidationError('资产比较计划数据集类型不一致')
             try:
                 source = Path(str(dataset.get("source", ""))).resolve()
             except OSError as exc:
                 raise ValidationError(f"资产比较计划中的本地路径无效：{exc}") from exc
             if source != Path(expected["source"]).resolve() or str(dataset.get("remote", "")) != str(expected["remote"]):
                 raise ValidationError("资产比较计划与当前同步配置不一致，请重新比较")
+            if expected['kind'] == 'dump':
+                if dataset.get('kind') != 'dump' or dataset.get('asset_version') != plan.get('asset_version'):
+                    raise ValidationError('GlobalBuff 资产版本与比较计划不一致')
+                files = published_globalbuff_files(self.config, str(plan.get('asset_version', '')))
+                recorded = {p.removeprefix('GlobalBuffData/'): v for p, v in dataset.get('current_files', {}).items() if p.startswith('GlobalBuffData/')}
+                if files != recorded:
+                    raise ValidationError('GlobalBuff 文件在比较后发生变化，请重新比较')
+                for key in ('upload_paths', 'overwrite_paths', 'delete_paths', 'index_update_paths'):
+                    paths = self._validate_relative_path_list(dataset.get(key), f'GlobalBuff {key}')
+                    if any(not path.startswith('GlobalBuffData/') for path in paths):
+                        raise ValidationError('GlobalBuff 比较计划超出 GlobalBuffData 范围')
         manual_update = bool(plan.get("manual_update", False))
+        if manual_update and plan.get('include_globalbuff'):
+            raise ValidationError('手动更新不能与 GlobalBuff 同时选择')
         if manual_update and not (
             bool(plan.get("include_json")) and bool(plan.get("include_images"))
         ):
@@ -1528,11 +1665,12 @@ class ReleaseManager:
             )
             if physical_changes:
                 action = (
-                    "只上传新增或变更文件，不删除历史图片"
+                    "图片传输阶段已完成，准备更新资产索引；不删除历史图片"
                     if dataset.get("kind") == "images"
                     else "先删除远端多余项，再上传新增或变更文件"
                 )
-                self.progress(ProgressEvent("asset_upload", f"开始同步{label}；{action}"))
+                message = action if dataset.get("kind") == "images" else f"开始同步{label}；{action}"
+                self.progress(ProgressEvent("asset_upload", message))
                 if dataset.get("kind") != "images":
                     self._sync_local_asset_dataset(dataset)
             else:
@@ -1550,10 +1688,16 @@ class ReleaseManager:
             revision = datetime.now(timezone.utc).isoformat()
             next_index = merge_asset_index(
                 remote_index,
-                [dataset for dataset in datasets if dataset.get("total_changes")],
+                [dataset for dataset in datasets if dataset.get("total_changes") and dataset.get('kind') != 'dump'],
                 current_asset_version,
                 revision,
             )
+            dump_dataset = next((dataset for dataset in datasets if dataset.get('kind') == 'dump' and dataset.get('total_changes')), None)
+            if dump_dataset:
+                old = next_index.get('dumpData') or {'root': 'public/Dump', 'files': {}}
+                next_index['dumpData'] = {**old, 'files': merge_dataset_records(
+                    old['files'], dump_dataset['current_files'], dump_dataset, current_asset_version)}
+                next_index = validate_asset_index(next_index, allow_v1=False)
             if any(dataset.get("kind") == "json" for dataset in datasets if dataset.get("total_changes")):
                 next_index = validate_level_data_dialog_metadata(next_index)
             if self.before_index_upload is not None:
@@ -1710,6 +1854,7 @@ class ReleaseManager:
         batch_number: int,
         log_path: Path,
     ) -> int:
+        self._require_r2_enabled()
         if not paths:
             return 0
         with tempfile.NamedTemporaryFile(
@@ -1860,9 +2005,8 @@ class ReleaseManager:
                 raise
             retry_count += retries
             retry_count = int(retry_count)
-            remaining_set = set(remaining)
-            remaining_set.difference_update(current_batch)
-            remaining = sorted(remaining_set)
+            # Batches are built in the same sorted order as remaining.
+            remaining = remaining[len(current_batch):]
             completed = len(transfer_paths) - len(remaining)
             bytes_uploaded += batch_bytes
             pending.update(
@@ -1912,6 +2056,13 @@ class ReleaseManager:
             dataset.get("overwrite_paths"), f"{label}覆盖"
         )
         transfer_paths = upload_paths + overwrite_paths
+        if dataset.get('kind') == 'dump':
+            if any(not path.startswith('GlobalBuffData/') for path in transfer_paths + delete_paths):
+                raise ValidationError('GlobalBuff 上传路径超出 GlobalBuffData 范围')
+            current = published_globalbuff_files(self.config, str(dataset.get('asset_version', '')))
+            expected = {p.removeprefix('GlobalBuffData/'): v for p, v in dataset['current_files'].items() if p.startswith('GlobalBuffData/')}
+            if current != expected:
+                raise ValidationError('GlobalBuff 文件在比较后发生变化，请重新比较')
         with tempfile.TemporaryDirectory(prefix="ake-asset-sync-") as directory:
             temporary = Path(directory)
             if delete_paths:
@@ -1933,7 +2084,9 @@ class ReleaseManager:
                     ],
                     "asset_upload",
                 )
-            if transfer_paths:
+            for transfer_paths, source in ((transfer_paths, dataset['source']),):
+                if not transfer_paths:
+                    continue
                 transfer_file = temporary / "transfer-files.txt"
                 transfer_file.write_text("\n".join(transfer_paths) + "\n", encoding="utf-8")
                 self.progress(
@@ -1945,7 +2098,7 @@ class ReleaseManager:
                 self._stream_rclone(
                     [
                         "copy",
-                        str(dataset["source"]),
+                        str(source),
                         str(dataset["remote"]),
                         *self.rclone_args,
                         "--files-from-raw",
@@ -2123,6 +2276,7 @@ class ReleaseManager:
         latest: LatestInfo,
         publish_latest: bool = True,
     ) -> dict[str, Any]:
+        self._require_r2_enabled()
         self.token.raise_if_cancelled()
         if not self.config.rclone.is_file():
             raise FileNotFoundError(f"rclone 不存在：{self.config.rclone}")
@@ -2286,6 +2440,7 @@ class ReleaseManager:
     def _capture_rclone_result(
         self, arguments: list[str]
     ) -> subprocess.CompletedProcess[str]:
+        self._require_r2_enabled()
         self.token.raise_if_cancelled()
         return subprocess.run(
             [str(self.config.rclone), *arguments],
@@ -2297,6 +2452,7 @@ class ReleaseManager:
         )
 
     def _stream_rclone(self, arguments: list[str], stage: str) -> None:
+        self._require_r2_enabled()
         process = subprocess.Popen(
             [str(self.config.rclone), *arguments],
             cwd=str(self.repo_root),

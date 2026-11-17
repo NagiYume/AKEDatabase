@@ -274,7 +274,7 @@ class DownloadManager:
                 if verify_md5 and entry.md5:
                     progress(partial.stat().st_size, f"校验 {entry.name}")
                     actual_md5 = digest.hexdigest()
-                    if actual_md5 != entry.md5:
+                    if actual_md5 != entry.md5.lower():
                         partial.unlink(missing_ok=True)
                         raise ValidationError(
                             f"MD5 不符：{entry.name}，期望 {entry.md5}，实际 {actual_md5}"

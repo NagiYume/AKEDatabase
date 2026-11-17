@@ -18,40 +18,56 @@
         return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(8)));
     }
 
-    function analyzeAttrWithModifiers(baseValue, modifiers, attrType) {
+    function analyzeAttrWithModifiers(baseValue, modifiers, attrType, variantModifiers = []) {
         const relevant = (modifiers || []).filter(modifier => modifier.attrType === attrType && Number.isFinite(Number(modifier.attrValue)));
+        const variant = (variantModifiers || []).filter(modifier => modifier.attrType === attrType && Number.isFinite(Number(modifier.attrValue)));
         let expression = compactNumber(baseValue);
         let value = baseValue;
-        relevant.filter(modifier => modifier.modifierType === 9).forEach(modifier => {
-            const operand = Number(modifier.attrValue);
-            expression = `override(${compactNumber(operand)})`;
-            value = operand;
-        });
-        const stages = [
-            { type: 5, operator: '+', wrap: false },
-            { type: 6, operator: '×', onePlus: true },
-            { type: 7, operator: '+', wrap: false },
-            { type: 8, operator: '×' },
-            { type: 3, operator: '+', wrap: false },
-            { type: 4, operator: '×' },
-            { type: 0, operator: '+', wrap: false },
-            { type: 1, operator: '×', onePlus: true }
-        ];
-        stages.forEach(stage => {
-            const entries = relevant.filter(modifier => modifier.modifierType === stage.type);
-            entries.forEach(modifier => {
+        function applyStageModifiers(entries) {
+            entries.filter(modifier => modifier.modifierType === 9).forEach(modifier => {
                 const operand = Number(modifier.attrValue);
-                const term = stage.onePlus ? `(1 + ${compactNumber(operand)})` : compactNumber(operand);
-                expression = stage.operator === '+' ? `(${expression} + ${term})` : `${expression} × ${term}`;
-                value = stage.operator === '+' ? value + operand : value * (stage.onePlus ? 1 + operand : operand);
+                expression = `override(${compactNumber(operand)})`;
+                value = operand;
             });
-        });
+            const stages = [
+                { type: 5, operator: '+' },
+                { type: 6, operator: '×', onePlus: true },
+                { type: 7, operator: '+' },
+                { type: 8, operator: '×' },
+                { type: 0, operator: '+' },
+                { type: 1, operator: '×', onePlus: true },
+                { type: 3, operator: '+' },
+                { type: 4, operator: '×' }
+            ];
+            stages.forEach(stage => {
+                const stageEntries = entries.filter(modifier => modifier.modifierType === stage.type);
+                if (stage.onePlus && stageEntries.length) {
+                    const operands = stageEntries.map(modifier => Number(modifier.attrValue));
+                    const rawMultiplier = 1 + operands.reduce((sum, operand) => sum + operand, 0);
+                    const multiplier = Math.max(rawMultiplier, 0);
+                    const multiplierExpression = `1 + ${operands.map(compactNumber).join(' + ')}`;
+                    const multiplierTerm = rawMultiplier < 0 ? `max(${multiplierExpression}, 0)` : `(${multiplierExpression})`;
+                    expression = `${expression} × ${multiplierTerm}`;
+                    value *= multiplier;
+                    return;
+                }
+                stageEntries.forEach(modifier => {
+                    const operand = Number(modifier.attrValue);
+                    const term = compactNumber(operand);
+                    expression = stage.operator === '+' ? `(${expression} + ${term})` : `${expression} × ${term}`;
+                    value = stage.operator === '+' ? value + operand : value * operand;
+                });
+            });
+        }
+        applyStageModifiers(variant);
+        if (variant.length && relevant.length) expression = `(${expression})`;
+        applyStageModifiers(relevant);
         return {
             rawValue: baseValue,
             value,
-            changed: relevant.length > 0 && value !== baseValue,
+            changed: (variant.length > 0 || relevant.length > 0) && value !== baseValue,
             formula: `${expression} = ${compactNumber(value)}`,
-            modifiers: relevant
+            modifiers: [...variant, ...relevant]
         };
     }
 
@@ -70,8 +86,6 @@
                 const current = groups.get(key);
                 if (modifier.modifierType === 9) {
                     current.attrValue = value;
-                } else if (modifier.modifierType === 1 || modifier.modifierType === 6) {
-                    current.attrValue = (1 + current.attrValue) * (1 + value) - 1;
                 } else if (modifier.modifierType === 4 || modifier.modifierType === 8) {
                     current.attrValue *= value;
                 } else {
@@ -113,6 +127,8 @@
             : null;
         const isAllowed = attrType => allowedAttrTypes === null || allowedAttrTypes.has(Number(attrType));
         const getAttrName = opts.getAttrName || (attrType => window.akeI18n.t('modules.character.attributeFallback', { name: attrType }));
+        const variantModifiers = opts.variantModifiers || [];
+        const allModifiers = [...variantModifiers, ...(modifiers || [])];
         const baseAttrs = {};
         const baseSources = {};
 
@@ -128,18 +144,18 @@
             }
         });
 
-        if (modifiers && modifiers.length > 0) {
+        if (allModifiers.length > 0) {
             Object.keys(baseAttrs).forEach(key => {
                 const attrType = parseInt(key, 10);
-                baseAttrs[attrType] = computeAttrWithModifiers(baseAttrs[attrType], modifiers, attrType);
+                baseAttrs[attrType] = analyzeAttrWithModifiers(baseAttrs[attrType], modifiers, attrType, variantModifiers).value;
             });
 
             if (opts.includeModifierOnlyAttrs) {
-                new Set(modifiers.map(modifier => modifier.attrType)).forEach(attrType => {
+                new Set(allModifiers.map(modifier => modifier.attrType)).forEach(attrType => {
                     if (baseAttrs[attrType] !== undefined) return;
-                    const attrModifiers = modifiers.filter(modifier => modifier.attrType === attrType);
+                    const attrModifiers = allModifiers.filter(modifier => modifier.attrType === attrType);
                     const baseValue = attrModifiers.every(modifier => MULTIPLIER_MODIFIER_TYPES.has(modifier.modifierType)) ? 1 : 0;
-                    baseAttrs[attrType] = computeAttrWithModifiers(baseValue, modifiers, attrType);
+                    baseAttrs[attrType] = analyzeAttrWithModifiers(baseValue, modifiers, attrType, variantModifiers).value;
                     baseSources[attrType] = 'modifierOnly';
                 });
             }
@@ -157,7 +173,7 @@
             if (!isAllowed(attrType)) return;
             const name = getAttrName(attrType);
             const finalValue = baseAttrs[attrType];
-            const relevant = (modifiers || []).filter(modifier => modifier.attrType === attrType);
+            const relevant = allModifiers.filter(modifier => modifier.attrType === attrType);
             let rawValue = finalValue;
             if (relevant.length) {
                 if (baseSources[attrType] === 'modifierOnly') rawValue = relevant.every(modifier => MULTIPLIER_MODIFIER_TYPES.has(modifier.modifierType)) ? 1 : 0;
@@ -169,7 +185,7 @@
                 }
             }
             result[name] = finalValue;
-            details[name] = { ...analyzeAttrWithModifiers(rawValue, modifiers, attrType), name, attrType, baseSource: baseSources[attrType] };
+            details[name] = { ...analyzeAttrWithModifiers(rawValue, modifiers, attrType, variantModifiers), name, attrType, baseSource: baseSources[attrType] };
         };
         displayOrder.forEach(attrType => {
             if (excludedAttrTypes.has(attrType)) return;

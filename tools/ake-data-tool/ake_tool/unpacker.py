@@ -13,7 +13,7 @@ from .tablecfg_parser import TABLE_BLOCK, SparkDecoder, decrypt, read_table_inde
 
 
 def format_command(command: list[str]) -> str:
-    # Shared by the image/Json SDK launchers.
+    # Shared by subprocess launchers when displaying commands.
     return subprocess.list2cmdline([str(argument) for argument in command])
 
 

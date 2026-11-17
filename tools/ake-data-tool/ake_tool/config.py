@@ -94,6 +94,9 @@ def _uses_default_image_filter_rules(raw: Any, expected: list[str]) -> bool:
 
 @dataclass
 class AppConfig:
+    enable_r2: bool = False
+    image_bundle_cache_gib: int = 16
+    image_parse_workers: int = 4
     appcode: str = "6LL0KJuqHBVz33WK"
     rclone_path: str = r"D:\Program Files\rclone\rclone.exe"
     public_dir: str = str(TOOLS_ROOT.parent / "public")
@@ -114,8 +117,6 @@ class AppConfig:
     manual_publish_latest: bool = False
     r2_remote: str = "r2"
     r2_bucket: str = "akedatabase"
-    image_sdk_path: str = r"D:\资料\code\终末地解包\图片素材下载\beyond-sdk.jar"
-    java_path: str = "java"
     game_streaming_assets_dir: str = (
         r"E:\Program Files\Hypergryph Launcher\games\Endfield Game\Endfield_Data\StreamingAssets"
     )
@@ -135,7 +136,7 @@ class AppConfig:
     asset_upload_from_delta_map: bool = False
     asset_manual_update: bool = False
     vfs_validation_records: dict[str, dict[str, Any]] = field(
-        default_factory=normalize_validation_records
+        default_factory=lambda: normalize_validation_records(None)
     )
     required_tables: list[str] = field(
         default_factory=lambda: ["ItemTable.json", "CharacterTable.json", "EnemyTable.json"]
@@ -152,10 +153,6 @@ class AppConfig:
     @property
     def public_root(self) -> Path:
         return Path(self.public_dir).expanduser().resolve()
-
-    @property
-    def image_sdk(self) -> Path:
-        return Path(self.image_sdk_path).expanduser().resolve()
 
     @property
     def streaming_assets_root(self) -> Path:
@@ -185,7 +182,7 @@ class AppConfig:
                 raise ValueError("手动游戏版本格式无效，应类似 1.2.5")
             if not re.fullmatch(r"[A-Za-z0-9_-]+", self.manual_rand_str.strip()):
                 raise ValueError("手动 rand_str 只能包含字母、数字、下划线或连字符")
-        if not self.r2_remote.strip() or not self.r2_bucket.strip():
+        if self.enable_r2 and (not self.r2_remote.strip() or not self.r2_bucket.strip()):
             raise ValueError("R2 Remote 和 Bucket 不能为空")
         if self.image_map_upload_version.strip() and not re.fullmatch(
             r"\d+\.\d+\.\d+@[0-9A-Za-z._-]+",
@@ -225,19 +222,18 @@ class AppConfig:
         profile: str | None = None,
     ) -> None:
         self.validate_transfer_concurrency()
-        if not self.java_path.strip():
-            raise ValueError("Java 命令不能为空")
         if not self.image_verify_md5:
             raise ValueError("最新图片素材流程必须启用 MD5 校验")
         self._validate_work_root()
         profiles = (normalize_image_profile(profile),) if profile else IMAGE_PROFILES
         for selected in profiles:
             self.image_config(selected)
-        if require_sources:
-            if not self.image_sdk.is_file():
-                raise FileNotFoundError(f"beyond-sdk.jar 不存在：{self.image_sdk}")
 
     def validate_transfer_concurrency(self) -> None:
+        if type(self.image_parse_workers) is not int or not 1 <= self.image_parse_workers <= 32:
+            raise ValueError("image_parse_workers 必须为 1–32 的整数")
+        if type(self.image_bundle_cache_gib) is not int or not 0 <= self.image_bundle_cache_gib <= 256:
+            raise ValueError("image_bundle_cache_gib 必须为 0–256 的整数")
         for name in ("download_concurrency", "upload_concurrency"):
             value = getattr(self, name)
             if type(value) is not int or not 1 <= value <= 64:
@@ -280,6 +276,7 @@ class AppConfig:
     def from_dict(cls, raw: dict[str, Any]) -> "AppConfig":
         allowed = cls.__dataclass_fields__.keys()
         values = {key: value for key, value in raw.items() if key in allowed}
+        values["enable_r2"] = raw.get("enable_r2") is True
         values["asset_upload_from_delta_map"] = raw.get("asset_upload_from_delta_map") is True
         values["asset_manual_update"] = raw.get("asset_manual_update") is True
         values["vfs_validation_records"] = normalize_validation_records(

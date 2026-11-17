@@ -11,7 +11,7 @@ description: Review and develop AKEDatabase with TableCfg-driven inclusion, shar
 
 - 先查看当前分支、已有改动、任务相关代码和 `version.json`，保留用户改动。使用用户指定分支；不要自动提交、打标签或发布。
 - 用户要求先分析时只读；允许读取代码、数据、历史会话和差异。不要把只读审阅等同于运行验证。
-- `public/TableCfg/**`、`public/Json/**` 只读。功能开发不能通过修改源数据补偿错误的读取逻辑。
+- `public/TableCfg/**`、`public/Json/**`、`public/Dump/**` 均为只读输入，保护等级相同；不得编辑、格式化、生成、覆盖、移动或删除其中的文件。功能开发不能通过修改源数据补偿错误的读取逻辑。
 - 未获当前任务明确授权，不修改 README、公告、更新日志或 `public/*/tip.md`。用户提到“发版”时，即默认授权并要求同步更新 README、站内公告和更新日志；当前维护入口为 `public/CH/tip.md`、`public/EN/tip.md`，同时更新 `version.json` 的 `tipversion`。仅声明或调整版本号但未表达发版意图时，不视为文档授权。
 - 默认不运行测试、构建、lint、格式或语法检查、Node、开发服务器、浏览器或截图；不通过子代理间接执行。用户授权验证时仅执行所授权范围，交付时说明实际执行情况。
 
