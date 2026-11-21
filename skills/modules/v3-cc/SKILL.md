@@ -27,6 +27,8 @@ ccManifest / ccDetail 按 gameId 合并合约、活动、词条、冲突、等�
 
 第一期历史 tagTerms 与第二期服务端文本、黑板并存。未映射、明确空黑板、合法数值零要区分；项目记忆保留 112402 与开天将算例。
 
+站位图由 `renderSpawnMap` 绘制，复用 [AKECombatData.spawnMapProjection](../../../plugin/js/ake-combat-data.js)。切换波次时沿用该刷怪器所有波次共同确定的范围，网格间距与敌人标记使用相同的 X/Z 比例。
+
 专项依据见[合约数据契约](../../akedatabase-development/references/data-contracts.md#危机合约数据)。
 
 [模块索引](../index.md) · [项目记忆](../../memory.md)

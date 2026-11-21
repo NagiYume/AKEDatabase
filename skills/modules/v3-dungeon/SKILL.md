@@ -26,4 +26,6 @@ dungeonManifest 从 DungeonSeriesTable 枚举系列，按 includeDungeonIds 取 
 
 renderDungeonCard 与影拓丰碑共用。危机合约在自己的控制器按 gameId 筛关，不要在共享 dungeonDetail 裁掉同系列其他关卡。
 
+站位图读取刷怪配置中各波次的 `action.position.x/z`。`renderSpawnMap` 调用 [AKECombatData.spawnMapProjection](../../../plugin/js/ake-combat-data.js)，按全部波次的最大坐标绝对值确定两轴共同范围。网格间距、敌人标记共用同一比例，原点在中心，正 Z 朝上。
+
 [模块索引](../index.md) · [项目记忆](../../memory.md)

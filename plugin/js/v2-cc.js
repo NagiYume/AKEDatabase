@@ -1198,26 +1198,10 @@
 
     function renderSpawnMap(spawner) {
         const waves = spawner.waves;
-        if (!waves || !waves.length) return '';
-
-        let allX = [], allZ = [];
-        waves.forEach(w => {
-            (w.groups || []).forEach(g => {
-                g.spawns.forEach(s => {
-                    allX.push(s.position.x);
-                    allZ.push(s.position.z);
-                });
-            });
-        });
-        const pad = 2;
-        const halfX = Math.max(Math.abs(Math.min(...allX)), Math.abs(Math.max(...allX))) + pad;
-        const halfZ = Math.max(Math.abs(Math.min(...allZ)), Math.abs(Math.max(...allZ))) + pad;
-        const minX = -halfX, maxX = halfX, minZ = -halfZ, maxZ = halfZ;
-        const rangeX = maxX - minX || 1, rangeZ = maxZ - minZ || 1;
-
-        function toPct(x, z) {
-            return { left: ((x - minX) / rangeX * 100).toFixed(1), top: ((maxZ - z) / rangeZ * 100).toFixed(1) };
-        }
+        const projection = window.AKECombatData.spawnMapProjection(waves);
+        if (!projection) return '';
+        const { halfExtent, unitPct, toPct } = projection;
+        const offsetPct = (0.3 * unitPct).toFixed(2);
 
         let mapSpotsHtml = '';
         waves.forEach((w, wi) => {
@@ -1254,7 +1238,7 @@
 
             allSpawns.forEach(item => {
                 const { spawn, group: g, modeLabel, conditionText, targetGroupKey, stackIdx } = item;
-                const pct = toPct(spawn.position.x, spawn.position.z);
+                const pct = toPct(spawn.position);
                 const posStr = `(${spawn.position.x.toFixed(1)}, ${spawn.position.z.toFixed(1)})`;
                 const randomStr = spawn.randomizeRadius > 0 ? t('spawn.randomRadius', { radius: spawn.randomizeRadius.toFixed(1) }) : '';
                 const delayStr = spawn.timestamp > 0 ? t('spawn.delay', { seconds: spawn.timestamp.toFixed(1) }) : '';
@@ -1272,7 +1256,6 @@
                     [delayStr, intervalStr, warnStr, faceStr].filter(Boolean).join(' · ')
                 ].filter(Boolean);
 
-                const offsetPct = (0.3 * 100 / (2 * halfX)).toFixed(2);
                 const stackStyle = stackIdx > 0
                     ? `margin-left:${stackIdx * offsetPct}%;margin-top:-${stackIdx * offsetPct}%;z-index:${10 - stackIdx};`
                     : 'z-index:10;';
@@ -1284,13 +1267,10 @@
             });
         });
 
-        const coordInfo = `<div class="v2cc-map-coords">X: ${minX.toFixed(0)} ~ ${maxX.toFixed(0)}  Z: ${minZ.toFixed(0)} ~ ${maxZ.toFixed(0)}</div>`;
-        const unitPct = (100 / (2 * halfX)).toFixed(2);
-        const gridX = (100 / rangeX).toFixed(4);
-        const gridZ = (100 / rangeZ).toFixed(4);
+        const coordInfo = `<div class="v2cc-map-coords">X: ${-halfExtent} ~ ${halfExtent}  Z: ${-halfExtent} ~ ${halfExtent}</div>`;
 
         return `<div class="v2cc-spawn-map-container">
-            <div class="v2cc-spawn-map" style="--unit:${unitPct}%;--grid-cell-x:${gridX}%;--grid-cell-z:${gridZ}%">
+            <div class="v2cc-spawn-map" style="--unit:${unitPct}%;--grid-cell-x:${unitPct}%;--grid-cell-z:${unitPct}%">
                 <div class="v2cc-map-center"></div>
                 ${mapSpotsHtml}
             </div>

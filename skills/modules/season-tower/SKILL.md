@@ -24,6 +24,8 @@ SeasonTowerTable.weeks.includeGameIdList → SeasonTowerGameGroupTable.stars.gam
 
 列表正确而某周缺怪物，从 loadSeasonData 到 loadCombat、loadSpawners 与 loadBuffs 检查具体场景。查看 renderWeek、renderDifficulty，分清数据遗漏和默认收起。
 
+站位图的 `renderSpawnMap` 复用 [AKECombatData.spawnMapProjection](../../../plugin/js/ake-combat-data.js)，让该图的所有波次共用同一坐标范围，X/Z 每单位占用相同的绘制距离。
+
 选择赛季后才加载其数据。多个难度共用的特性可在上层合并显示，但仍保留各难度自己的敌人和修正。时间 ID 缺失的处理见数据契约。
 
 专项依据见[轮换时间契约](../../akedatabase-development/references/data-contracts.md)。

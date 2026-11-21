@@ -16,6 +16,22 @@
         return `sc_${sceneId}_${spawnerId}`;
     }
 
+    function spawnMapProjection(waves) {
+        const positions = (waves || []).flatMap(wave =>
+            (wave.groups || []).flatMap(group => group.spawns.map(spawn => spawn.position))
+        );
+        if (!positions.length) return null;
+
+        // Both axes use the same extent across all waves of the square map.
+        const maxDistance = positions.reduce((max, { x, z }) => Math.max(max, Math.abs(x) || 0, Math.abs(z) || 0), 1);
+        const halfExtent = Math.ceil(maxDistance) + 2;
+        const unitPct = 100 / (halfExtent * 2);
+        function toPct({ x, z }) {
+            return { left: 50 + x * unitPct, top: 50 - z * unitPct };
+        }
+        return { halfExtent, unitPct, toPct };
+    }
+
     function actionNodes(script) {
         const data = script?.actionMap?.dataMap || {};
         return [...(data.headerList || []), ...(data.actionList || []), ...(data.getterList || [])];
@@ -167,5 +183,5 @@
         return detail;
     }
 
-    window.AKECombatData = { blackboardValue, collectScriptBuffIds, configId, enrichDungeonScripts, extractScriptBuffs, extractScriptEnemies, indexScriptBuffs, loadSceneScriptBuffs, loadSceneScriptEnemies, staticEnemyBuffs };
+    window.AKECombatData = { blackboardValue, collectScriptBuffIds, configId, enrichDungeonScripts, extractScriptBuffs, extractScriptEnemies, indexScriptBuffs, loadSceneScriptBuffs, loadSceneScriptEnemies, spawnMapProjection, staticEnemyBuffs };
 })();

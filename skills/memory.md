@@ -4,6 +4,7 @@
 
 ## 当前交接
 
+- **站位图等比例修复**　`beta` 网站资源版本为 `1.3.8-1`。正方形绘图区原先分别按 X/Z 范围缩放。[ake-combat-data.js](../plugin/js/ake-combat-data.js) 的 `spawnMapProjection` 现在为两轴选用共同范围，[v2-dungeon.js](../plugin/js/v2-dungeon.js)、[v2-cc.js](../plugin/js/v2-cc.js) 和 [season-tower.js](../plugin/js/season-tower.js) 用同一比例绘制网格和标记。同步 [version.json](../version.json) 和对应模块说明。已对照脚本加载入口及绘制公式，未运行测试或浏览器验证。
 - **网站基线**　2026-11-21 整理时，本地 `beta` 为 `9486b859`，`version.json.appversion` 为 `1.3.8`。该版本的提交为 `fb22b1e0`，已含中英文公告及 README。11 月 20 日的 `9486b859` 只改数据更新倒计时和说明。文中的版本均指网站版本，另有说明的除外。
 - **证据范围**　下列里程碑按本地提交和[中文更新日志](../public/CH/tip.md)整理。提交可用 `git show <短哈希>` 查阅，某版本的完整交付要连同前一版本以来的改动一起看。本轮未核验线上部署或浏览器表现。
 - **待核验 · 合约与怪物**　第二期仍有缺少 Buff 对应关系的指标，见下文「合约与属性」。属性值上下限的完整实现和游戏内结果仍待核验。参考样例有明确期望值，可用于以后获授权的验证。
