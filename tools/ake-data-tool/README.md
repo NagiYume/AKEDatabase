@@ -1,27 +1,15 @@
 # AKE Data Tool
 
-AKE Data Tool 用于获取《终末地》最新热更新索引，准备 VFS，调用
-`beyond-sdk.jar` 解析 TableCfg、Json 和图片，并将结果发布到 AKEDatabase 的
-`public` 目录。需要时，工具还可以通过 rclone 将 TableCfg、Json 和图片上传到
-Cloudflare R2。
+Windows 桌面数据工具用于准备《终末地》Hotfix 资源、解析并发布网站使用的数据。选择流程时，先确定目标产物及发布位置。
 
-工具只会从游戏安装目录复制文件，不会移动、修改或硬链接游戏文件。工作目录中的
-VFS 也是独立内容副本。
+| 产物 | 当前解析方式 | 本地发布目标 |
+| --- | --- | --- |
+| TableCfg | Python 解包器从 main、initial 索引准备 TableCfg 区块，解析 Spark 表并校验 JSON 输出 | `public/TableCfg` |
+| 图片 | Python 工作进程使用仓库中的 UnityPy 子模块解析 Bundle。标准、完整两种 profile 分别维护规则与 Map | 本次授权导出的路径增量写入 `public/images` |
+| Json | Windows x64 的隔离 Python 宿主使用匹配 Seed 的本地 IL2CPP 运行时导出；按报告核对结果 | `public/Json` 下保留导出的目录和根文件相对路径 |
+| GlobalBuff | 从已准备的 Bundle 与匹配运行时单独提取，保留文件级摘要和解析报告 | `public/Dump/GlobalBuffData` |
 
-## 功能概览
-
-- 查询官方当前游戏版本、Seed、Hotfix 和 `rand_str`
-- 下载并解密 `main`、`initial` 索引，支持重试、续传、大小和 MD5 校验
-- 优先复用版本及校验值匹配的本地游戏资源，缺失时再从 Hotfix 下载
-- 使用 `beyond-sdk.jar` 解析 TableCfg、Json 和图片
-- 允许 beyond-sdk 在自身任务需要时下载 VFS、IL2CPP 运行时和其他依赖
-- 将解析结果发布到 `public/TableCfg`、`public/Json` 或 `public/images`
-- 通过 rclone 管理 R2 上的 TableCfg 版本和 `manifest.json`
-- 比较并以本地图片、Json 或两者为准同步 R2
-- 支持通过本地 `asset-sync-index.json` 比较资产差异
-- 在资产同步前后检查整个 R2 Bucket 的容量，10 GB 上限包含安全余量
-- 提供手动更新、自动监听、图片解析、Json 解析、资产上传和 R2 版本管理分页
-- 将 TableCfg、图片和 Json 任务日志写入本工具根目录的 `logs` 文件夹
+GUI 将解析、本地发布和上传分为独立步骤。自动监听处理 TableCfg；资产上传页单独管理共享数据。维护者可从 [AKE Data Tool skill](../../skills/ake-data-tool/SKILL.md) 找各阶段的实现、状态记录及恢复入口。
 
 ## 一、准备运行环境
 
@@ -34,38 +22,11 @@ VFS 也是独立内容副本。
 .\setup-venv.bat
 ```
 
-脚本会创建 `.venv`，并安装以下依赖：
+脚本会创建 `.venv` 并安装 [requirements.txt](requirements.txt) 中的依赖。图片解析使用仓库的 UnityPy 子模块；新检出缺少 `vendor/UnityPy/pyproject.toml` 时，先初始化仓库子模块，再运行设置脚本。启动 GUI 使用 `run-gui.bat`，命令行可用同一个虚拟环境执行 `python -m ake_tool.cli gui`。
 
-- `requests`：访问官方 Seed/Hotfix 接口并下载资源
-- `PyQt6`：图形界面
+### 2. 版本化运行时
 
-之后运行：
-
-```powershell
-.\run-gui.bat
-```
-
-也可以在该目录中手动启动：
-
-```powershell
-python -m ake_tool.cli gui
-```
-
-### 2. Java 和 beyond-sdk
-
-TableCfg、Json 和图片解析都需要 `beyond-sdk.jar`。请准备：
-
-- 与当前 `beyond-sdk.jar` 兼容的 64 位 Java
-- 当前版本的 `beyond-sdk.jar`
-- 足够的内存或虚拟内存；图片和 Json 解析使用 `-Xmx32G`
-
-如果 `java.exe` 已加入 `PATH`，“Java 命令”填写 `java` 即可；否则填写完整路径，例如：
-
-```text
-C:\Program Files\Java\jdk-21\bin\java.exe
-```
-
-`beyond-sdk.jar` 可以放在任意目录，随后在“工具配置”中选择实际文件。
+TableCfg 使用随工具提供的 Python 解析器。Json、GlobalBuff 与图片需要目标 Seed 唯一、完整的 Windows x64 运行时。工具在统一工作目录的 `il2cpp-host-runtime` 下解析候选目录，优先核对游戏大版本与 Seed；所需 DLL 和资源列表见 [export_json.py](ake_tool/json_host/export_json.py) 的 `REQUIRED_RUNTIME`。有多个完整候选或缺文件时，按错误中的目标 Seed 核对本地目录。图片若引用 Unity 内置对象，还需检查匹配版本的游戏 Resources。
 
 ### 3. 磁盘空间
 
@@ -187,8 +148,7 @@ r2:akedatabase/public/images
 r2:akedatabase/public/Json
 ```
 
-“读取远端版本”和“比较本地与远端”只读取 R2。“按本地资产同步到 R2”、TableCfg 的
-“上传”步骤以及“删除远端版本”会修改远端数据；资产同步还会删除远端存在但本地不存在的对象。
+“读取远端版本”用于查看版本记录。正式上传、执行资产同步和删除指定 TableCfg 历史版本都会写入远端。GlobalBuff 对象在 `public/Dump/GlobalBuffData`，共享资产索引为根目录的 `asset-sync-index.json`。
 
 ## 三、工具配置分页
 
@@ -203,7 +163,7 @@ r2:akedatabase/public/Json
 | `AppCode` | 保持项目当前有效值 | 用于访问官方 Seed/Hotfix 接口；不能为空或包含空格 |
 | `rclone` | `rclone.exe` 的完整路径 | 只在 R2 操作中检查文件是否存在 |
 | `public` | AKEDatabase 根目录下的 `public` | TableCfg、Json 和图片的本地发布根目录 |
-| `main`、`initial` | 两项都勾选 | beyond-sdk 的 TableCfg 流程强制要求两部分索引 |
+| `main`、`initial` | 两项都勾选 | TableCfg 流程需要两部分索引 |
 | `TableCfg` | 勾选 | 当前 TableCfg 流程只允许该区块 |
 | `MD5 校验` | 勾选 | 按官方索引校验资源内容，建议始终启用 |
 | `保留任务文件` | 按需 | 保留工作目录中的任务输入和输出，便于续传和单步调试 |
@@ -213,32 +173,11 @@ r2:akedatabase/public/Json
 `public` 必须指向正确的仓库目录。配置错误会把发布目标指向其他位置，因此首次配置时应
 特别检查路径末尾确实是 `AKEDatabase\public`。
 
-### beyond-sdk 与游戏资源
+### 游戏资源与工作目录
 
-| 字段 | 建议配置 | 说明 |
-| --- | --- | --- |
-| `beyond-sdk.jar` | 当前 SDK 文件的完整路径 | TableCfg、Json 和图片解析共用 |
-| `Java 命令` | `java` 或 `java.exe` 完整路径 | 必须能启动 64 位 Java |
-| `StreamingAssets` | 游戏的 `Endfield_Data\StreamingAssets` | 可选的本地资源来源 |
-| `Persistent` | 游戏的 `Endfield_Data\Persistent` | 可选的本地热更新资源来源 |
-| `统一工作目录` | 独立且空间充足的目录，如 `E:\AKEImageWork` | 保存所有任务输入、缓存、状态和解析输出 |
+“游戏资源”中可设置 StreamingAssets、Persistent 和统一工作目录。选择与游戏安装目录分开的工作目录，保留独立 VFS 副本、版本状态和导出结果。同游戏大版本后续热更新优先以工作副本为补丁基线；基线不匹配或补丁不可用时可回退完整文件。
 
-游戏目录不存在或留空时，工具不会因此报错，而是从最新 Hotfix 下载缺失资源。存在游戏目录时，
-工具只会读取并复制版本匹配的文件；不会在游戏目录中移动、修改、删除文件，也不会创建硬链接。
-
-工作目录不能是磁盘根目录，不能等于游戏资源目录，也不能位于游戏资源目录内部。每次准备 VFS
-时都会检查工作副本是否为独立文件。
-
-当前各解析流程准备的区块为：
-
-| 流程 | VFS 区块 | 区块 ID |
-| --- | --- | --- |
-| TableCfg | `TableCfg` | `42A8FCA6` |
-| Json | `Json`、`InitialExtendData`、`ExtendData` | `775A31D1`、`D6E622F7`、`3C9D9D2D` |
-| 图片 | `Bundle`、`InitialBundle`、`BundleManifest` | `7064D8E2`、`0CE8FA57`、`1CDDBF1F` |
-
-工具会在启动 beyond-sdk 前优先准备并校验这些资源，但不会禁止 SDK 的下载请求。若 SDK 判断
-VFS、IL2CPP 运行时或其他内部依赖仍然缺失，可以继续从官方来源下载并写入统一工作目录。
+TableCfg 使用 TableCfg 区块；Json 准备 TableCfg、Json、InitialExtendData 与 ExtendData；图片与 GlobalBuff 准备 Bundle、InitialBundle、BundleManifest。下载、解析和上传并发各有独立设置。修改图片工作进程数或 Bundle 缓存预算时，以本机内存和待处理资源为依据。
 
 ### 自动监听设置
 
@@ -264,7 +203,7 @@ VFS、IL2CPP 运行时或其他内部依赖仍然缺失，可以继续从官方�
 
 ### 图片筛选规则
 
-图片解析分页中的 `containers_filter` 决定 beyond-sdk 解析哪些容器。推荐使用规则表维护：
+图片解析分页中的 `containers_filter` 决定该 profile 解析哪些容器。推荐使用规则表维护：
 
 - “包含”规则加入允许解析的路径或正则片段
 - “排除”规则从包含结果中剔除路径或文件
@@ -276,93 +215,24 @@ VFS、IL2CPP 运行时或其他内部依赖仍然缺失，可以继续从官方�
 例如 `charremoteicon` 不会意外匹配 `charremoteicon700`。物品、敌人和奖章等同时存在大小图标时，
 默认规则只解析项目使用的大图目录。
 
-除非已经确认网站需要新目录，否则不要扩大默认规则。图片发布会以本次解析的 `output/assets`
-为来源，错误的规则会带来额外解析和上传内容。
+标准与完整 profile 分别保存规则、输出、历史 Map 和发布状态。增量发布依据本次实际导出的 `deltaExportPaths`，累积图片目录中可能还保有以前版本的文件。
 
-### 资产差异设置
+### 资产差异与容量
 
-“资产上传”分页可分别勾选图片、Json，或同时选择两者。
+“资产上传”按所选图片、Json 或 GlobalBuff 类型生成计划。核对新增、覆盖、删除和仅更新索引元数据的范围，再执行对应计划。图片计划保留远端既有图片；“根据差分 Map 结果上传”只比较本次实际导出的图片，Json 仍按其完整数据范围比对。GlobalBuff 会校验同版本本地发布记录和远端 Dump 文件清单。
 
-- 未勾选“本地差异比对”：直接枚举并比较本地和 R2 对象
-- 勾选“本地差异比对”：使用统一工作目录中的 `asset-sync-index.json`，按路径、大小和 MD5 比较
-- 本地索引只在资产成功同步到 R2 后更新
-- 已完成一次比较且配置未变化时，正式同步复用当前差异计划，不会再次比较
-- Json 同步前需要先执行“生成/更新 Json 索引”
-- 差异列表会完整显示新增、覆盖和删除项
+计划使用远端统一资产索引的 revision 与摘要作为基线。容量显示根据索引所记录的资产估算，超过 10 GB 时提示；该提醒不阻止上传，也不代表已枚举整个 Bucket。
 
-`asset-sync-index.json` 是 R2 当前资产状态的本地快照。不要在不确定远端状态时手工修改它；如果
-本地索引可能过期，应取消“本地差异比对”，重新与远端比较。
+## 四、配置文件
 
-正式同步会让远端 `public/images` 或 `public/Json` 与本地对应目录一致，包含删除远端多余文件。
-同步前请仔细查看完整差异列表。工具会计算整个 Bucket 的当前容量和预计容量，并为上限保留
-1 MB 安全余量；达到限制时拒绝上传。
+工具配置字段见 [config.example.json](config.example.json) 和 [AppConfig](ake_tool/config.py)。保存后读取本机 `config.local.json`。图片规则分 standard、full 两种；比较旧版本配置时按 profile 检查迁移结果。R2 密钥由 rclone 管理。
 
-## 四、直接编辑 config.local.json
+## 五、首次使用与定位失败
 
-只有在 GUI 无法启动或需要批量迁移配置时，才建议直接编辑 `config.local.json`。可以参考
-`config.example.json`。常用结构如下：
-
-```json
-{
-  "appcode": "6LL0KJuqHBVz33WK",
-  "rclone_path": "D:\\Program Files\\rclone\\rclone.exe",
-  "public_dir": "D:\\path\\to\\AKEDatabase\\public",
-  "parts": ["main", "initial"],
-  "blocks": ["TableCfg"],
-  "request_timeout": 60,
-  "retries": 3,
-  "verify_md5": true,
-  "keep_job_files": true,
-  "watch_interval": 60,
-  "watch_update_on_start": true,
-  "watch_upload_r2": false,
-  "manual_version_enabled": false,
-  "manual_seed_version": "",
-  "manual_rand_str": "",
-  "manual_publish_latest": false,
-  "r2_remote": "r2",
-  "r2_bucket": "akedatabase",
-  "asset_local_compare": false,
-  "image_sdk_path": "D:\\path\\to\\beyond-sdk.jar",
-  "java_path": "java",
-  "game_streaming_assets_dir": "E:\\path\\to\\Endfield_Data\\StreamingAssets",
-  "game_persistent_dir": "E:\\path\\to\\Endfield_Data\\Persistent",
-  "image_work_dir": "E:\\AKEImageWork",
-  "image_verify_md5": true
-}
-```
-
-JSON 中的 Windows 反斜杠必须写成 `\\`。关闭 GUI 后再手工编辑；GUI 保存配置时会用当前页面的
-完整值覆盖文件。`required_tables` 和图片规则等未在上面展开的字段应保留
-`config.example.json` 中的现有值。
-
-可通过以下命令查看工具当前读取到的配置和配置文件位置：
-
-```powershell
-python -m ake_tool.cli config
-```
-
-该命令只显示配置，不连接官方服务器或 R2。
-
-## 五、首次配置后的使用顺序
-
-1. 运行 `setup-venv.bat`，再运行 `run-gui.bat`。
-2. 在“工具配置”中填写 `public`、Java、`beyond-sdk.jar` 和统一工作目录。
-3. 有本地游戏文件时填写 `StreamingAssets` 和 `Persistent`；没有时可留空。
-4. 需要 R2 时完成 rclone Remote 配置，再填写 rclone、Remote 和 Bucket。
-5. 点击“保存配置”。
-6. TableCfg 使用“手动更新”或“自动监听”。
-7. 图片和 Json 分别在各自解析分页执行准备、解析和发布步骤。
-8. 需要上传共享资产时，在“资产上传”中选择图片、Json，先生成 Json 索引并比较差异，再同步。
-
-TableCfg 完整流程为：
-
-```text
-检查版本 -> 准备 VFS -> beyond-sdk 解析 -> 验证 -> 发布 public -> 可选上传 R2
-```
-
-Json 发布只替换解析输出中与现有 `public/Json` 子目录同名的目录，其他输出不会发布。图片发布
-使用本次解析的 `output/assets`，并完整替换 `public/images/assets`。
+1. 在“工具配置”设置 public、独立工作目录以及需要使用的游戏资源路径。按需配置 R2；本地解析和发布可单独进行。
+2. TableCfg 在“手动更新”依次检查版本、准备 VFS、解包、校验、发布本地。需要监听时在“自动监听”单独配置间隔和是否上传。
+3. 对图片、Json 或 GlobalBuff，选择其独立分页，核对同一版本的输入与输出报告，再发布到对应 public 目录。Json 包含导出根文件及非空子目录；图片只合并本次导出范围。
+4. 若需要上传，核对 TableCfg 的游戏版本与 Hotfix，或共享资产的 profile、Map、目标数据集与差异计划。中断后先查 pending 和回读状态，再决定续传哪一步。
 
 ## 六、命令行用法
 
@@ -377,6 +247,8 @@ python -m ake_tool.cli stage upload
 python -m ake_tool.cli config
 ```
 
+完整 run 在启用 R2 时会包含 upload。仅处理指定阶段可用 --steps。CLI 另提供 narrative-index-plan / narrative-index-apply，前者将叙事索引元数据差异写入 --plan 指定的文件，后者执行该计划。
+
 TableCfg 可用步骤为：
 
 ```text
@@ -388,32 +260,18 @@ check, download, unpack, validate, publish, upload
 
 ## 七、工作目录和日志
 
-假设统一工作目录为 `E:\AKEImageWork`，主要内容如下：
+在统一工作目录（如 `E:\AKEImageWork`）中按阶段查找：
 
-```text
-E:\AKEImageWork\
-├─ VFS\                         # 图片和 Json 的独立 VFS 工作副本
-├─ output\                      # 图片解析输出
-├─ json-output\                 # Json 解析输出
-├─ indexes\                     # 当前 Hotfix 的 main/initial 索引
-├─ hotfix-cache\                # 缺失资源的下载缓存
-├─ jobs\                        # TableCfg 任务输入和解析输出
-├─ il2cpp-host-runtime\         # TableCfg 解析所需的本地运行时缓存
-├─ image-state.json             # 图片和 Json 分步任务状态
-├─ state.json                   # TableCfg 成功步骤状态
-├─ asset-sync-index.json        # 可选的本地资产差异快照
-├─ release-pending\             # TableCfg 发布未完成标记
-└─ r2-delete-pending\           # R2 版本清理未完成标记
+| 路径 | 作用 |
+| --- | --- |
+| `VFS/`、`vfs-versions.json`、`indexes/` | 持久区块副本、基线身份与热更新索引 |
+| `jobs/`、`state.json` | TableCfg 版本任务和阶段状态 |
+| `output/<profile>/`、`image-runs/`、`map-cache/` | 累积图片、各次导出和历史 Map |
+| `il2cpp-host-runtime/`、`json-output/`、`json-python-runs/` | 版本化运行时、当前 Json 结果和历史尝试 |
+| `globalbuff-output/`、`globalbuff-runs/` | 当前 GlobalBuff 导出和运行历史 |
+| `image-state.json`、`release-pending/` | 图片、Json、GlobalBuff 的阶段信息，以及独立的 TableCfg 上传恢复记录 |
 
-tools\ake-data-tool\logs\
-├─ table-job-*.log
-├─ image-job-*.log
-└─ json-job-*.log
-```
-
-解析或下载新版本时，工具会清理工作目录中的旧版本任务数据和旧解析输出，不创建旧数据备份。
-日志固定存放在 `tools/ake-data-tool/logs`，不会写入统一工作目录。调用 beyond-sdk 前，完整命令行
-会同时显示在 GUI 日志和对应日志文件中。
+GUI 任务日志在工具目录 `logs/`，Json 子进程在该次输出中写 `parser.log`。相应处理阶段会裁剪旧导出，单纯启动 GUI 不触发清理；保留策略会保护状态引用的 Map。
 
 ## 八、常见配置错误
 
@@ -437,35 +295,27 @@ Token 必须允许目标 Bucket 的对象读写和删除。
 `R2 Bucket` 只能填写 Bucket 名称，例如 `akedatabase`，不能填写 `r2:akedatabase`、URL 或
 `akedatabase/public`。
 
-### `beyond-sdk.jar 不存在`
+### 找不到唯一完整运行时或图片所需的内置资源
 
-选择实际 JAR 文件，不要只填写所在目录。TableCfg、Json 和图片的解析步骤都会使用同一个配置。
+按目标 game_version / seed_version 核对 `il2cpp-host-runtime` 下的文件与候选数量。对于图片，先核对版本化运行时的 `Endfield_Data/Resources`；游戏目录回退还会检查 GameAssembly 文件身份。解析日志会指出缺失的依赖。
 
-### Java 无法分配 32 GB 内存
+### 图片差分计划失效
 
-确认使用 64 位 Java，并确保系统有足够的物理内存或页面文件。图片和 Json 解析固定使用
-`-Xmx32G`。
-
-### SDK 开始下载 VFS 或 IL2CPP 依赖
-
-这是允许的行为。AKE Data Tool 会优先准备已知资源，但不再向 beyond-sdk 传入
-`--no-vfs-update`，也不在 IL2CPP 缓存缺失时提前终止。可在 `tools/ake-data-tool/logs` 中查看
-完整 SDK 命令和下载输出。
+核对版本、profile、解析器摘要和本次导出的 Map。更换规则、解析器或数据版本后，用对应的解析和发布状态重新比较。
 
 ### 工作目录配置无效
 
 不要填写磁盘根目录，也不要填写 `StreamingAssets`、`Persistent` 或它们的子目录。选择一个
 独立、可写且空间充足的目录。
 
-### 本地差异索引与远端不一致
+### 计划基线与远端索引不一致
 
-取消“本地差异比对”，执行一次直接远端比较。确认差异正确并成功同步后，本地
-`asset-sync-index.json` 会更新为新的远端基线。
+重新读取远端索引并按当前版本、数据集与 profile 建立差异计划。中断的传输先核对未完成记录与已传范围。
 
 ## 九、安全说明
 
 - “比较本地与远端”和 rclone 连通性命令只读，不会修改 R2。
-- “按本地资产同步到 R2”会上传本地差异，并删除远端多余图片或 Json。
+- 资产同步按计划执行；图片保留远端历史对象，Json 与 GlobalBuff 需单独核对删除范围。
 - “删除远端版本”会永久删除所选 TableCfg 版本的数据，并更新远端 `manifest.json`。
 - 自动监听只有勾选“上传到 R2”时才修改远端。
 - 任何 R2 写入操作前都应确认 Remote、Bucket、完整差异列表和预计容量。
