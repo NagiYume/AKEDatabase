@@ -311,12 +311,10 @@
     }
 
     function renderSpawnMap(waves, data) {
-        const positions = waves.flatMap(wave => wave.groups.flatMap(group => group.spawns.map(spawn => spawn.position)));
-        if (!positions.length) return '';
-        const pad = 2;
-        const halfX = Math.max(...positions.map(position => Math.abs(Number(position.x) || 0)), 1) + pad;
-        const halfZ = Math.max(...positions.map(position => Math.abs(Number(position.z) || 0)), 1) + pad;
-        const toPct = (x, z) => ({ left: ((Number(x) + halfX) / (halfX * 2) * 100).toFixed(1), top: ((halfZ - Number(z)) / (halfZ * 2) * 100).toFixed(1) });
+        const projection = window.AKECombatData.spawnMapProjection(waves);
+        if (!projection) return '';
+        const { halfExtent, unitPct, toPct } = projection;
+        const offsetPct = (0.3 * unitPct).toFixed(2);
         const modeLabels = { Parallel: t('parallel'), Sequence: t('sequence'), PartKilled: t('partKilled'), AllKilled: t('allKilled'), Deadline: t('deadline') };
         let spots = '';
         waves.forEach((wave, waveIndex) => {
@@ -325,7 +323,7 @@
                 const positionKey = `${Number(spawn.position.x).toFixed(1)},${Number(spawn.position.z).toFixed(1)}`;
                 const stackIndex = positionCount[positionKey] || 0;
                 positionCount[positionKey] = stackIndex + 1;
-                const point = toPct(spawn.position.x, spawn.position.z);
+                const point = toPct(spawn.position);
                 const enemyName = text(data.enemyDisplay[data.enemies[spawn.id]?.templateId]?.name, spawn.id);
                 const condition = group.targetKey
                     ? (group.mode === 'AllKilled'
@@ -342,18 +340,14 @@
                     groupLine,
                     [spawn.timestamp > 0 ? t('delay', { value: Number(spawn.timestamp).toFixed(1) }) : '', spawn.spawnInterval > 0 ? t('interval', { value: Number(spawn.spawnInterval).toFixed(1) }) : '', spawn.preWarnTime > 0 ? t('warning', { value: Number(spawn.preWarnTime).toFixed(1) }) : '', spawn.faceMainCharacter ? t('facing') : ''].filter(Boolean).join(' · ')
                 ].filter(Boolean);
-                const offset = (0.3 * 100 / (halfX * 2)).toFixed(2);
-                const stackStyle = stackIndex ? `margin-left:${stackIndex * offset}%;margin-top:-${stackIndex * offset}%;z-index:${10 - stackIndex};` : 'z-index:10;';
+                const stackStyle = stackIndex ? `margin-left:${stackIndex * offsetPct}%;margin-top:-${stackIndex * offsetPct}%;z-index:${10 - stackIndex};` : 'z-index:10;';
                 spots += `<div class="v2d-map-spot" data-ake-popover-anchor data-wave="${waveIndex}" data-group="${escapeHtml(group.key)}" data-target-group="${escapeHtml(group.targetKey)}" data-enemy-id="${escapeHtml(spawn.id)}" style="left:${point.left}%;top:${point.top}%;${waveIndex ? 'display:none;' : ''}${stackStyle}">
                     <img class="v2d-map-spot-icon" src="/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/monstericonbig/${escapeHtml(spawn.templateId)}.png" alt="">
                     <div class="v2d-map-tip ake-ui-popover" data-placement="top"><div><b>${escapeHtml(enemyName)} ×${spawn.count} Lv.${spawn.level}</b></div>${details.map(detail => `<div>${escapeHtml(detail)}</div>`).join('')}</div>
                 </div>`;
             }));
         });
-        const unit = (100 / (halfX * 2)).toFixed(2);
-        const gridX = (100 / (halfX * 2)).toFixed(4);
-        const gridZ = (100 / (halfZ * 2)).toFixed(4);
-        return `<div class="v2d-spawn-map-container"><div class="v2d-spawn-map" style="--unit:${unit}%;--grid-cell-x:${gridX}%;--grid-cell-z:${gridZ}%"><div class="v2d-map-center"></div>${spots}</div><div class="v2d-map-coords">X: ${(-halfX).toFixed(0)} ~ ${halfX.toFixed(0)}&nbsp;&nbsp;Z: ${(-halfZ).toFixed(0)} ~ ${halfZ.toFixed(0)}</div></div>`;
+        return `<div class="v2d-spawn-map-container"><div class="v2d-spawn-map" style="--unit:${unitPct}%;--grid-cell-x:${unitPct}%;--grid-cell-z:${unitPct}%"><div class="v2d-map-center"></div>${spots}</div><div class="v2d-map-coords">X: ${-halfExtent} ~ ${halfExtent}&nbsp;&nbsp;Z: ${-halfExtent} ~ ${halfExtent}</div></div>`;
     }
 
     function renderCombat(gameId, dungeon, openByDefault, isHighestDifficulty) {

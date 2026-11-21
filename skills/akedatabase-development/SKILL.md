@@ -7,6 +7,14 @@ description: Review and develop AKEDatabase with TableCfg-driven inclusion, shar
 
 此文件是仓库开发流程的维护源。根 `AGENTS.md` 保存始终适用的边界；Kilo 等入口只引用这里，不复制规则正文。
 
+## 接续项目工作
+
+- 初次接手或更换会话时，从[项目总览](../overview.md)定位模块、数据流和维护入口，再在[项目记忆](../memory.md)中按版本、模块名或文件名查阅相关决定和待核验事项。历史结论与当前分支不一致时，核对变更来源。
+- 每轮实际修改项目文件后，交付前更新 `skills/memory.md`，包括独立工具、规则和文档改动。合并同一事项，留下完成结果、原因、可定位的证据、实际验证与遗留事项。未提交的工作写明分支和文件。仅分析且用户要求只读时，保持只读。
+- **新建模块时**，同一轮为它创建独立的 `SKILL.md`，加入[模块索引](../modules/index.md)，并在项目记忆中记录新增结果与依据。主模块放在 `skills/modules/<模块名>/`，杂项子模块放在 `skills/modules/misc/<模块名>/`；目录名沿用模块 ID 并将下划线改为连字符。写清真实路由、源码入口、关键数据关联、修改落点和已知限制。
+- **修改已有模块时**，同一轮更新对应模块的 `SKILL.md` 和 `skills/memory.md`。skill 写改动后如何维护，例如新的取数位置、行为、关联或排查点；记忆写这次完成了什么、为什么、如何核对。共享改动同步到维护方式受影响的各模块；工具改动同样更新对应工具 skill。模块迁移、更名或停用时同步索引。
+- 跨模块结构或入口改变时同步总览。可重复使用且有证据的流程或数据契约写入对应专项 skill，由记忆链接到正文。旧会话集中补录使用[历史会话回填提示词](history-backfill.md)。
+
 ## 工作范围
 
 - 先查看当前分支、已有改动、任务相关代码和 `version.json`，保留用户改动。使用用户指定分支；不要自动提交、打标签或发布。
@@ -52,6 +60,9 @@ description: Review and develop AKEDatabase with TableCfg-driven inclusion, shar
 - TableCfg 版本、资产索引 revision、根清单 sharedRevision 各有语义，不能为了相同而强行同步。
 
 ## 专项入口
+
+- 修改现有模块，从[模块维护索引](../modules/index.md)进入其独立 skill。
+- 桌面数据流水线见 [AKE Data Tool](../ake-data-tool/SKILL.md)；独立 Linux 服务见 [TableCfg 服务](../ake-server-tool/SKILL.md)。
 
 - 新建独立页面模块：读 [模块创建规范](../akedatabase-module-creation/SKILL.md)。
 - 新模块界面或页面布局调整：读 [页面风格统一](../akedatabase-ui-style/SKILL.md)，选择已有 AKEUI 结构与组件。
