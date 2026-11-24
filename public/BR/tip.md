@@ -2,6 +2,10 @@ O AKEData foi transferido para o domínio www.akedata.wiki. O domínio anterior,
 
 # Registro de atualizações do AKEData
 
+### v1.3.9
+
+Chegaram o rascunho [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) v0.3, o exemplo com vários personagens e o [Validador AKEGF](/?plugin=akegf&id=validator). Artigos de pesquisa, AKEGF e avisos compartilham a renderização Markdown e o realce de sintaxe.
+
 ### v1.2.11
 
 #### Navegação secundária e interface compartilhada

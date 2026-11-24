@@ -62,6 +62,7 @@
 
 | 入口 | 模块 ID | 导航 |
 | --- | --- | --- |
+| [AKEGF](akegf/SKILL.md) | `akegf` | 普通入口 |
 | [全站搜索](search/SKILL.md) | `search` | 置顶搜索 |
 | [全局设置](settings/SKILL.md) | `settings` | 底部设置 |
 | [资产](asset/SKILL.md) | `asset` | 普通入口 |

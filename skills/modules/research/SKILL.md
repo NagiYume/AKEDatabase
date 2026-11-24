@@ -1,11 +1,11 @@
 ---
 name: research
-description: 维护 AKEDatabase 的研究模块（research）。中文文章清单为 public/CH/research/manifest.json；loadResearchManifest 建目录，loadDocDetail 读取 Markdown，parseMarkdown 与 buildToc 负责正文及目录。
+description: 维护 AKEDatabase 的研究模块（research）。中文文章清单为 public/CH/research/manifest.json；loadResearchManifest 建目录，loadDocDetail 读取 Markdown，akeRenderMarkdown 与 buildToc 负责正文及目录。
 ---
 
 # 研究
 
-中文文章清单为 public/CH/research/manifest.json；loadResearchManifest 建目录，loadDocDetail 读取 Markdown，parseMarkdown 与 buildToc 负责正文及目录。
+中文文章清单为 public/CH/research/manifest.json；loadResearchManifest 建目录，loadDocDetail 读取 Markdown，akeRenderMarkdown 与 buildToc 负责正文及目录。
 
 ## 从哪里开始
 
@@ -22,7 +22,7 @@ description: 维护 AKEDatabase 的研究模块（research）。中文文章清�
 
 ## 修改与排查
 
-文章不可见先查清单里的 id、分类、顺序和正文路径；标题跳转或行内内容有误再查本模块 Markdown 解析。新增正文也要落实清单条目。
+文章不可见先查清单里的 id、分类、顺序和正文路径；标题跳转或行内内容有误再查研究、AKEGF 与公告共用的 [Markdown 解析器](../../../plugin/js/article-markdown.js)。共享主题使用 pre-line 保留引用段落内的换行。正文由 marked.js 解析，标题文本生成目录锚点，研究图片继续支持灯箱。围栏代码块可标记语言供 highlight.js 高亮，plain/text 保留原样。新增正文也要落实清单条目。
 
 研究文章可能包含预测和未证实公式。将段落用于页面计算前回查游戏配置或用户确认，保留文中适用版本。
 

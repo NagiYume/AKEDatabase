@@ -2,6 +2,10 @@ AKEData ได้ย้ายไปยังโดเมน www.akedata.wiki แ
 
 # บันทึกการอัปเดตเวอร์ชัน AKEData
 
+### v1.3.9
+
+เพิ่มร่างข้อกำหนด [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) v0.3 ตัวอย่างหลายตัวละคร และ[เครื่องมือตรวจสอบ AKEGF](/?plugin=akegf&id=validator) บทความวิจัย เอกสาร AKEGF และประกาศใช้ระบบแสดง Markdown และเน้นสีโค้ดร่วมกัน
+
 ### v1.2.11
 
 #### การนำทางระดับที่สองและส่วนติดต่อร่วม

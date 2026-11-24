@@ -1,10 +1,17 @@
 # Special Announcement
 
-AKEData `v1.3.8` improves second-season Contingency Contract indicators and enemy attributes, updates attribute calculations, and adds display preferences.
+AKEData 1.3.9 adds [AKEGF](/?plugin=akegf&id=home), an exchange format for Endfield gacha records. Download a multi-character example or check an archive locally in your browser.
 
 AKEData has moved to www.akedata.wiki. The former domain, akedata.top, now redirects here.
 
 # AKEData Version Changelog
+
+### v1.3.9
+
+- The [v0.3 draft specification](/?plugin=akegf&id=standard) includes a JSON Schema and multi-character example covering operator draws, weapon issues and gifts.
+- The [format validator](/?plugin=akegf&id=validator) accepts pasted JSON and local files, reports field paths, and checks duplicate character groups and sequence IDs. The same page explains how to check a tool’s import/export round trip.
+- [Partner projects](/?plugin=akegf&id=partners) lists supported versions and integration status. All four pages have direct links and follow the site language.
+- Research articles, AKEGF documents and notices share Markdown rendering and syntax highlighting. Quoted paragraphs preserve line breaks.
 
 ### v1.3.8
 

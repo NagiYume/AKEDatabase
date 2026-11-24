@@ -5,7 +5,7 @@ description: 在 AKEDatabase 新建模块或调整页面布局时统一目录、
 
 # AKEDatabase 页面风格统一
 
-开始前读 [项目开发规范](../akedatabase-development/SKILL.md)，新模块同时读 [模块创建规范](../akedatabase-module-creation/SKILL.md)。权限、CSS、版本和验证边界以项目开发规范及当前用户要求为准。本 skill 负责选择和组合已有界面结构，不隐含修改 CSS 的授权。
+开始前读 [项目开发规范](../akedatabase-development/SKILL.md)，新模块同时读 [模块创建规范](../akedatabase-module-creation/SKILL.md)。权限、CSS、版本和验证边界以项目开发规范及当前用户要求为准。本 skill 负责选择和组合已有界面结构，新功能可按项目开发规范补充样式。
 
 ## 先选页面结构
 
@@ -54,7 +54,7 @@ description: 在 AKEDatabase 新建模块或调整页面布局时统一目录、
 
 图标使用真实素材关联及现有图标／材料组件。保留原有容器的缩放、缺图回退和加载处理，不强制所有图片裁成同一种比例。稀有度、类别色和详情强调色只在有明确业务语义时使用；帝江号的图标底色、滤镜和填充比例不是全站默认值。
 
-确有组件缺口时先说明已有结构无法表达什么，再按当前授权处理。获准修改 CSS 后，共享结构写入 `theme/light.css`，模块特有规则限定作用域；审阅 dark/yellow 并补齐相应主题变量，按开发规范更新三份 `cssversion`。不能在模块 HTML 内放 `<style>`、加载独立 CSS，或用内联布局／颜色绕开 CSS 边界。共享组件既有的数据驱动变量接口可按其原有语义使用。
+已有组件无法表达新功能时可补充 CSS。共享结构写入 `theme/light.css`，模块特有规则限定作用域；审阅 dark/yellow 并补齐相应主题变量，按开发规范更新三份 `cssversion`。不能在模块 HTML 内放 `<style>`、加载独立 CSS，或用内联布局／颜色绕开 CSS 边界。共享组件既有的数据驱动变量接口可按其原有语义使用。
 
 ## 移动端与交互状态
 

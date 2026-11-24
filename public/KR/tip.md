@@ -2,6 +2,10 @@ AKEData가 www.akedata.wiki로 이전되었습니다. 기존 도메인 akedata.t
 
 # AKEData 버전 업데이트 내역
 
+### v1.3.9
+
+[AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) v0.3 초안과 다중 캐릭터 예제, [AKEGF 형식 검사기](/?plugin=akegf&id=validator)를 추가했습니다. 연구 문서, AKEGF 및 공지에 같은 Markdown 렌더러와 코드 강조를 적용했습니다.
+
 ### v1.2.11
 
 #### 2단계 탐색과 공통 인터페이스

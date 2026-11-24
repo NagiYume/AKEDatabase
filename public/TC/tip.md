@@ -2,6 +2,10 @@ AKEData 已遷移至網域：www.akedata.wiki，原先的 akedata.top 現已重�
 
 # AKEData 版本更新日誌
 
+### v1.3.9
+
+新增 [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) v0.3 草案文件、多角色範例與[AKEGF 格式校驗工具](/?plugin=akegf&id=validator)；研究、AKEGF 與公告共用 Markdown 渲染及程式碼醒目提示。
+
 ### v1.2.11
 
 #### 二級目錄與共用介面

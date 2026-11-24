@@ -220,6 +220,11 @@ window.AKESearchIndex = {
     ],
     "coverage": "SkillData assets determine skill membership; listed tables supply descriptions and ownership."
   },
+  "akegf": {
+    "tables": [],
+    "sources": ["plugin/akegf.html", "plugin/js/akegf.js"],
+    "coverage": "Markdown page IDs home, standard, validator and partners address static documents; no TableCfg record routes."
+  },
   "about": {
     "tables": [],
     "sources": [
