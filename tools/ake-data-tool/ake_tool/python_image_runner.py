@@ -14,7 +14,7 @@ import re
 import shutil
 import sys
 
-from .image_parallel import BundlePayloadBoundsError, initialize, parse_bundle
+from .image_parallel import initialize, parse_bundle
 from .native_asset_map import read_map, write_map
 
 
@@ -106,14 +106,13 @@ def main():
             job = next(jobs, None)
             if job is not None:
                 pending.append((job, pool.submit(parse_bundle, job)))
-            try:
-                records, observed, worker_id, cache_stats, builtin_counts, missing_counts = future.result()
-            except BundlePayloadBoundsError as exc:
+            records, observed, worker_id, cache_stats, builtin_counts, missing_counts, failures = future.result()
+            if failures:
                 bundle = vfs.catalog.bundles[bundle_index].name
-                skipped_bundles.append({'bundle': bundle, 'assets': paths, 'error': str(exc)})
-                print(f'[image-stage] 警告：跳过 Bundle {number}/{len(groups)} {bundle}，'
-                      f'涉及 {len(paths)} 个资源路径：{exc}', flush=True)
-                continue
+                skipped_bundles.append({'bundle': bundle, 'assets': list(failures),
+                                        'error': next(iter(failures.values())), 'errors': failures})
+                print(f'[image-stage] Bundle {number}/{len(groups)} {bundle} 有 '
+                      f'{len(failures)}/{len(paths)} 个资源路径读到不支持的存储块', flush=True)
             worker_cache_stats[worker_id] = cache_stats
             observed_types.update(observed)
             builtin_excluded.update(builtin_counts)
@@ -167,8 +166,8 @@ def main():
     if skipped_bundles:
         (args.run / 'skipped-bundles.json').write_text(
             json.dumps(skipped_bundles, ensure_ascii=False, indent=2), encoding='utf-8')
-        if len(skipped_bundles) == len(groups):
-            raise ValueError(f'所有选中 Bundle 均无法解析，详见 {args.run / "skipped-bundles.json"}')
+        if sum(len(group['assets']) for group in skipped_bundles) == len(selected):
+            raise ValueError(f'所有选中资源均无法解析，详见 {args.run / "skipped-bundles.json"}')
     write_map(args.run / 'assets.full.map', 35, all_entries)
     write_map(args.run / 'assets.delta.map', 35, delta)
     write_map(args.remote, 35, all_entries)

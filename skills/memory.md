@@ -4,11 +4,13 @@
 
 ## 当前交接
 
+- **影拓丰碑与牌局（2026-11-25）**　main 工作区：丰碑按 hdId 合并系列，兼容原系列深链；本期两个 Boss 用各自开放时段和共同活动结束时间。新增普通入口「牌局」，教学、结算、牌型、遗物、商店和多人房间数据及搜索接入见[模块说明](modules/cardgame/SKILL.md)。配置快照 12026241-3，静态审阅，未运行页面或测试。
+
 - **新会话按任务读取 skill（2026-11-25）**　`main` 工作区未提交。根 [AGENTS.md](../AGENTS.md) 与[开发 skill](akedatabase-development/SKILL.md)改为按用户问题定位模块、规则与历史段落，取数、前端、搜索和版本规则已拆入独立参考页。已静态复核入口，未做新会话实测。
 
 - **Json 逐项跳过（2026-11-25）**　`main` 工作区未提交。`json-job-20261125-063040-820711.log` 对应的宿主报告选中 24,634 项，写出 24,633 项，`GameplayConfig/MultiTriggerTable.json` 在 UTF-8 解码时失败，父进程因退出码 1 拒绝整批。现接受有成功输出且计数自洽的完成报告，失败仍保留诊断。本地发布保留同路径旧文件，`json_publish_skips` 将失败路径排除在 R2 比较与同步的文件和索引变更之外。未重跑解析、发布或上传。
 
-- **1.7.2 桌面运行时下载与图片解析（2026-11-25）**　`main` 工作区未提交。Json、GlobalBuff 和图片共用 [runtime_download.py](../tools/ake-data-tool/ake_tool/runtime_download.py)。缺少完整本地运行时时，使用已准备状态的官方包地址和 `game_files` 清单逐文件校验并缓存。用户的 `image-job-20261125-062738-032925.log` 显示 1.7.2 图片运行时九项下载校验完成，Bundle 阶段在 `10f732046a45dc4554a6371f.ab` 和 `df095b0163539eeac659402b.ab` 报 `Endfield payload exceeds bounds`。两份逻辑 Bundle 的 VFS MD5 均匹配。独立读取元数据确认 `0x80` 块记录后有四字节扩展，补读后边界吻合，但现有 LZ4Inv 路径仍无法解码此类载荷。按用户要求暂时跳过该异常，图片 worker 记录受影响的资源并继续，正常产出可发布，含缺项的 Asset map 暂不提交至远端。见 [AKE Data Tool](ake-data-tool/SKILL.md)。未重跑修改后的图片流程。
+- **1.7.2 桌面运行时下载与图片解析（2026-11-25）**　`main` 工作区未提交。Json、GlobalBuff 和图片共用 [runtime_download.py](../tools/ake-data-tool/ake_tool/runtime_download.py)。缺少完整本地运行时时，使用已准备状态的官方包地址和 `game_files` 清单逐文件校验并缓存。用户的 `image-job-20261125-062738-032925.log` 显示 1.7.2 图片运行时九项下载校验完成，Bundle 阶段在 `10f732046a45dc4554a6371f.ab` 和 `df095b0163539eeac659402b.ab` 报 `Endfield payload exceeds bounds`。两份逻辑 Bundle 的 VFS MD5 均匹配。独立读取元数据确认 `0x80` 块记录后有四字节扩展，补读后边界吻合，但现有 LZ4Inv 路径仍无法解码此类载荷。后续在 UnityPy 子模块修正块表并为图片工作进程提供按区间读取的节点流，[image_parallel.py](../tools/ake-data-tool/ake_tool/image_parallel.py) 按资源记录实际触及的扩展块。在 11 个此前整包跳过的 1.7.2 Bundle 中，2,425 个路径已有 2,404 个在内存生成并通过 PNG 完整性检查，另 21 个仍需解码 `0x85` 的两种扩展值（`b0c1dd0b`、`b0c9dd0b`）。未运行全量解析或发布，父仓库与子模块均未提交。详见 [AKE Data Tool](ake-data-tool/SKILL.md)。
 
 - **1.3.9 工作区正式版（2026-11-24）**　main 未提交。网站版本及本轮资源缓存号为 1.3.9，AKEGF 规范仍为 v0.3 草案。根 README 与 public/<语言>/tip.md 同步更新，tipversion 已递增。AKEGF 按站点语言读取 public/<语言>/akegf 四份正文和界面翻译，覆盖 14 个语言目录。已静态核对资源、目录及文档入口，未执行运行验证；按用户指定仅完成工作区正式版。
 

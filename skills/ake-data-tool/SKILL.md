@@ -22,7 +22,7 @@ description: 维护 AKEDatabase 的 Windows 桌面 AKE Data Tool。用于修改 
 
 - **工作副本与校验。** 在工作目录按游戏大版本、Seed、Hotfix 和区块身份查 `vfs-versions.json`、VFS 及任务记录。跨大版本准备工作文件与同大版本补丁的选择顺序见 [VFS 热更新契约](../akedatabase-development/references/vfs-hotfix-updates.md)。一次区块事务必须在候选文件均校验后提升。
 - **IL2CPP 运行时缺失。** Json、图片和 GlobalBuff 共用运行时准备。唯一且完整的旧版 Seed 目录可直接复用。否则，从已准备状态保存的 `seed_package_path` 读取鹰角 CDN 的 `game_files`，按清单大小和 MD5 下载缺失文件至 `il2cpp-host-runtime/<game>/downloads/<seed>-<包地址摘要>/`。启动器提供 `game_files_md5` 时同时核对清单摘要。已有准备状态只要保留包地址和 Seed 标识便能继续使用。图片流程还会从该清单选取 Unity 内置资源。
-- **1.7.2 Bundle 解码越界。** UnityPy 遇到 `Endfield payload exceeds bounds` 时暂时跳过受影响的图片解析任务，记录根 Bundle、选中的资源路径及异常到本次运行目录的 `skipped-bundles.json`。检查其他 Bundle 的输出时，`image-state.json` 中对应 profile 的 `skippedBundleCount` 标识结果有缺项。正常解析的图片可继续发布，远端 Asset map 等完整重跑后再提交。修复底层格式时核对 `0x80` 标志后的四字节扩展和该类块的载荷解码。
+- **1.7.2 混合存储块。** 图片 worker 通过 UnityPy 按块表标志读取四字节扩展。图片使用的 CAB 对象和外部纹理流可以跨块，读取区间与尚未支持的扩展块重叠时，该资源不写入 Map。已命中历史哈希的混合包纹理也核对数据是否可读。运行目录的 `skipped-bundles.json` 按 Bundle 列出失败路径及异常，`skippedBundleCount` 统计有缺项的 Bundle，远端 Asset map 仍需完整运行后提交。底层实现位于 UnityPy 子模块的 `EndfieldBundle.py` 与 `EndfieldBundleFile.py`。
 - **Json 个别文件解析失败。** 宿主正常结束、有完整报告且至少写出一个文件时，桌面流程使用成功结果。失败路径和堆栈分别见 `json-output/export-report-0.json` 和 `json-output/.perlica/endfield-json-errors/`。本地发布保留同路径的旧文件，`image-state.json` 的 `json_publish_skips` 让 R2 比较与同步跳过这些路径的文件与索引变更。重跑并发布后按新报告更新跳过范围。
 - **图片已解析但无法发布。** 在 `image-state.json` 查对应 profile、版本、parser digest、fullMapPath、deltaMapPath、pendingMapPath 与 deltaExportPaths。规则、解析器或版本变化均可能使之前的计划失效。范围外历史文件保留。累积的 `output/<profile>` 与单次 `image-runs` 用途不同。
 - **同一任务重复传输。** 先区分“文件传完”和“清单提交完成”。TableCfg 的 pending 记录在传输前创建，transferComplete 用于续传；共享资产另有同步计划与回读。计划内包含内容上传、覆盖、索引更新和允许的删除，各项分别核对。

@@ -1423,7 +1423,7 @@ class ImageAssetPipeline:
                        f'内容可能不完整，详见 {run_root / "unresolved-cabs.json"}')
         skipped_bundles = metrics.get("skippedBundles", 0)
         if skipped_bundles:
-            self._emit("image_extract", f'已跳过 {skipped_bundles} 个 Bundle 解析任务，'
+            self._emit("image_extract", f'有 {skipped_bundles} 个 Bundle 包含无法读取的图片资源，'
                        f'受影响资源见 {run_root / "skipped-bundles.json"}', level="warning")
         if image_parser_digest() != parser_digest:
             raise ValidationError("图片解析期间 Python 解析器发生变化，拒绝合并输出")

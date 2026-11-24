@@ -493,6 +493,10 @@ window.AKESearchIndex = {
       "plugin/season_tower.html"
     ]
   },
+  "cardgame": {
+    "tables": ["GameplayGuideTable", "TextTable", "CardGameConst", "CardMaterialTable", "CardGameBlackjackConst", "CardGameBlackjackRoundSettleTable", "CardGameBlackjackEffectTable", "CardGameCardChangTable", "CardGameCardEnhanceTable", "CardGameRelicInfoTable", "CardGameShopGoodsTable", "CardGameDoudizhuCardTypeTable", "LandLoardConst", "MultiplayerGameConst", "MultiplayerEmojiInfoTable", "MultiplayerEmojiTabTable", "MultiplayerNpcPoolInfoTable", "MultiplayerGameCenterTable", "CharacterTable", "UserAvatarTable", "AchievementTable", "ItemTable", "RewardTable"],
+    "sources": ["plugin/cardgame.html", "plugin/js/cardgame.js", "plugin/js/ake-catalog.js"]
+  },
   "monument": {
     "tables": [
       "ActivityConditionalMultiStageCompleteConditionTable",
@@ -503,6 +507,8 @@ window.AKESearchIndex = {
       "EnemyAttributeTemplateTable",
       "EnemyTable",
       "EnemyTemplateDisplayInfoTable",
+      "HighDifficultyBossGameTable",
+      "HighDifficultyBossGroupTable",
       "HighDifficultySeriesTable",
       "HighDifficultyGameIdToSeriesIdTable",
       "ItemTable",

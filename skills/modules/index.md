@@ -35,6 +35,7 @@
 | [副本](v3-dungeon/SKILL.md) | `v3_dungeon` | 普通入口 |
 | [危机合约](v3-cc/SKILL.md) | `v3_cc` | 普通入口 |
 | [战争回响](season-tower/SKILL.md) | `season_tower` | 普通入口 |
+| [牌局](cardgame/SKILL.md) | `cardgame` | 普通入口 |
 | [影拓丰碑](monument/SKILL.md) | `monument` | 普通入口 |
 
 ## 活动、叙事与世界
