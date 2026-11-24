@@ -2,7 +2,7 @@
 
 >ArKnights: Endfield Gachalog Format
 
-当前版本：v0.3
+当前版本：v0.4
 
 ## 前言
 
@@ -27,12 +27,12 @@
 
 我们也提供[AKEGF 格式校验工具](https://www.akedata.wiki/?plugin=akegf&id=validator)来帮助你校验 JSON 文件。
 
-你也可以[下载 v0.3 JSON Schema](https://www.akedata.wiki/plugin/data/akegf/akegf-v0.3.schema.json)。
+你也可以[下载 v0.4 JSON Schema](https://www.akedata.wiki/plugin/data/akegf/akegf-v0.4.schema.json)。
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AKEGF v0.3",
+  "title": "AKEGF v0.4",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -64,7 +64,7 @@
       ],
       "properties": {
         "version": {
-          "const": "v0.3"
+          "const": "v0.4"
         },
         "export_app": {
           "$ref": "#/$defs/text"
@@ -72,12 +72,26 @@
         "export_app_version": {
           "$ref": "#/$defs/text"
         },
+        "export_provider": {
+          "type": "string",
+          "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$(?![\\s\\S])",
+          "description": "AKEGF 公钥目录分配的导出数据提供方 ID"
+        },
+        "rsa_signature": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]\\.(?:[A-Za-z0-9_-]{341}[AQgw]|[A-Za-z0-9_-]{512}|[A-Za-z0-9_-]{682}[AEIMQUYcgkosw048])$(?![\\s\\S])",
+          "description": "公钥指纹与 RSA-PSS 签名，格式为 kid.signature，两段均为无填充 Base64url"
+        },
         "export_timestamp": {
           "type": "integer",
           "minimum": 1000000000000,
           "maximum": 9999999999999,
           "description": "Unix 毫秒"
         }
+      },
+      "dependentRequired": {
+        "export_provider": ["rsa_signature"],
+        "rsa_signature": ["export_provider"]
       }
     },
     "account": {
@@ -140,11 +154,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "kind",
-        "pool_id",
-        "item_name",
-        "rarity",
-        "gacha_ts"
+        "kind"
       ],
       "properties": {
         "record_type": {
@@ -211,6 +221,26 @@
         }
       },
       "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "draw"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "pool_id",
+              "item_name",
+              "rarity",
+              "gacha_ts"
+            ]
+          }
+        },
         {
           "if": {
             "properties": {

@@ -1,19 +1,19 @@
-# AKEGF v0.3 · Specifica
+# AKEGF v0.4 · Specifica
 
-Bozza v0.3. In esportazione scrivi tutti i campi obbligatori; ometti quelli facoltativi senza una fonte attendibile. In lettura rispetta i tipi dello schema. Se manca is_free, la gratuità è ignota; false indica che l’estrazione non era gratuita.
+Bozza v0.4. In esportazione scrivi tutti i campi obbligatori; ometti quelli facoltativi senza una fonte attendibile. In lettura rispetta i tipi dello schema. Se manca is_free, la gratuità è ignota; false indica che l’estrazione non era gratuita.
 
 | Livello | Campi obbligatori | Regola |
 | --- | --- | --- |
 | `JSON` | info, endfield | endfield deve contenere almeno un gruppo di personaggio. |
-| `info` | version | version deve valere v0.3; export_timestamp è un tempo Unix di 13 cifre in millisecondi. |
+| `info` | version | version deve valere v0.4; export_timestamp è un tempo Unix di 13 cifre in millisecondi. |
 | `endfield[]` | uid, list | uid è una stringa con almeno un carattere diverso da uno spazio; list può essere vuoto. |
-| `list[]` | kind, pool_id, item_name, rarity, gacha_ts | I primi tre campi sono stringhe con contenuto. rarity è un intero da 1 a 99; gacha_ts è un tempo Unix di 13 cifre in millisecondi. |
+| `list[]` | `kind` | `kind = "draw"` → `pool_id`, `item_name`, `rarity` (1–99), `gacha_ts` (Unix ms) |
 
 Sono ammessi solo i campi definiti nello schema. Conserva numeri di sequenza e UID come stringhe.
 
 | Livello | Campi facoltativi |
 | --- | --- |
-| `info` | export_app, export_app_version, export_timestamp |
+| `info` | export_app, export_app_version, export_timestamp, export_provider, rsa_signature |
 | `endfield[]` | region, server_id, account_uid, lang |
 | `list[]` | record_type, seq_id, seq_id_source, pool_name, pool_type, item_id, name_text, weapon_type, is_new, is_free, gift_reward_label |
 
@@ -31,4 +31,4 @@ Ricava item_name da charName, weaponName o dal nameText del regalo; salva l’et
 
 La chiave del gruppo è (region, server_id, uid). Senza region usa cn; in Cina il valore predefinito di server_id è la stringa “1”. global richiede server_id. Identifica ogni evento con (record_type, seq_id) nel gruppo; conserva separatamente le righe con chiave incompleta. Gli identificatori restano stringhe.
 
-[Scarica lo schema JSON v0.3](/plugin/data/akegf/akegf-v0.3.schema.json) · [Esempio con più personaggi](/plugin/data/akegf/example.json)
+[Scarica lo schema JSON v0.4](/plugin/data/akegf/akegf-v0.4.schema.json) · [Esempio con più personaggi](/plugin/data/akegf/example.json)

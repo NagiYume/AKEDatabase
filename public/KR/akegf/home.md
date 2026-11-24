@@ -1,6 +1,6 @@
 # AKEGF · 홈
 
-> ArKnights: Endfield Gachalog Format · v0.3
+> ArKnights: Endfield Gachalog Format · v0.4
 
 AKEGF는 명일방주: 엔드필드의 오퍼레이터 모집, 무기 조달, 증정 기록을 UTF-8 JSON으로 교환하는 형식입니다. [UIGF](https://uigf.org/)를 참고해 여러 캐릭터와 서버의 기록을 한 파일에 담고 다른 도구로 옮길 수 있도록 했습니다.
 
@@ -10,12 +10,12 @@ AKEGF는 명일방주: 엔드필드의 오퍼레이터 모집, 무기 조달, �
 
 ## JSON Schema
 
-[v0.3 JSON Schema 다운로드](/plugin/data/akegf/akegf-v0.3.schema.json) · [다중 캐릭터 예제](/plugin/data/akegf/example.json)
+[v0.4 JSON Schema 다운로드](/plugin/data/akegf/akegf-v0.4.schema.json) · [다중 캐릭터 예제](/plugin/data/akegf/example.json)
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AKEGF v0.3",
+  "title": "AKEGF v0.4",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -47,7 +47,7 @@ AKEGF는 명일방주: 엔드필드의 오퍼레이터 모집, 무기 조달, �
       ],
       "properties": {
         "version": {
-          "const": "v0.3"
+          "const": "v0.4"
         },
         "export_app": {
           "$ref": "#/$defs/text"
@@ -55,12 +55,26 @@ AKEGF는 명일방주: 엔드필드의 오퍼레이터 모집, 무기 조달, �
         "export_app_version": {
           "$ref": "#/$defs/text"
         },
+        "export_provider": {
+          "type": "string",
+          "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$(?![\\s\\S])",
+          "description": "Export provider ID assigned by the AKEGF public key registry"
+        },
+        "rsa_signature": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]\\.(?:[A-Za-z0-9_-]{341}[AQgw]|[A-Za-z0-9_-]{512}|[A-Za-z0-9_-]{682}[AEIMQUYcgkosw048])$(?![\\s\\S])",
+          "description": "Key fingerprint and RSA-PSS signature as kid.signature, both unpadded base64url"
+        },
         "export_timestamp": {
           "type": "integer",
           "minimum": 1000000000000,
           "maximum": 9999999999999,
           "description": "Unix 毫秒"
         }
+      },
+      "dependentRequired": {
+        "export_provider": ["rsa_signature"],
+        "rsa_signature": ["export_provider"]
       }
     },
     "account": {
@@ -123,11 +137,7 @@ AKEGF는 명일방주: 엔드필드의 오퍼레이터 모집, 무기 조달, �
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "kind",
-        "pool_id",
-        "item_name",
-        "rarity",
-        "gacha_ts"
+        "kind"
       ],
       "properties": {
         "record_type": {
@@ -194,6 +204,26 @@ AKEGF는 명일방주: 엔드필드의 오퍼레이터 모집, 무기 조달, �
         }
       },
       "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "draw"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "pool_id",
+              "item_name",
+              "rarity",
+              "gacha_ts"
+            ]
+          }
+        },
         {
           "if": {
             "properties": {

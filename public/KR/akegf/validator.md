@@ -1,6 +1,6 @@
 # AKEGF · 도구 인증
 
-도구 인증에는 v0.3 가져오기와 내보내기가 모두 필요합니다. 앱에 지원 버전과 [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) 링크를 표시하세요.
+도구 인증에는 v0.4 가져오기와 내보내기가 모두 필요합니다. 앱에 지원 버전과 [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) 링크를 표시하세요.
 
 AKEGF를 사용하는 프로젝트는 [Pull Request](https://github.com/NagiYume/AKEDatabase/pulls)를 통해 [협력 프로젝트](/?plugin=akegf&id=partners)에 등록을 요청할 수 있습니다.
 

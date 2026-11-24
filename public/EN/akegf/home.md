@@ -1,6 +1,6 @@
 # AKEGF · Endfield gacha record exchange format
 
-Draft v0.3. Store headhunting, Arsenal Issues and gifts in a UTF-8 JSON file to exchange records across tools, characters and servers.
+Draft v0.4. Store headhunting, Arsenal Issues and gifts in a UTF-8 JSON file to exchange records across tools, characters and servers.
 
 ## Why AKEGF exists
 
@@ -12,14 +12,14 @@ An archive can hold several characters and servers. Original sequence IDs and mi
 
 See the [specification](/?plugin=akegf&id=standard) for field requirements and [tool certification](/?plugin=akegf&id=validator) for the import and export checks. When declaring support in an application, link to the [AKEGF home page](https://www.akedata.wiki/?plugin=akegf&id=home).
 
-The design draws on [UIGF](https://uigf.org/). Use the field types in the [v0.3 JSON Schema](/plugin/data/akegf/akegf-v0.3.schema.json) and check an import/export round trip with the [multi-character example](/plugin/data/akegf/example.json).
+The design draws on [UIGF](https://uigf.org/). Use the field types in the [v0.4 JSON Schema](/plugin/data/akegf/akegf-v0.4.schema.json) and check an import/export round trip with the [multi-character example](/plugin/data/akegf/example.json).
 
 ## JSON Schema
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AKEGF v0.3",
+  "title": "AKEGF v0.4",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -51,7 +51,7 @@ The design draws on [UIGF](https://uigf.org/). Use the field types in the [v0.3 
       ],
       "properties": {
         "version": {
-          "const": "v0.3"
+          "const": "v0.4"
         },
         "export_app": {
           "$ref": "#/$defs/text"
@@ -59,12 +59,26 @@ The design draws on [UIGF](https://uigf.org/). Use the field types in the [v0.3 
         "export_app_version": {
           "$ref": "#/$defs/text"
         },
+        "export_provider": {
+          "type": "string",
+          "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$(?![\\s\\S])",
+          "description": "Export provider ID assigned by the AKEGF public key registry"
+        },
+        "rsa_signature": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]\\.(?:[A-Za-z0-9_-]{341}[AQgw]|[A-Za-z0-9_-]{512}|[A-Za-z0-9_-]{682}[AEIMQUYcgkosw048])$(?![\\s\\S])",
+          "description": "Key fingerprint and RSA-PSS signature as kid.signature, both unpadded base64url"
+        },
         "export_timestamp": {
           "type": "integer",
           "minimum": 1000000000000,
           "maximum": 9999999999999,
           "description": "Unix 毫秒"
         }
+      },
+      "dependentRequired": {
+        "export_provider": ["rsa_signature"],
+        "rsa_signature": ["export_provider"]
       }
     },
     "account": {
@@ -127,11 +141,7 @@ The design draws on [UIGF](https://uigf.org/). Use the field types in the [v0.3 
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "kind",
-        "pool_id",
-        "item_name",
-        "rarity",
-        "gacha_ts"
+        "kind"
       ],
       "properties": {
         "record_type": {
@@ -198,6 +208,26 @@ The design draws on [UIGF](https://uigf.org/). Use the field types in the [v0.3 
         }
       },
       "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "draw"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "pool_id",
+              "item_name",
+              "rarity",
+              "gacha_ts"
+            ]
+          }
+        },
         {
           "if": {
             "properties": {

@@ -1,6 +1,6 @@
 # AKEGF · ツール認証
 
-認証には v0.3 のインポートとエクスポートの両方が必要です。アプリ内に対応バージョンと [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) へのリンクを記載してください。
+認証には v0.4 のインポートとエクスポートの両方が必要です。アプリ内に対応バージョンと [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) へのリンクを記載してください。
 
 AKEGF 対応プロジェクトは [Pull Request](https://github.com/NagiYume/AKEDatabase/pulls) で[参加プロジェクト](/?plugin=akegf&id=partners)への掲載を申請できます。
 

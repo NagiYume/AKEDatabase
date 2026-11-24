@@ -1,6 +1,6 @@
-# AKEGF v0.3 · 标准化文档
+# AKEGF v0.4 · 标准化文档
 
-v0.3 草案。将干员寻访、武器申领及赠礼保存为一份 UTF-8 JSON 文件，供不同工具交换同一角色或多个区服的历史记录。
+v0.4 草案。将干员寻访、武器申领及赠礼保存为一份 UTF-8 JSON 文件，供不同工具交换同一角色或多个区服的历史记录。v0.4 新增可选签名；站内校验器仍使用 v0.3 Schema 检查旧文件。
 
 ## 文件结构与必填字段
 
@@ -9,11 +9,41 @@ v0.3 草案。将干员寻访、武器申领及赠礼保存为一份 UTF-8 JSON 
 | 层级 | 必填字段 | 规则 |
 | --- | --- | --- |
 | 文件 | info, endfield | endfield 数组至少包含一个角色分组。 |
-| info | version | version 固定为 v0.3。可选字段 export_app、export_app_version 为字符串，export_timestamp 为 13 位 Unix 毫秒整数。 |
+| info | version | version 固定为 v0.4。可选字段 export_app、export_app_version 为字符串，export_timestamp 为 13 位 Unix 毫秒整数。签名档案须同时写入 export_provider 和 rsa_signature。 |
 | endfield[] | uid, list | uid 为游戏角色 UID 字符串。list 可为空。可选 account_uid 表示绑定账号，lang 表示显示名称的语言。 |
-| list[] | kind, pool_id, item_name, rarity, gacha_ts | 抽取与赠礼均需提供事件类型、原始卡池 ID、获得物名称、1–99 的整数星级和 13 位 Unix 毫秒时间。前三项为非空白字符串。 |
+| list[] | kind | 事件类型为非空白字符串。`kind = "draw"` 时，还须填写 `pool_id`、`item_name`、`rarity` 和 `gacha_ts`。 |
 
 各层对象只接受 Schema 列出的字段。UID、服务器 ID 和流水号使用非空白字符串，以保留前导零和长整数精度。
+
+赠礼和其他非抽取事件允许缺少卡池、获得物名称、星级和时间。导出时保留已知字段，省略缺失项。填写这些字段时，`pool_id` 和 `item_name` 为非空白字符串，`rarity` 为 1–99 的整数，`gacha_ts` 为 13 位 Unix 毫秒整数。
+
+## 导出提供方与 RSA 签名
+
+| 字段 | 规则 |
+| --- | --- |
+| `info.export_provider` | AKEGF 公钥目录分配的提供方 ID。长度为 1–64，只使用小写 ASCII 字母、数字和连字符，首尾必须为字母或数字。`export_app` 仍用于显示应用名称。 |
+| `info.rsa_signature` | 格式为 `kid.signature`。两段均使用无填充 Base64url。`kid` 是 RSA 公钥的 DER SubjectPublicKeyInfo 的 SHA-256 指纹，编码后为 43 字符。第二段是原始 RSA 签名字节。 |
+
+签名字段须成对出现。导出未签名档案时省略两项。签名证明已登记的提供方签署了这些内容且内容自签署后保持完整，抽卡记录是否来自游戏官方仍取决于提供方的数据来源。
+
+1. 在完整档案中填入 `info.export_provider`，移除 `info.rsa_signature`。保留其他全部字段及数组顺序。拒绝 JSON 对象中的重复成员名和字符串中的孤立代理项。
+2. 按 [RFC 8785](https://www.rfc-editor.org/rfc/rfc8785.html) 对整个剩余档案执行 JCS。在规范化后的 UTF-8 字节前拼接 ASCII 字符串 `AKEGF-RSA-PSS-v1` 和单字节换行（`0x0A`）。对拼接后的字节签名。校验前勿填充默认值、改写字段或重排数组。
+3. 使用 2048、3072 或 4096 位通用 RSA 密钥，采用 RSA-PSS、SHA-256、MGF1-SHA-256、32 字节盐值，即 [PS256](https://www.rfc-editor.org/rfc/rfc7518.html#section-3.5)。将结果填入 `info.rsa_signature`。
+
+验签时，从固定域名请求 `GET https://verify.akedata.wiki/v1/providers/{export_provider}/keys/{kid}.json`。响应包含 `provider`、`kid`、`alg` 和 `status`。仅在提供方 ID 及指纹与请求一致、`alg` 为 `PS256` 且 `status` 为 `active` 时，解码 `public_key`（无填充 Base64url 的 DER SubjectPublicKeyInfo），重新计算指纹并在本地验签。已撤销的公钥返回 `status: "revoked"`，省略 `public_key`。未知公钥返回 HTTP 404。响应允许跨域读取并禁止缓存。遇到撤销、未知、服务不可用或签名不匹配时，分别报告结果，均不得标记为已验证。查询路径只包含提供方 ID 和公钥指纹。
+
+修改、合并或重新导出档案时须移除原签名和提供方字段，或使用当前提供方的已登记密钥重新签名。提供方申请登记流程见[工具认证](/?plugin=akegf&id=validator)。
+
+## 导入档案的信任状态
+
+| 状态 | 判定 | 导入工具的处理 |
+| --- | --- | --- |
+| 可信 | 正式档案通过格式检查，并使用目录中对应提供方的有效公钥通过 RSA 验签。 | 可以保存到工具的历史记录，并用于排行等要求可信数据的功能。 |
+| 未验证 | 档案未签名、签名不匹配、公钥未登记或已撤销，或公钥目录暂不可用。 | 格式合法的档案可在当前会话临时查看、筛选和统计，须标记为「未验证」。不得写入工具的持久历史、同步至账户或参与排行等要求可信数据的功能。 |
+
+导入工具须根据实际验签结果判定状态。格式通过、填写了签名字段或应用名称都不足以取得可信状态。未验证的记录在合并和重新导出后仍应保留未验证状态。旧版未签名档案适用相同规则。
+
+`akegf-example` 是示例专用提供方 ID。使用其公钥验签成功表示示例完整。导入工具须将该提供方的档案限于测试会话，禁止写入正式历史、同步至账户或参与排行。
 
 ## 记录类型与抽数
 
@@ -29,11 +59,11 @@ v0.3 草案。将干员寻访、武器申领及赠礼保存为一份 UTF-8 JSON 
 
 武器按 pool_id 分池统计。篆玉申领前 18 次共有 180 件随机武器、1 个武库箱和 1 件赠送武器，合计 182 条流水。统计抽数只计 draw；部分历史只能报告已知条数。
 
-其他官方事件保留原始 kind。来源无法确认事件性质时使用 unknown，并填写记录的其他必填字段。
+其他官方事件保留原始 kind。来源无法确认事件性质时使用 unknown。
 
 ## 字段映射与缺失值
 
-干员和武器的 item_name 分别来自 charName 和 weaponName，赠礼取 nameText。武器名“玉中身”写入 item_name，“篆玉赠礼”写入 gift_reward_label。若来源缺少 rarity，应核实奖励对应物品的星级，无法确认时报告缺项。
+干员和武器的 item_name 分别来自 charName 和 weaponName，赠礼有 nameText 时可用作 item_name。武器名“玉中身”写入 item_name，“篆玉赠礼”写入 gift_reward_label。若无法确认赠礼星级，省略 rarity。
 
 可选字段包括 record_type（char 或 weapon）、seq_id、seq_id_source、pool_name、pool_type、item_id、name_text、weapon_type、is_new、is_free 和 gift_reward_label。seq_id_source 为 batch_end 时须同时提供 seq_id。char 不填 weapon_type，weapon 不填 is_free。缺失值省略，false 表示明确为否。
 

@@ -1,6 +1,6 @@
-# AKEGF v0.3 · Specification
+# AKEGF v0.4 · Specification
 
-Draft v0.3. Store headhunting, Arsenal Issues and gifts in a UTF-8 JSON file to exchange records across tools, characters and servers.
+Draft v0.4. Store headhunting, Arsenal Issues and gifts in a UTF-8 JSON file to exchange records across tools, characters and servers. v0.4 adds optional signatures. The site validator still checks older files against the v0.3 schema.
 
 ## File structure and required fields
 
@@ -9,11 +9,41 @@ Exporters must write every required field below. Optional fields may be included
 | Level | Required fields | Rules |
 | --- | --- | --- |
 | File | info, endfield | The endfield array contains at least one character group. |
-| info | version | Set version to v0.3. Optional export_app and export_app_version are strings. Optional export_timestamp is a 13-digit Unix timestamp in milliseconds. |
+| info | version | Set version to v0.4. Optional export_app and export_app_version are strings. Optional export_timestamp is a 13-digit Unix timestamp in milliseconds. Signed archives require both export_provider and rsa_signature. |
 | endfield[] | uid, list | uid is the in-game character UID as a string. list may be empty. Optional account_uid identifies the bound account and lang identifies the language of display names. |
-| list[] | kind, pool_id, item_name, rarity, gacha_ts | Draws and gifts both require an event kind, original pool ID, result name, integer rarity from 1 to 99 and 13-digit Unix time in milliseconds. The first three fields are nonblank strings. |
+| list[] | kind | Use a nonblank event kind. For `kind = "draw"`, also provide `pool_id`, `item_name`, `rarity` and `gacha_ts`. |
 
 Each object accepts only the properties listed in the schema. UIDs, server IDs and sequence IDs use nonblank strings to preserve leading zeros and large integer identifiers.
+
+Gifts and other non-draw events can omit the pool, item name, rarity and timestamp. Export any known values. When present, `pool_id` and `item_name` are nonblank strings, `rarity` is an integer from 1 to 99, and `gacha_ts` is a 13-digit Unix timestamp in milliseconds.
+
+## Export providers and RSA signatures
+
+| Field | Rule |
+| --- | --- |
+| `info.export_provider` | Provider ID assigned by the AKEGF public key registry. Use 1–64 lowercase ASCII letters, digits and hyphens, beginning and ending with a letter or digit. Use `export_app` for the display name. |
+| `info.rsa_signature` | `kid.signature`, with both components encoded as unpadded base64url. The 43-character `kid` is the SHA-256 fingerprint of the RSA public key's DER SubjectPublicKeyInfo. The second component encodes the raw RSA signature. |
+
+Include both fields for a signed export and omit both for an unsigned export. The signature attests to the contents signed by the registered provider and detects subsequent changes. Whether the records originated in the game depends on the provider's data source.
+
+1. Populate `info.export_provider` and remove `info.rsa_signature` from the complete archive. Keep every other field and the original array order. Reject duplicate JSON member names and unpaired surrogate code units.
+2. Canonicalize the remaining archive with JCS ([RFC 8785](https://www.rfc-editor.org/rfc/rfc8785.html)). Prepend the ASCII string `AKEGF-RSA-PSS-v1` and one LF byte (`0x0A`) to the canonical UTF-8 bytes. Sign the resulting byte sequence. Verify before applying defaults, rewriting fields or reordering arrays.
+3. Use a generic 2048-, 3072- or 4096-bit RSA key with RSA-PSS, SHA-256, MGF1-SHA-256 and a 32-byte salt, as specified by [PS256](https://www.rfc-editor.org/rfc/rfc7518.html#section-3.5). Store the result in `info.rsa_signature`.
+
+To verify the signature, request `GET https://verify.akedata.wiki/v1/providers/{export_provider}/keys/{kid}.json` from the fixed registry host. The response contains `provider`, `kid`, `alg` and `status`. Require the requested provider and key ID, `alg: "PS256"` and `status: "active"`. Decode `public_key` as unpadded base64url DER SubjectPublicKeyInfo, check its fingerprint and verify the signature locally. Revoked keys return `status: "revoked"` and omit `public_key`. Unknown keys return HTTP 404. Responses allow cross-origin reads and prohibit caching. Report revoked, unknown, unavailable and invalid signatures separately from verified ones. The lookup path contains only the provider ID and public key fingerprint.
+
+When editing, merging or re-exporting a file, remove both original signature fields or sign again with the exporting provider's registered key. See [tool certification](/?plugin=akegf&id=validator) for registration.
+
+## Trust status on import
+
+| Status | Condition | Import behavior |
+| --- | --- | --- |
+| Trusted | A production archive passes format checks and its RSA signature verifies with the registered provider's active key. | The tool may save records to its history and use them for leaderboards and other features that require trusted data. |
+| Unverified | The archive is unsigned, the signature fails, the key is unknown or revoked, or the registry is unavailable. | A well-formed archive can be viewed, filtered and counted within the current session. Label it unverified. Do not persist it in the tool's history, sync it to an account or use it for leaderboards or other features requiring trusted data. |
+
+Importers determine trust from the verification result. Format validity, signature fields and the application name alone cannot establish trust. Keep unverified records unverified through merges and re-exports. The same rule applies to older unsigned archives.
+
+The provider ID `akegf-example` is reserved for examples. Verification with its key confirms example integrity. Importers must restrict its archives to test sessions and exclude them from live history, account sync and leaderboards.
 
 ## Event kinds and draw counts
 
@@ -29,11 +59,11 @@ Read the event kind from the source record. The observed counts describe particu
 
 Count weapons per pool_id. The first 18 issues in the Zhuanyu pool produced 180 random weapons, one crate and one gifted weapon, for 182 events. Only draw events count toward draws. Partial history supports only the observed count.
 
-Keep the original kind for other official events. Use unknown for unidentified events and supply the other required fields.
+Keep the original kind for other official events. Use unknown for unidentified events.
 
 ## Field mapping and missing values
 
-Map charName or weaponName to item_name for draws and nameText for gifts. For example, 玉中身 is the result name and 篆玉赠礼 is its gift_reward_label. If rarity is missing, verify it against the awarded item and report an unresolved value.
+Map charName or weaponName to item_name for draws, and use nameText for gifts when available. For example, 玉中身 is the result name and 篆玉赠礼 is its gift_reward_label. Omit rarity for gifts whose rarity is unknown.
 
 Optional fields are record_type (char or weapon), seq_id, seq_id_source, pool_name, pool_type, item_id, name_text, weapon_type, is_new, is_free and gift_reward_label. batch_end requires seq_id. Omit weapon_type for char and is_free for weapon. Omit missing values and use false for a known negative.
 

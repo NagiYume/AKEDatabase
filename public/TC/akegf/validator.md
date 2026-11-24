@@ -1,6 +1,6 @@
 # AKEGF · 工具認證
 
-認證要求同時支援匯入及匯出 v0.3，並在應用程式內標明版本及 [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) 連結。
+認證要求同時支援匯入及匯出 v0.4，並在應用程式內標明版本及 [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) 連結。
 
 使用 AKEGF 的專案可透過 [Pull Request](https://github.com/NagiYume/AKEDatabase/pulls) 申請列入[合作專案](/?plugin=akegf&id=partners)。
 

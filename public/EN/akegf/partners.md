@@ -2,7 +2,8 @@
 
 | Project | AKEGF version | AKEGF import | AKEGF export |
 | --- | --- | --- | --- |
-| AKEData | v0.3 | N/A (file validation) | N/A (specification and example downloads) |
+| AKEData | v0.4 | N/A (file validation) | N/A (specification and example downloads) |
+| Starward (NagiYume fork) | v0.4 | — | Unsigned export |
 | 终末地寻访记录分析 | v0.3 | Pending confirmation | Pending confirmation |
 | otae bot | v0.3 | Pending confirmation | Pending confirmation |
 | 终末地·抽卡记录评分 | v0.3 | Pending confirmation | Pending confirmation |

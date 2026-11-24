@@ -1,6 +1,6 @@
 # AKEGF · Certificación de herramientas
 
-La herramienta debe importar y exportar v0.3 e indicar en la aplicación la versión compatible con un enlace a [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home).
+La herramienta debe importar y exportar v0.4 e indicar en la aplicación la versión compatible con un enlace a [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home).
 
 Si tu proyecto admite AKEGF, puedes solicitar su incorporación a [Proyectos asociados](/?plugin=akegf&id=partners) mediante un [Pull Request](https://github.com/NagiYume/AKEDatabase/pulls).
 

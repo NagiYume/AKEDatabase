@@ -1,6 +1,6 @@
 # AKEGF · หน้าหลัก
 
-> ArKnights: Endfield Gachalog Format · v0.3
+> ArKnights: Endfield Gachalog Format · v0.4
 
 AKEGF ใช้ JSON แบบ UTF-8 เพื่อย้ายประวัติการรับสมัครโอเปอเรเตอร์ การเบิกอาวุธ และของขวัญใน Arknights: Endfield โดยอ้างอิงแนวคิดจาก [UIGF](https://uigf.org/) ผู้เล่นสามารถเก็บหลายตัวละครและหลายเซิร์ฟเวอร์ในไฟล์เดียวและย้ายประวัติไปยังเครื่องมืออื่นได้
 
@@ -10,12 +10,12 @@ AKEGF ใช้ JSON แบบ UTF-8 เพื่อย้ายประวั�
 
 ## JSON Schema
 
-[ดาวน์โหลด JSON Schema v0.3](/plugin/data/akegf/akegf-v0.3.schema.json) · [ตัวอย่างหลายตัวละคร](/plugin/data/akegf/example.json)
+[ดาวน์โหลด JSON Schema v0.4](/plugin/data/akegf/akegf-v0.4.schema.json) · [ตัวอย่างหลายตัวละคร](/plugin/data/akegf/example.json)
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AKEGF v0.3",
+  "title": "AKEGF v0.4",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -47,7 +47,7 @@ AKEGF ใช้ JSON แบบ UTF-8 เพื่อย้ายประวั�
       ],
       "properties": {
         "version": {
-          "const": "v0.3"
+          "const": "v0.4"
         },
         "export_app": {
           "$ref": "#/$defs/text"
@@ -55,12 +55,26 @@ AKEGF ใช้ JSON แบบ UTF-8 เพื่อย้ายประวั�
         "export_app_version": {
           "$ref": "#/$defs/text"
         },
+        "export_provider": {
+          "type": "string",
+          "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$(?![\\s\\S])",
+          "description": "Export provider ID assigned by the AKEGF public key registry"
+        },
+        "rsa_signature": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]\\.(?:[A-Za-z0-9_-]{341}[AQgw]|[A-Za-z0-9_-]{512}|[A-Za-z0-9_-]{682}[AEIMQUYcgkosw048])$(?![\\s\\S])",
+          "description": "Key fingerprint and RSA-PSS signature as kid.signature, both unpadded base64url"
+        },
         "export_timestamp": {
           "type": "integer",
           "minimum": 1000000000000,
           "maximum": 9999999999999,
           "description": "Unix 毫秒"
         }
+      },
+      "dependentRequired": {
+        "export_provider": ["rsa_signature"],
+        "rsa_signature": ["export_provider"]
       }
     },
     "account": {
@@ -123,11 +137,7 @@ AKEGF ใช้ JSON แบบ UTF-8 เพื่อย้ายประวั�
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "kind",
-        "pool_id",
-        "item_name",
-        "rarity",
-        "gacha_ts"
+        "kind"
       ],
       "properties": {
         "record_type": {
@@ -194,6 +204,26 @@ AKEGF ใช้ JSON แบบ UTF-8 เพื่อย้ายประวั�
         }
       },
       "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "draw"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "pool_id",
+              "item_name",
+              "rarity",
+              "gacha_ts"
+            ]
+          }
+        },
         {
           "if": {
             "properties": {

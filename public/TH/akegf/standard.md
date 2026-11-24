@@ -1,19 +1,19 @@
-# AKEGF v0.3 · ข้อกำหนดรูปแบบ
+# AKEGF v0.4 · ข้อกำหนดรูปแบบ
 
-ฉบับร่าง v0.3 เมื่อส่งออกให้ระบุฟิลด์บังคับทั้งหมด ส่วนฟิลด์เสริมให้ละไว้หากไม่มีข้อมูลที่เชื่อถือได้ เมื่ออ่านให้ใช้ชนิดข้อมูลตาม Schema หากไม่มี is_free แสดงว่าไม่ทราบ แต่ false ระบุว่าไม่ใช่การสุ่มฟรี
+ฉบับร่าง v0.4 เมื่อส่งออกให้ระบุฟิลด์บังคับทั้งหมด ส่วนฟิลด์เสริมให้ละไว้หากไม่มีข้อมูลที่เชื่อถือได้ เมื่ออ่านให้ใช้ชนิดข้อมูลตาม Schema หากไม่มี is_free แสดงว่าไม่ทราบ แต่ false ระบุว่าไม่ใช่การสุ่มฟรี
 
 | ระดับ | ฟิลด์บังคับ | ข้อกำหนด |
 | --- | --- | --- |
 | `JSON` | info, endfield | endfield ต้องมีอย่างน้อยหนึ่งกลุ่มตัวละคร |
-| `info` | version | version ต้องเป็น v0.3 ส่วน export_timestamp เป็นเวลา Unix หน่วยมิลลิวินาที 13 หลัก |
+| `info` | version | version ต้องเป็น v0.4 ส่วน export_timestamp เป็นเวลา Unix หน่วยมิลลิวินาที 13 หลัก |
 | `endfield[]` | uid, list | uid เป็นสตริงที่มีอักขระอื่นนอกเหนือจากช่องว่าง ส่วน list เป็นอาร์เรย์ว่างได้ |
-| `list[]` | kind, pool_id, item_name, rarity, gacha_ts | สามฟิลด์แรกเป็นสตริงที่มีเนื้อหา rarity เป็นจำนวนเต็ม 1–99 และ gacha_ts เป็นเวลา Unix หน่วยมิลลิวินาที 13 หลัก |
+| `list[]` | `kind` | `kind = "draw"` → `pool_id`, `item_name`, `rarity` (1–99), `gacha_ts` (Unix ms) |
 
 ใช้เฉพาะฟิลด์ที่กำหนดใน Schema และเก็บเลขลำดับกับ UID เป็นสตริง
 
 | ระดับ | ฟิลด์เสริม |
 | --- | --- |
-| `info` | export_app, export_app_version, export_timestamp |
+| `info` | export_app, export_app_version, export_timestamp, export_provider, rsa_signature |
 | `endfield[]` | region, server_id, account_uid, lang |
 | `list[]` | record_type, seq_id, seq_id_source, pool_name, pool_type, item_id, name_text, weapon_type, is_new, is_free, gift_reward_label |
 
@@ -31,4 +31,4 @@
 
 ใช้ (region, server_id, uid) แยกกลุ่ม หากไม่มี region ให้ใช้ cn และใช้สตริง “1” เมื่อไม่มี server_id ในเซิร์ฟเวอร์จีน สำหรับ global ต้องระบุ server_id ในกลุ่มเดียวกันให้ใช้ (record_type, seq_id) ระบุเหตุการณ์ หากคีย์ไม่ครบให้เก็บแต่ละรายการแยกกัน และเก็บรหัสเป็นสตริง
 
-[ดาวน์โหลด JSON Schema v0.3](/plugin/data/akegf/akegf-v0.3.schema.json) · [ตัวอย่างหลายตัวละคร](/plugin/data/akegf/example.json)
+[ดาวน์โหลด JSON Schema v0.4](/plugin/data/akegf/akegf-v0.4.schema.json) · [ตัวอย่างหลายตัวละคร](/plugin/data/akegf/example.json)

@@ -1,6 +1,6 @@
 # AKEGF · Главная
 
-> ArKnights: Endfield Gachalog Format · v0.3
+> ArKnights: Endfield Gachalog Format · v0.4
 
 AKEGF позволяет переносить историю найма оперативников, заказов оружия и подарков в Arknights: Endfield в виде JSON в кодировке UTF-8. По примеру [UIGF](https://uigf.org/) один архив объединяет персонажей с разных серверов, чтобы игрок мог сохранить историю при смене инструмента.
 
@@ -10,12 +10,12 @@ AKEGF позволяет переносить историю найма опер
 
 ## JSON Schema
 
-[Скачать схему JSON v0.3](/plugin/data/akegf/akegf-v0.3.schema.json) · [Пример с несколькими персонажами](/plugin/data/akegf/example.json)
+[Скачать схему JSON v0.4](/plugin/data/akegf/akegf-v0.4.schema.json) · [Пример с несколькими персонажами](/plugin/data/akegf/example.json)
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AKEGF v0.3",
+  "title": "AKEGF v0.4",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -47,7 +47,7 @@ AKEGF позволяет переносить историю найма опер
       ],
       "properties": {
         "version": {
-          "const": "v0.3"
+          "const": "v0.4"
         },
         "export_app": {
           "$ref": "#/$defs/text"
@@ -55,12 +55,26 @@ AKEGF позволяет переносить историю найма опер
         "export_app_version": {
           "$ref": "#/$defs/text"
         },
+        "export_provider": {
+          "type": "string",
+          "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$(?![\\s\\S])",
+          "description": "Export provider ID assigned by the AKEGF public key registry"
+        },
+        "rsa_signature": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]\\.(?:[A-Za-z0-9_-]{341}[AQgw]|[A-Za-z0-9_-]{512}|[A-Za-z0-9_-]{682}[AEIMQUYcgkosw048])$(?![\\s\\S])",
+          "description": "Key fingerprint and RSA-PSS signature as kid.signature, both unpadded base64url"
+        },
         "export_timestamp": {
           "type": "integer",
           "minimum": 1000000000000,
           "maximum": 9999999999999,
           "description": "Unix 毫秒"
         }
+      },
+      "dependentRequired": {
+        "export_provider": ["rsa_signature"],
+        "rsa_signature": ["export_provider"]
       }
     },
     "account": {
@@ -123,11 +137,7 @@ AKEGF позволяет переносить историю найма опер
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "kind",
-        "pool_id",
-        "item_name",
-        "rarity",
-        "gacha_ts"
+        "kind"
       ],
       "properties": {
         "record_type": {
@@ -194,6 +204,26 @@ AKEGF позволяет переносить историю найма опер
         }
       },
       "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "draw"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "pool_id",
+              "item_name",
+              "rarity",
+              "gacha_ts"
+            ]
+          }
+        },
         {
           "if": {
             "properties": {

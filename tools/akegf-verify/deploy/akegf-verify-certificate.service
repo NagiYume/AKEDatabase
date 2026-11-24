@@ -1,0 +1,8 @@
+[Unit]
+Description=Renew the AKEGF registry HTTPS certificate
+Wants=network-online.target
+After=network-online.target nginx.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /opt/akegf-verify/renew-certificate.sh

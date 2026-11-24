@@ -2,7 +2,7 @@
 
 | Projeto | Versão | Importação | Exportação |
 | --- | --- | --- | --- |
-| AKEData | v0.3 | Não se aplica | Não se aplica |
+| AKEData | v0.4 | Não se aplica | Não se aplica |
 | 终末地寻访记录分析 | v0.3 | A confirmar | A confirmar |
 | otae bot | v0.3 | A confirmar | A confirmar |
 | 终末地·抽卡记录评分 | v0.3 | A confirmar | A confirmar |

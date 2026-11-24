@@ -1,6 +1,6 @@
 # AKEGF · Zertifizierung von Werkzeugen
 
-Zertifizierte Anwendungen müssen v0.3 importieren und exportieren können und ihre unterstützte Version mit einem Link zu [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) angeben.
+Zertifizierte Anwendungen müssen v0.4 importieren und exportieren können und ihre unterstützte Version mit einem Link zu [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) angeben.
 
 Projekte mit AKEGF-Unterstützung können über einen [Pull Request](https://github.com/NagiYume/AKEDatabase/pulls) um Aufnahme in die Liste der [Partnerprojekte](/?plugin=akegf&id=partners) bitten.
 

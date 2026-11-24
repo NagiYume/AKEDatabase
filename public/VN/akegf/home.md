@@ -1,6 +1,6 @@
 # AKEGF · Trang chủ
 
-> ArKnights: Endfield Gachalog Format · v0.3
+> ArKnights: Endfield Gachalog Format · v0.4
 
 AKEGF dùng JSON UTF-8 để chuyển lịch sử tuyển dụng, nhận vũ khí và quà tặng trong Arknights: Endfield. Lấy cảm hứng từ [UIGF](https://uigf.org/), định dạng này lưu nhiều nhân vật và máy chủ trong một tệp, giúp người chơi giữ lại lịch sử khi đổi công cụ.
 
@@ -10,12 +10,12 @@ Ghi phiên bản hỗ trợ và đặt liên kết đến [AKEGF](https://www.ak
 
 ## JSON Schema
 
-[Tải JSON Schema v0.3](/plugin/data/akegf/akegf-v0.3.schema.json) · [Ví dụ nhiều nhân vật](/plugin/data/akegf/example.json)
+[Tải JSON Schema v0.4](/plugin/data/akegf/akegf-v0.4.schema.json) · [Ví dụ nhiều nhân vật](/plugin/data/akegf/example.json)
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AKEGF v0.3",
+  "title": "AKEGF v0.4",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -47,7 +47,7 @@ Ghi phiên bản hỗ trợ và đặt liên kết đến [AKEGF](https://www.ak
       ],
       "properties": {
         "version": {
-          "const": "v0.3"
+          "const": "v0.4"
         },
         "export_app": {
           "$ref": "#/$defs/text"
@@ -55,12 +55,26 @@ Ghi phiên bản hỗ trợ và đặt liên kết đến [AKEGF](https://www.ak
         "export_app_version": {
           "$ref": "#/$defs/text"
         },
+        "export_provider": {
+          "type": "string",
+          "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$(?![\\s\\S])",
+          "description": "Export provider ID assigned by the AKEGF public key registry"
+        },
+        "rsa_signature": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]\\.(?:[A-Za-z0-9_-]{341}[AQgw]|[A-Za-z0-9_-]{512}|[A-Za-z0-9_-]{682}[AEIMQUYcgkosw048])$(?![\\s\\S])",
+          "description": "Key fingerprint and RSA-PSS signature as kid.signature, both unpadded base64url"
+        },
         "export_timestamp": {
           "type": "integer",
           "minimum": 1000000000000,
           "maximum": 9999999999999,
           "description": "Unix 毫秒"
         }
+      },
+      "dependentRequired": {
+        "export_provider": ["rsa_signature"],
+        "rsa_signature": ["export_provider"]
       }
     },
     "account": {
@@ -123,11 +137,7 @@ Ghi phiên bản hỗ trợ và đặt liên kết đến [AKEGF](https://www.ak
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "kind",
-        "pool_id",
-        "item_name",
-        "rarity",
-        "gacha_ts"
+        "kind"
       ],
       "properties": {
         "record_type": {
@@ -194,6 +204,26 @@ Ghi phiên bản hỗ trợ và đặt liên kết đến [AKEGF](https://www.ak
         }
       },
       "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "draw"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "pool_id",
+              "item_name",
+              "rarity",
+              "gacha_ts"
+            ]
+          }
+        },
         {
           "if": {
             "properties": {

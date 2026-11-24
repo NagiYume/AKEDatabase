@@ -1,6 +1,6 @@
 # AKEGF · Chứng nhận công cụ
 
-Để được chứng nhận, ứng dụng phải hỗ trợ cả nhập lẫn xuất v0.3, ghi rõ phiên bản hỗ trợ và dẫn liên kết đến [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home).
+Để được chứng nhận, ứng dụng phải hỗ trợ cả nhập lẫn xuất v0.4, ghi rõ phiên bản hỗ trợ và dẫn liên kết đến [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home).
 
 Dự án hỗ trợ AKEGF có thể gửi [Pull Request](https://github.com/NagiYume/AKEDatabase/pulls) để được thêm vào [Dự án đối tác](/?plugin=akegf&id=partners).
 

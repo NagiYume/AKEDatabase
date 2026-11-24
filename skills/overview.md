@@ -24,7 +24,8 @@ AKEDatabase（站名 AKEData）是《明日方舟：终末地》的非官方静�
 | 敌人、副本、危机合约、战争回响、影拓丰碑 | 先区分玩法提供的场景、变种和 Buff，再看[公共属性计算](../plugin/js/ake-stats.js)与[怪物渲染器](../plugin/js/ake-enemy-renderer.js)。技能与 Buff 逻辑图由[动作图](../plugin/js/ake-action-graph.js)组织。 |
 | 活动、任务、档案、Baker、地区建设 | 从实体记录追踪文本、选项、附件及地区。档案会跨表和关卡索引，证据与差分边界见[文本关联案例](tablecfg-analysis/references/narrative-analysis.md)。 |
 | 帝江号、缘缘庄、工业科技树、杂项 | 后勤筛选有[类型化参数案例](tablecfg-analysis/references/spaceship-skills.md)。查生产上下游、替代配方、画布导出时读[配方流程](akedatabase-development/references/recipe-flow.md)。 |
-| AKEGF 交换规范 | [模块维护入口](modules/akegf/SKILL.md) 包含分语言 Markdown、v0.3 规范和本站校验工具。 |
+| AKEGF 交换规范 | [模块维护入口](modules/akegf/SKILL.md) 包含分语言 Markdown、v0.4 规范和兼容 v0.3 的站内校验工具。 |
+| AKEGF 公钥目录 | [公钥服务维护入口](akegf-verify/SKILL.md) 包含认证项目的公钥登记、撤销与 HTTPS 部署。 |
 | 公共界面、翻译、研究 | [共享组件](../plugin/js/ake-ui.js)与 `theme/` 维护展示。界面键在 `public/<语言>/i18n.json`，研究、AKEGF、公告的 Markdown 均通过 [共享渲染器](../plugin/js/article-markdown.js) 接入 marked.js 和 highlight.js。研究正文示例在 [CH/research](../public/CH/research)。游戏文本另从对应语言的数据表读取。 |
 | 桌面解析与发布 | [工具规则](../tools/ake-data-tool/AGENTS.md)和 [ake_tool](../tools/ake-data-tool/ake_tool) 管理热更新资源、解析、导出与同步。涉及工具实现时核对当前流水线。 |
 | Linux TableCfg 服务 | [服务实现](../tools/ake-server-tool/ake_server)和[运维说明](../tools/ake-server-tool/OPERATIONS.md)覆盖版本监听、表提取、校验与发布。该服务只处理 TableCfg；部分解析和 VFS 逻辑在两套工具中均有实现。 |

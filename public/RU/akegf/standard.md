@@ -1,19 +1,19 @@
-# AKEGF v0.3 · Спецификация
+# AKEGF v0.4 · Спецификация
 
-Проект спецификации v0.3. При экспорте указывайте все обязательные поля. Необязательное поле без достоверного значения следует опустить. При чтении соблюдайте типы схемы. Отсутствие is_free означает, что статус неизвестен; false означает, что попытка не была бесплатной.
+Проект спецификации v0.4. При экспорте указывайте все обязательные поля. Необязательное поле без достоверного значения следует опустить. При чтении соблюдайте типы схемы. Отсутствие is_free означает, что статус неизвестен; false означает, что попытка не была бесплатной.
 
 | Уровень | Обязательные поля | Требование |
 | --- | --- | --- |
 | `JSON` | info, endfield | Массив endfield содержит хотя бы одну группу персонажа. |
-| `info` | version | version равен v0.3; export_timestamp — 13-значное время Unix в миллисекундах. |
+| `info` | version | version равен v0.4; export_timestamp — 13-значное время Unix в миллисекундах. |
 | `endfield[]` | uid, list | uid — строка хотя бы с одним непробельным символом; list может быть пустым. |
-| `list[]` | kind, pool_id, item_name, rarity, gacha_ts | Первые три поля — непустые строки с непробельными символами. rarity — целое от 1 до 99, gacha_ts — 13-значное время Unix в миллисекундах. |
+| `list[]` | `kind` | `kind = "draw"` → `pool_id`, `item_name`, `rarity` (1–99), `gacha_ts` (Unix ms) |
 
 Допускаются только поля из схемы. Сохраняйте номера записей и UID в виде строк.
 
 | Уровень | Необязательные поля |
 | --- | --- |
-| `info` | export_app, export_app_version, export_timestamp |
+| `info` | export_app, export_app_version, export_timestamp, export_provider, rsa_signature |
 | `endfield[]` | region, server_id, account_uid, lang |
 | `list[]` | record_type, seq_id, seq_id_source, pool_name, pool_type, item_id, name_text, weapon_type, is_new, is_free, gift_reward_label |
 
@@ -31,4 +31,4 @@
 
 Ключ группы — (region, server_id, uid). Без region используется cn; для Китая server_id по умолчанию строка «1». Для global обязательно указать server_id. Внутри группы используйте (record_type, seq_id); без полного ключа сохраняйте каждую запись отдельно. Идентификаторы храните строками.
 
-[Скачать схему JSON v0.3](/plugin/data/akegf/akegf-v0.3.schema.json) · [Пример с несколькими персонажами](/plugin/data/akegf/example.json)
+[Скачать схему JSON v0.4](/plugin/data/akegf/akegf-v0.4.schema.json) · [Пример с несколькими персонажами](/plugin/data/akegf/example.json)

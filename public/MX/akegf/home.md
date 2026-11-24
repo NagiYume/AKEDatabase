@@ -1,6 +1,6 @@
 # AKEGF · Inicio
 
-> ArKnights: Endfield Gachalog Format · v0.3
+> ArKnights: Endfield Gachalog Format · v0.4
 
 AKEGF permite trasladar el historial de reclutamientos, pedidos de armas y obsequios de Arknights: Endfield en JSON UTF-8. Inspirado en [UIGF](https://uigf.org/), reúne personajes y servidores en un solo archivo para que el jugador pueda cambiar de herramienta sin perder su historial.
 
@@ -10,12 +10,12 @@ Indica en la aplicación la versión compatible y enlaza a [AKEGF](https://www.a
 
 ## JSON Schema
 
-[Descargar el esquema JSON v0.3](/plugin/data/akegf/akegf-v0.3.schema.json) · [Ejemplo con varios personajes](/plugin/data/akegf/example.json)
+[Descargar el esquema JSON v0.4](/plugin/data/akegf/akegf-v0.4.schema.json) · [Ejemplo con varios personajes](/plugin/data/akegf/example.json)
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AKEGF v0.3",
+  "title": "AKEGF v0.4",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -47,7 +47,7 @@ Indica en la aplicación la versión compatible y enlaza a [AKEGF](https://www.a
       ],
       "properties": {
         "version": {
-          "const": "v0.3"
+          "const": "v0.4"
         },
         "export_app": {
           "$ref": "#/$defs/text"
@@ -55,12 +55,26 @@ Indica en la aplicación la versión compatible y enlaza a [AKEGF](https://www.a
         "export_app_version": {
           "$ref": "#/$defs/text"
         },
+        "export_provider": {
+          "type": "string",
+          "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$(?![\\s\\S])",
+          "description": "Export provider ID assigned by the AKEGF public key registry"
+        },
+        "rsa_signature": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]\\.(?:[A-Za-z0-9_-]{341}[AQgw]|[A-Za-z0-9_-]{512}|[A-Za-z0-9_-]{682}[AEIMQUYcgkosw048])$(?![\\s\\S])",
+          "description": "Key fingerprint and RSA-PSS signature as kid.signature, both unpadded base64url"
+        },
         "export_timestamp": {
           "type": "integer",
           "minimum": 1000000000000,
           "maximum": 9999999999999,
           "description": "Unix 毫秒"
         }
+      },
+      "dependentRequired": {
+        "export_provider": ["rsa_signature"],
+        "rsa_signature": ["export_provider"]
       }
     },
     "account": {
@@ -123,11 +137,7 @@ Indica en la aplicación la versión compatible y enlaza a [AKEGF](https://www.a
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "kind",
-        "pool_id",
-        "item_name",
-        "rarity",
-        "gacha_ts"
+        "kind"
       ],
       "properties": {
         "record_type": {
@@ -194,6 +204,26 @@ Indica en la aplicación la versión compatible y enlaza a [AKEGF](https://www.a
         }
       },
       "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "draw"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "pool_id",
+              "item_name",
+              "rarity",
+              "gacha_ts"
+            ]
+          }
+        },
         {
           "if": {
             "properties": {
