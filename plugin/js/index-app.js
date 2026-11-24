@@ -138,7 +138,7 @@
             const HOME_CONTENT = `
                 <div class="welcome-home">
                     <button class="ake-ui-button ake-ui-button--secondary welcome-home__announcement" id="homeTipButton" type="button" data-i18n="home.announcement">Announcement</button>
-                    <img src="/public/images/assets/beyond/arts/ui/sprites/activity/activityendcheck16/bg_sign_v1d6.png"
+                    <img src="/public/images/index/main.webp"
                          alt="home.heroImageAlt"
                          data-i18n-alt="home.heroImageAlt"
                          class="home-image">
