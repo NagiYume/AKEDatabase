@@ -11,24 +11,8 @@ import time
 from pathlib import Path
 
 from .errors import AkeToolError, ValidationError
-from .json_host.export_json import REQUIRED_RUNTIME, RESULT_PREFIX
+from .json_host.export_json import RESULT_PREFIX, output_path
 from .models import CancellationToken
-
-
-def resolve_json_runtime(work_root: Path, game_version: str, seed_version: str) -> Path:
-    root = work_root / 'il2cpp-host-runtime'
-    candidates = [root / game_version / seed_version, root / seed_version]
-    versions = root / game_version / 'versions'
-    if versions.is_dir():
-        candidates.extend(sorted(versions.glob(seed_version + '-*')))
-    complete = {p.resolve() for p in candidates if all(
-        (p / name).is_file() and (p / name).stat().st_size > 0 for name in REQUIRED_RUNTIME)}
-    if len(complete) != 1:
-        raise ValidationError(
-            f'Json 需要唯一的 {seed_version} 完整本地运行时，找到 {len(complete)} 个；'
-            f'请在 {versions}/{seed_version}-<标识> 保留对应版本的 DLL 和 il2cpp_data。'
-            'Python 解析不自动下载或猜测运行时版本。')
-    return complete.pop()
 
 
 def run_json_export(source: Path, output: Path, runtime: Path, token: CancellationToken,
@@ -86,12 +70,33 @@ def run_json_export(source: Path, output: Path, runtime: Path, token: Cancellati
                 else:
                     progress(line)
             code = process.wait()
-        if code or not isinstance(report, dict) or report.get('failed') or not report.get('selected'):
+        if code not in (0, 1) or not isinstance(report, dict):
             raise AkeToolError(f'Python Json 导出失败或结果不完整（退出码 {code}）；日志：{output / "parser.log"}')
-        expected = sum(count['written'] for count in report['datasets'].values())
-        if expected != report['selected'] or not (output / 'data/Json').is_dir():
+        failed = report.get('failed')
+        datasets = report.get('datasets')
+        selected = report.get('selected')
+        if (not isinstance(failed, list) or any(not isinstance(name, str) for name in failed)
+                or not isinstance(datasets, dict) or type(selected) is not int
+                or code != int(bool(failed))):
+            raise ValidationError('Python Json 宿主报告与退出状态不一致')
+        counts = ('written', 'preserved', 'failure')
+        if any(not isinstance(dataset, dict) or any(type(dataset.get(name)) is not int or dataset[name] < 0
+                                                   for name in counts) for dataset in datasets.values()):
+            raise ValidationError('Python Json 宿主报告包含无效的文件计数')
+        written = sum(dataset['written'] for dataset in datasets.values())
+        root = output.resolve() / 'data/Json'
+        if not written:
+            raise ValidationError(f'Python Json 未导出可发布文件；日志：{output / "parser.log"}')
+        if (sum(dataset['preserved'] for dataset in datasets.values())
+                or sum(dataset['failure'] for dataset in datasets.values()) != len(failed)
+                or written + len(failed) != selected or not root.is_dir()):
             raise ValidationError('Python Json 文件计数与宿主报告不一致')
-        return {**report, 'seconds': round(time.monotonic() - started, 2)}
+        failed_targets = [output_path(output, name) for name in failed]
+        if len(set(failed_targets)) != len(failed) or any(path.exists() for path in failed_targets):
+            raise ValidationError('Python Json 失败条目与输出文件冲突')
+        return {**report, 'written': written,
+                'skipped_paths': sorted(path.relative_to(root).as_posix() for path in failed_targets),
+                'seconds': round(time.monotonic() - started, 2)}
     finally:
         if process.poll() is None:
             process.terminate()

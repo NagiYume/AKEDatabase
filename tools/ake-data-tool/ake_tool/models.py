@@ -13,6 +13,7 @@ class SeedInfo:
     seed_version: str
     rand_str: str
     package_path: str
+    game_files_md5: str = ""
 
 
 @dataclass(frozen=True)

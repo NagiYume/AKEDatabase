@@ -637,6 +637,12 @@ class ReleaseManager:
     ) -> dict[str, Any]:
         if not isinstance(record, dict):
             raise ValidationError("图片资产同步缺少待提交完整 map 状态")
+        if skipped_bundles := record.get("skippedBundleCount", 0):
+            self.progress(ProgressEvent(
+                "asset_upload", f"本次解析跳过 {skipped_bundles} 个 Bundle，保留原有远端 Asset map",
+                level="warning",
+            ))
+            return {"image_map_commit_skipped": True}
         profile = normalize_image_profile(profile)
         pending_map = Path(str(record.get("pendingMapPath", ""))).resolve()
         digest = str(record.get("pendingMapDigest", ""))
@@ -928,6 +934,24 @@ class ReleaseManager:
             raise ValidationError("请至少选择图片或 Json 资产")
         return specs
 
+    def _json_publish_skip_paths(self) -> frozenset[str]:
+        state_path = self.config.image_work_root / "image-state.json"
+        try:
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            return frozenset()
+        except (OSError, ValueError) as exc:
+            raise ValidationError(f"无法确认 Json 发布的跳过范围：{state_path}") from exc
+        receipt = state.get("json_publish_skips") if isinstance(state, dict) else None
+        if receipt is None:
+            return frozenset()
+        if not isinstance(receipt, dict) or not isinstance(receipt.get("root"), str):
+            raise ValidationError("Json 发布的跳过记录无效")
+        if Path(receipt["root"]) != (self.config.public_root / "Json").resolve():
+            return frozenset()
+        paths = self._validate_relative_path_list(receipt.get("paths"), "Json 跳过")
+        return frozenset(path.casefold() for path in paths)
+
     @staticmethod
     def _delta_export_paths_digest(paths: list[str]) -> str:
         payload = json.dumps(sorted(set(paths)), ensure_ascii=False, separators=(",", ":"))
@@ -1033,6 +1057,7 @@ class ReleaseManager:
         specs = self._asset_specs(include_json, include_images, include_globalbuff)
         if local_compare:
             raise ValidationError("本地差异比对已停用；资产比较必须读取 data 站最新索引")
+        json_skip_paths = self._json_publish_skip_paths() if include_json else frozenset()
         self.progress(
             ProgressEvent(
                 "asset_compare",
@@ -1122,7 +1147,7 @@ class ReleaseManager:
                     )
                 )
             elif spec['kind'] == 'json':
-                current = scan_dataset(source, 'json', skip_json_manifests=True)['files']
+                current = scan_dataset(source, 'json', skip_json_manifests=True, skip_paths=json_skip_paths)['files']
             elif spec['kind'] == 'dump':
                 current = {f'GlobalBuffData/{p}': value for p, value in published_globalbuff_files(self.config, asset_version).items()}
             else:
@@ -1138,6 +1163,9 @@ class ReleaseManager:
             if not isinstance(baseline, dict) or not isinstance(baseline.get("files"), dict):
                 raise ValidationError(f"R2 根索引缺少{spec['label']}数据集")
             previous = baseline["files"]
+            if spec['kind'] == 'json' and json_skip_paths:
+                previous = {path: record for path, record in previous.items() if path.casefold() not in json_skip_paths}
+                self.progress(ProgressEvent("asset_compare", f"跳过 {len(json_skip_paths)} 个 Json 解析失败路径"))
             if spec['kind'] == 'dump':
                 # A root index may have been created before Dump was indexed.
                 # Do not assume those remote objects are absent: inventory their
@@ -1254,6 +1282,7 @@ class ReleaseManager:
             self.progress(ProgressEvent("asset_compare", storage["storage_warning"]))
         return {
             "include_json": include_json,
+            "json_skip_paths": sorted(json_skip_paths),
             "include_globalbuff": include_globalbuff,
             "include_images": include_images,
             "manual_update": manual_update,
@@ -1330,6 +1359,9 @@ class ReleaseManager:
         datasets = plan.get("datasets")
         if not isinstance(datasets, list) or len(datasets) != len(expected_specs):
             raise ValidationError("资产比较计划与当前选择不一致，请重新比较")
+        json_skip_paths = self._json_publish_skip_paths() if plan.get("include_json") else frozenset()
+        if plan.get("json_skip_paths", []) != sorted(json_skip_paths):
+            raise ValidationError("Json 解析失败路径在比较后发生变化，请重新比较")
         for dataset, expected in zip(datasets, expected_specs):
             if not isinstance(dataset, dict):
                 raise ValidationError("资产比较计划格式无效")
@@ -1341,6 +1373,11 @@ class ReleaseManager:
                 raise ValidationError(f"资产比较计划中的本地路径无效：{exc}") from exc
             if source != Path(expected["source"]).resolve() or str(dataset.get("remote", "")) != str(expected["remote"]):
                 raise ValidationError("资产比较计划与当前同步配置不一致，请重新比较")
+            if expected['kind'] == 'json' and json_skip_paths:
+                for key in ('upload_paths', 'overwrite_paths', 'delete_paths', 'index_update_paths'):
+                    paths = self._validate_relative_path_list(dataset.get(key), f'Json {key}')
+                    if any(path.casefold() in json_skip_paths for path in paths):
+                        raise ValidationError('Json 比较计划包含已跳过的解析失败路径，请重新比较')
             if expected['kind'] == 'dump':
                 if dataset.get('kind') != 'dump' or dataset.get('asset_version') != plan.get('asset_version'):
                     raise ValidationError('GlobalBuff 资产版本与比较计划不一致')
@@ -1755,7 +1792,7 @@ class ReleaseManager:
             ProgressEvent(
                 "asset_upload",
                 "资产与索引发布完成"
-                if manual_update
+                if manual_update or map_commit.get("image_map_commit_skipped")
                 else "资产、索引与 Asset map 发布完成",
                 1,
                 1,

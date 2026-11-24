@@ -244,14 +244,15 @@ def _read_json_meta(path: Path, relative: str) -> dict[str, Any] | None:
 
 
 def scan_dataset(root: Path, kind: str, skip_json_manifests: bool = False,
-                 matcher: ImagePathMatcher | None = None) -> dict[str, Any]:
+                 matcher: ImagePathMatcher | None = None, *,
+                 skip_paths: frozenset[str] = frozenset()) -> dict[str, Any]:
     root = root.resolve()
     if not root.is_dir():
         raise FileNotFoundError(f"数据目录不存在：{root}")
     candidates = []
     for path in sorted(item for item in root.rglob("*") if item.is_file()):
         relative = validate_relative_path(path.relative_to(root).as_posix())
-        if skip_json_manifests and path.name == JSON_MANIFEST_NAME:
+        if relative.casefold() in skip_paths or (skip_json_manifests and path.name == JSON_MANIFEST_NAME):
             continue
         candidates.append((path, relative))
     if not candidates:

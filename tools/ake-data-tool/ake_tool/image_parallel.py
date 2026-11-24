@@ -19,6 +19,10 @@ _builtin_root = None
 _builtin_data = {}
 
 
+class BundlePayloadBoundsError(ValueError):
+    """Isolate the known unsupported Endfield storage-block layout."""
+
+
 def initialize(vfs_root, key, old_hashes, scratch, cache_budget, builtin_root):
     global _vfs, _root, _scratch, _old, _cache_stats, _builtin_root
     from UnityPy.endfield import EndfieldVFS
@@ -40,8 +44,13 @@ def initialize(vfs_root, key, old_hashes, scratch, cache_budget, builtin_root):
 
 def parse_bundle(job):
     global _processed
-    number, paths = job
-    env = _vfs.load_asset(paths[0], with_dependencies=True)
+    number, _, paths = job
+    try:
+        env = _vfs.load_asset(paths[0], with_dependencies=True)
+    except ValueError as exc:
+        if str(exc) != 'Endfield payload exceeds bounds':
+            raise
+        raise BundlePayloadBoundsError(str(exc)) from exc
     original_find_file = env.find_file
     env._ake_builtin_asset_files = set()
     env._ake_builtin_excluded = Counter()

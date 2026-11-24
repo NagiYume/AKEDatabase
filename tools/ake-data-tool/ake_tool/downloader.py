@@ -117,7 +117,7 @@ class DownloadManager:
             return False
         if entry.size and path.stat().st_size != entry.size:
             return False
-        if self.verify_md5 and entry.md5 and not skip_md5:
+        if entry.md5 and not skip_md5:
             return self._md5(path, token) == entry.md5
         return True
 
@@ -230,7 +230,7 @@ class DownloadManager:
             if is_linked_file(partial):
                 partial.unlink()
             offset = partial.stat().st_size if partial.exists() else 0
-            if entry.size and offset > entry.size:
+            if entry.size and offset >= entry.size:
                 partial.unlink()
                 offset = 0
             headers = {"Range": f"bytes={offset}-"} if offset else {}
