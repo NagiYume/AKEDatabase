@@ -20,6 +20,7 @@ description: 维护 AKEDatabase 的 Windows 桌面 AKE Data Tool。用于修改 
 
 ## 如何定位中断或遗漏
 
+- **UnityPy 源码。** [vendor/UnityPy](../../tools/ake-data-tool/vendor/UnityPy) 由主仓库直接跟踪，包含终末地解析补丁、类型树资源和测试样本。安装仍通过 `requirements.txt` 使用本地路径。更新该目录时保留许可证与终末地补丁，二进制资源直接纳入 Git。
 - **工作副本与校验。** 在工作目录按游戏大版本、Seed、Hotfix 和区块身份查 `vfs-versions.json`、VFS 及任务记录。跨大版本准备工作文件与同大版本补丁的选择顺序见 [VFS 热更新契约](../akedatabase-development/references/vfs-hotfix-updates.md)。一次区块事务必须在候选文件均校验后提升。
 - **IL2CPP 运行时缺失。** Json、图片和 GlobalBuff 共用运行时准备。唯一且完整的旧版 Seed 目录可直接复用。否则，从已准备状态保存的 `seed_package_path` 读取鹰角 CDN 的 `game_files`，按清单大小和 MD5 下载缺失文件至 `il2cpp-host-runtime/<game>/downloads/<seed>-<包地址摘要>/`。启动器提供 `game_files_md5` 时同时核对清单摘要。已有准备状态只要保留包地址和 Seed 标识便能继续使用。图片流程还会从该清单选取 Unity 内置资源。
 - **1.7.2 混合存储块。** UnityPy 的 `EndfieldBundle.py` 按块表标志读取四字节扩展。`0x85` 块按大端读取 `KEY_ID`，目前支持 `0xB0C1DD0B` 和 `0xB0C9DD0B`。`EndfieldCipher.py` 复用客户端 S-box 和对应参数，从每个存储块的计数 0 开始生成逐 16 字节的密钥流，对载荷做 XOR 后按 LZ4Inv 解压。`EndfieldBundleFile.py` 保留按区间读取，图片 worker 记录实际触及未知扩展块的资源，包括命中历史哈希的纹理。失败路径及异常见运行目录的 `skipped-bundles.json`，`skippedBundleCount` 统计有缺项的 Bundle。解码器变更会更新 parser digest，已有图片发布计划须重新解析才能使用。

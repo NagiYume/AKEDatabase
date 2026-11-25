@@ -1,0 +1,40 @@
+name: Test
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          lfs: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install
+        run: pip install .[tests]
+
+      - uses: astral-sh/ruff-action@v3
+
+      - name: Check code (ruff check)
+        run: ruff check
+
+      - name: Check code style (ruff format)
+        run: ruff format --check
+
+      - name: Run tests
+        run: python -m pytest -vs ./tests

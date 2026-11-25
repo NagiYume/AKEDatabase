@@ -4,6 +4,8 @@
 
 ## 当前交接
 
+- **UnityPy 随主仓库检出（2026-11-26）**　为修复 Cloudflare 更新子模块失败，在 `main` 移除唯一的 gitlink 和 `.gitmodules`，将 `812f385` 的 133 个文件纳入 [vendor/UnityPy](../tools/ake-data-tool/vendor/UnityPy)。除 LFS 属性和 6 个还原为原始内容的二进制文件外，Git blob 与原版本相同。安装脚本和两个图片解析入口改为提示检查检出完整性。图片解析器摘要包含其中的 `image_parser_identity.py`，旧图片发布计划需要重新解析。原子模块 Git 历史保存在本机 `.git/ake-migration-backups/UnityPy-812f385`。已静态核对 Git 索引和二进制内容，未运行工具或 Cloudflare 构建。
+
 - **1.7 角色网格粒子渲染（2026-11-25）**　`beta` 的 `7369c0ad` 合入本地 `main`。[渲染脚本](../plugin/js/ake-renderer.js)用于独立模型查看器和干员详情内嵌视图，合并时以 `main` 的 `1.3.9-2` 为基线，同步 [version.json](../version.json) 中站点、两个模块及渲染脚本的缓存版本至 `1.3.9-2-pre1`。未运行浏览器验证。
 
 - **影拓丰碑与牌局（2026-11-25）**　main 工作区：丰碑按 hdId 合并系列，兼容原系列深链；本期两个 Boss 用各自开放时段和共同活动结束时间。新增普通入口「牌局」，教学、结算、牌型、遗物、商店和多人房间数据及搜索接入见[模块说明](modules/cardgame/SKILL.md)。配置快照 12026241-3，静态审阅，未运行页面或测试。
