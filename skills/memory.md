@@ -4,6 +4,8 @@
 
 ## 当前交接
 
+- **模块加载 HTTP 525 重试（2026-11-26）**　浏览器磁盘缓存曾返回活动模块的 525。[index-app.js](../plugin/js/index-app.js) 的模块 HTML 与脚本加载收到 525 时以同一版本 URL 绕过浏览器缓存重试一次。普通请求重试使用 reload，强制刷新继续使用 no-store。仅成功响应更新已加载版本，重试失败沿用模块错误提示。main 工作区版本 1.3.9-3-pre1，已静态核对调用入口和差异，未运行浏览器验证或部署。
+
 - **UnityPy 随主仓库检出（2026-11-26）**　为修复 Cloudflare 更新子模块失败，在 `main` 移除唯一的 gitlink 和 `.gitmodules`，将 `812f385` 的 133 个文件纳入 [vendor/UnityPy](../tools/ake-data-tool/vendor/UnityPy)。除 LFS 属性和 6 个还原为原始内容的二进制文件外，Git blob 与原版本相同。安装脚本和两个图片解析入口改为提示检查检出完整性。图片解析器摘要包含其中的 `image_parser_identity.py`，旧图片发布计划需要重新解析。原子模块 Git 历史保存在本机 `.git/ake-migration-backups/UnityPy-812f385`。已静态核对 Git 索引和二进制内容，未运行工具或 Cloudflare 构建。
 
 - **1.7 角色网格粒子渲染（2026-11-25）**　`beta` 的 `7369c0ad` 合入本地 `main`。[渲染脚本](../plugin/js/ake-renderer.js)用于独立模型查看器和干员详情内嵌视图，合并时以 `main` 的 `1.3.9-2` 为基线，同步 [version.json](../version.json) 中站点、两个模块及渲染脚本的缓存版本至 `1.3.9-2-pre1`。未运行浏览器验证。

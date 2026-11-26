@@ -700,7 +700,12 @@
                     : currentVersion && changedVersions.has(key)
                         ? 'reload'
                         : 'force-cache';
-                const response = await (window.akeFetch || fetch)(url.href, { cache });
+                const fetchResource = window.akeFetch || fetch;
+                let response = await fetchResource(url.href, { cache });
+                if (response.status === 525) {
+                    const retryCache = cache === 'no-store' ? 'no-store' : 'reload';
+                    response = await fetchResource(url.href, { cache: retryCache });
+                }
                 if (response.ok) {
                     rememberResourceVersion(storageKey, versions, key, currentVersion);
                     changedVersions.delete(key);
