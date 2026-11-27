@@ -2,6 +2,10 @@ AKEDataはwww.akedata.wikiへ移行しました。旧ドメインのakedata.top�
 
 # AKEDataバージョン更新履歴
 
+### v1.3.9
+
+[AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) の v0.3 草案、サンプル、[AKEGF 形式チェッカー](/?plugin=akegf&id=validator)を追加しました。研究記事、AKEGF、サイトのお知らせが Markdown 表示と構文ハイライトを共有します。
+
 ### v1.2.11
 
 #### 第2階層ナビゲーションと共通UI

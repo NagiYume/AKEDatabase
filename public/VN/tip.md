@@ -2,6 +2,10 @@ AKEData đã chuyển sang tên miền www.akedata.wiki. Tên miền cũ akedata
 
 # Nhật ký cập nhật phiên bản AKEData
 
+### v1.3.9
+
+Bổ sung dự thảo [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) v0.3, ví dụ nhiều nhân vật và [Trình kiểm tra AKEGF](/?plugin=akegf&id=validator). Bài nghiên cứu, tài liệu AKEGF và thông báo dùng chung trình hiển thị Markdown và tô màu cú pháp.
+
 ### v1.2.11
 
 #### Điều hướng cấp hai và giao diện dùng chung

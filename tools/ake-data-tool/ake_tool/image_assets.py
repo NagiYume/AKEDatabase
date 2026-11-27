@@ -53,7 +53,8 @@ from .models import (
 from .release import resolve_r2_versions
 from .unpacker import format_command
 from .image_parser_identity import image_parser_digest
-from .json_unpacker import resolve_json_runtime, run_json_export, run_globalbuff_export
+from .json_unpacker import run_json_export, run_globalbuff_export
+from .runtime_download import resolve_runtime
 from .vfs_validation_cache import VfsValidationCache, latest_identity
 from .vfs_update import VfsUpdater
 
@@ -257,6 +258,7 @@ class ImageAssetPipeline:
         return {
             f"{prefix}_seed_rand_str": latest.seed.rand_str,
             f"{prefix}_seed_package_path": latest.seed.package_path,
+            f"{prefix}_seed_game_files_md5": latest.seed.game_files_md5,
             f"{prefix}_hotfix_url": latest.hotfix.request_url,
         }
 
@@ -536,6 +538,7 @@ class ImageAssetPipeline:
                 else self._globalbuff_versions(latest) if prefix == 'globalbuff'
                 else self._json_version_values(latest)
             )
+            cached.update(self._latest_runtime_values(prefix, latest))
             if all(str(state.get(key, "")) == value for key, value in cached.items()):
                 return latest
 
@@ -551,6 +554,7 @@ class ImageAssetPipeline:
                 seed_version=version_values["seed"],
                 rand_str=str(state.get(f"{prefix}_seed_rand_str", "")),
                 package_path=package_path,
+                game_files_md5=str(state.get(f"{prefix}_seed_game_files_md5") or ""),
             ),
             hotfix=HotfixInfo(
                 request_url=hotfix_url,
@@ -838,14 +842,13 @@ class ImageAssetPipeline:
         if not state.get("json_prepared") or int(state.get("json_block_files", 0)) <= 0 or not json_input_root.is_dir():
             raise ValidationError("Json VFS 准备状态不完整，请先执行索引分析和 VFS 准备")
         self._assert_vfs_is_independent()
-        runtime = resolve_json_runtime(self.config.image_work_root, latest.seed.game_version, latest.seed.seed_version)
+        runtime = self._prepare_runtime(latest, "json_extract")
         run_root = self.config.image_work_root / "json-python-runs" / (datetime.now().strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:8])
         self._emit("json_extract", f"使用 Python Json 宿主，运行时：{runtime}；独立输出：{run_root}")
         report = run_json_export(self.config.image_work_root, run_root, runtime, self.token,
                                  lambda line: self._emit("json_extract", line))
         self.token.raise_if_cancelled()
-        # Failed runs retain diagnostics without exposing partial data for publication.
-        # Revoke the previous extraction authorization before replacing its directory.
+        # Revoke the previous extraction authorization before promoting the new run.
         for key in ("json_extracted_hotfix_version", "json_published_hotfix_version"):
             state.pop(key, None)
         self._write_state_data(state)
@@ -861,9 +864,14 @@ class ImageAssetPipeline:
             resolved.rename(previous)
         run_root.rename(self.json_output_root)
         source = self.json_output_root / "data" / "Json"
-        self._emit("json_extract", f"Python Json 解析完成：{report['selected']} 个文件；未支持条目 {len(report['unsupported'])} 个，详见 export-report-0.json")
+        skipped = report["skipped_paths"]
+        self._emit("json_extract", f"Python Json 解析完成：导出 {report['written']} 个文件，"
+                   f"跳过解析失败 {len(skipped)} 个，未支持 {len(report['unsupported'])} 个。"
+                   f"报告：{self.json_output_root / 'export-report-0.json'}",
+                   level="warning" if skipped else "info")
         return {
-            "json_extracted_files": report["selected"],
+            "json_extracted_files": report["written"],
+            "json_skipped_paths": skipped,
             "json_extract_seconds": report["seconds"],
             "json_output_path": str(self.json_output_root),
             "json_content_path": str(source),
@@ -949,10 +957,10 @@ class ImageAssetPipeline:
                 entry = DownloadEntry(name=name, size=int(facts[0]), md5=str(facts[1]))
                 if not updater.matches(safe_target(self.config.image_work_root, name), entry, trusted=True):
                     raise ValidationError(f'{block} VFS 文件缺失或大小不符：{name}')
-        runtime = resolve_json_runtime(self.config.image_work_root, latest.seed.game_version, latest.seed.seed_version)
+        self._assert_vfs_is_independent()
+        runtime = self._prepare_runtime(latest, 'globalbuff_extract')
         runs = self.config.image_work_root / 'globalbuff-runs'
         run = runs / (datetime.now().strftime('%Y%m%d-%H%M%S') + '-' + uuid.uuid4().hex[:8])
-        self._assert_vfs_is_independent()
         if runs.is_symlink() or getattr(runs, 'is_junction', lambda: False)():
             raise ValidationError(f'GlobalBuff 历史输出目录是链接：{runs}')
         if self.config.image_work_root.resolve() not in runs.resolve().parents:
@@ -973,8 +981,7 @@ class ImageAssetPipeline:
             output.rename(runs / ('previous-' + uuid.uuid4().hex))
         self._emit('globalbuff_extract', f'解析 GlobalBuff，运行时：{runtime}；输出：{run}')
         self._emit('globalbuff_extract', '索引资源清单并初始化游戏序列化器，请稍候')
-        key = self._resolve_vfs_key(latest, self.config.image_work_root / 'il2cpp-host-runtime' / latest.seed.game_version,
-                                    stage='globalbuff_extract')
+        key = self._resolve_vfs_key(latest, runtime, 'globalbuff_extract')
         report = run_globalbuff_export(self.vfs_root, run, runtime, self.token,
                                        lambda line: self._emit('globalbuff_extract', line), key=key)
         if report.get('partial'):
@@ -1058,12 +1065,27 @@ class ImageAssetPipeline:
         )
         assert_no_linked_files(public_json_root, "public/Json")
 
+        skipped_paths = state.get("json_skipped_paths", [])
+        keep_by_directory: dict[str, list[Path]] = {}
+        for path in map(Path, skipped_paths):
+            if len(path.parts) > 1:
+                keep_by_directory.setdefault(path.parts[0].casefold(), []).append(Path(*path.parts[1:]))
+        skip_receipt = {"root": str(public_json_root), "paths": skipped_paths}
+        if skipped_paths:
+            previous = state.get("json_publish_skips", {})
+            previous_paths = previous.get("paths", []) if (
+                isinstance(previous, dict) and previous.get("root") == skip_receipt["root"]
+            ) else []
+            # Keep both sets protected if publication is interrupted before the new receipt is saved.
+            pending = {**skip_receipt, "paths": sorted(set(previous_paths) | set(skipped_paths))}
+            self._write_state_data({**state, "json_publish_skips": pending})
         total_files = 0
         for index, (name, source) in enumerate(sorted(matched_sources.items()), 1):
             self.token.raise_if_cancelled()
             target = public_json_root / name
             if source.is_dir():
-                file_count = sync_tree_contents(source, target, self.token, checked=True)
+                keep = tuple(keep_by_directory.get(name.casefold(), ()))
+                file_count = sync_tree_contents(source, target, self.token, checked=True, keep=keep)
             else:
                 if target.is_dir():
                     shutil.rmtree(target)
@@ -1083,6 +1105,7 @@ class ImageAssetPipeline:
             "json_published_root_files": published_root_files,
             "json_published_files": total_files,
             "json_publish_source": str(source_root),
+            "json_publish_skips": skip_receipt,
             "json_published_hotfix_version": version_values["json_hotfix_version"],
             **version_values,
         }
@@ -1101,11 +1124,17 @@ class ImageAssetPipeline:
             return
         copy_file_contents(source, target, self.token)
 
-    def _resolve_vfs_key(self, latest: LatestInfo, runtime_root: Path, stage: str = 'image_extract') -> str:
-        # Use the same uniquely versioned complete runtime as the Json host.
-        runtime = resolve_json_runtime(
-            self.config.image_work_root, latest.seed.game_version, latest.seed.seed_version
+    def _prepare_runtime(self, latest: LatestInfo, stage: str, *, include_unity_resources: bool = False) -> Path:
+        def progress(event: ProgressEvent) -> None:
+            self._emit(stage, event.message, event.current, event.total, event.level)
+
+        return resolve_runtime(
+            self.config.image_work_root, latest.seed, self.downloader, self.token, progress,
+            include_unity_resources=include_unity_resources,
         )
+
+    def _resolve_vfs_key(self, latest: LatestInfo, runtime: Path, stage: str = 'image_extract') -> str:
+        runtime_root = self.config.image_work_root / "il2cpp-host-runtime" / latest.seed.game_version
         command = [sys.executable, "-u", "-m", "ake_tool.json_host.image_key",
                    str(runtime), str(runtime_root / "image-key-persistent" /
                                      self._safe_version(latest.seed.seed_version))]
@@ -1169,15 +1198,9 @@ class ImageAssetPipeline:
         latest = self._require_latest_state("image_prepared")
         if not self.vfs_root.is_dir():
             raise FileNotFoundError(f"尚未准备图片 VFS：{self.vfs_root}")
-        runtime_root = (
-            self.config.image_work_root
-            / "il2cpp-host-runtime"
-            / latest.seed.game_version
-        )
         self._assert_vfs_is_independent()
-        encoded_vfs_key = self._resolve_vfs_key(latest, runtime_root)
-        runtime = resolve_json_runtime(self.config.image_work_root, latest.seed.game_version,
-                                       latest.seed.seed_version)
+        runtime = self._prepare_runtime(latest, "image_extract", include_unity_resources=True)
+        encoded_vfs_key = self._resolve_vfs_key(latest, runtime)
         builtin_root = runtime / "Endfield_Data" / "Resources"
         if not (builtin_root / "unity default resources").is_file():
             game_data = self.config.streaming_assets_root.parent
@@ -1398,6 +1421,10 @@ class ImageAssetPipeline:
         if metrics.get("warnings", 0):
             self._emit("image_extract", f'图片构图有 {metrics["warnings"]} 条未解析外部引用；'
                        f'内容可能不完整，详见 {run_root / "unresolved-cabs.json"}')
+        skipped_bundles = metrics.get("skippedBundles", 0)
+        if skipped_bundles:
+            self._emit("image_extract", f'有 {skipped_bundles} 个 Bundle 包含无法读取的图片资源，'
+                       f'受影响资源见 {run_root / "skipped-bundles.json"}', level="warning")
         if image_parser_digest() != parser_digest:
             raise ValidationError("图片解析期间 Python 解析器发生变化，拒绝合并输出")
 
@@ -1474,6 +1501,7 @@ class ImageAssetPipeline:
             "image_full_map_path": str(full_map),
             "image_full_map_digest": sha256_file(full_map),
             "image_full_map_entries": metrics["full"],
+            "image_skipped_bundle_count": skipped_bundles,
             "image_delta_map_path": str(delta_map),
             "image_delta_map_digest": sha256_file(delta_map),
             "image_delta_map_entries": metrics["delta"],
@@ -1715,6 +1743,7 @@ class ImageAssetPipeline:
                 "fullMapPath": str(values.get("image_full_map_path", "")),
                 "fullMapDigest": str(values.get("image_full_map_digest", "")),
                 "fullMapEntries": int(values.get("image_full_map_entries", 0)),
+                "skippedBundleCount": int(values.get("image_skipped_bundle_count", 0)),
                 "deltaMapPath": str(values.get("image_delta_map_path", "")),
                 "deltaMapDigest": str(values.get("image_delta_map_digest", "")),
                 "deltaMapEntries": int(values.get("image_delta_map_entries", 0)),

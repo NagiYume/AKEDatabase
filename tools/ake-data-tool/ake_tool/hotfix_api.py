@@ -73,14 +73,15 @@ class HotfixClient:
             if item.get("kind") != "get_latest_game":
                 continue
             game_response = item.get("get_latest_game_rsp", {})
-            package_path = game_response.get("pkg", {}).get("file_path", "").strip()
+            package = game_response.get("pkg", {})
+            package_path = package.get("file_path", "").strip()
             if not package_path:
                 continue
-            return self._parse_seed_path(package_path)
+            return self._parse_seed_path(package_path, str(package.get("game_files_md5") or ""))
         raise ValidationError("Seed API 响应中没有 get_latest_game 的 file_path")
 
     @staticmethod
-    def _parse_seed_path(package_path: str) -> SeedInfo:
+    def _parse_seed_path(package_path: str, game_files_md5: str = "") -> SeedInfo:
         segments = [segment for segment in urlparse(package_path).path.rstrip("/").split("/") if segment]
         version_pattern = re.compile(r"^\d+\.\d+(?:\.\d+)?$")
         seed_pattern = re.compile(r"^(\d+\.\d+(?:\.\d+)?)_(.+)$")
@@ -107,7 +108,7 @@ class HotfixClient:
             game_segment = seed_version
         version_parts = game_segment.split(".")
         game_version = ".".join(version_parts[:2])
-        return SeedInfo(game_version, seed_version, rand_str, package_path)
+        return SeedInfo(game_version, seed_version, rand_str, package_path, game_files_md5)
 
     def _seed_payload(self) -> dict:
         payload = copy.deepcopy(SEED_PAYLOAD)

@@ -119,11 +119,12 @@ def sync_file_contents(source: Path, target: Path,
 
 
 def sync_tree_contents(source: Path, target: Path,
-                       token: CancellationToken | None = None, *, checked: bool = False) -> int:
+                       token: CancellationToken | None = None, *, checked: bool = False,
+                       keep: tuple[Path, ...] = ()) -> int:
     """Publish a completed export in place, retaining the source for retries.
 
-    Only individual changed files need temporary space. Stale files are removed
-    after all writes succeed; interruption is repaired by repeating publication.
+    Only individual changed files need temporary space. Stale files outside
+    the target-relative keep paths are removed after all writes succeed.
     """
     source = source.absolute()
     target = target.absolute()
@@ -138,7 +139,7 @@ def sync_tree_contents(source: Path, target: Path,
     if target.is_file():
         target.unlink()
     target.mkdir(parents=True, exist_ok=True)
-    expected = set()
+    expected = set(keep)
     jobs = []
     for path in files:
         if token is not None:

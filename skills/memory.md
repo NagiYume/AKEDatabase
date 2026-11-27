@@ -4,10 +4,64 @@
 
 ## 当前交接
 
+- **全站搜索分组与高级筛选（2026-11-26）**　`main` 提交 `1.3.9-5`。[全站搜索](modules/search/SKILL.md)按导航优先级展示已确认归属的模块，按模块与条目 ID 合并命中，归属未确认的结果置尾。高级搜索在当前结果内按已确认的模块筛选，沿用会话恢复与可见性规则。已静态核对分组、分页、筛选和资源版本，未运行测试或浏览器。
+
+- **模块加载 HTTP 525 重试（2026-11-26）**　浏览器磁盘缓存曾返回活动模块的 525。[index-app.js](../plugin/js/index-app.js) 的模块 HTML 与脚本加载收到 525 时以同一版本 URL 绕过浏览器缓存重试一次。普通请求重试使用 reload，强制刷新继续使用 no-store。仅成功响应更新已加载版本，重试失败沿用模块错误提示。main 工作区版本 1.3.9-3-pre1，已静态核对调用入口和差异，未运行浏览器验证或部署。
+
+- **UnityPy 随主仓库检出（2026-11-26）**　为修复 Cloudflare 更新子模块失败，在 `main` 移除唯一的 gitlink 和 `.gitmodules`，将 `812f385` 的 133 个文件纳入 [vendor/UnityPy](../tools/ake-data-tool/vendor/UnityPy)。除 LFS 属性和 6 个还原为原始内容的二进制文件外，Git blob 与原版本相同。安装脚本和两个图片解析入口改为提示检查检出完整性。图片解析器摘要包含其中的 `image_parser_identity.py`，旧图片发布计划需要重新解析。原子模块 Git 历史保存在本机 `.git/ake-migration-backups/UnityPy-812f385`。已静态核对 Git 索引和二进制内容，未运行工具或 Cloudflare 构建。
+
+- **1.7 角色网格粒子渲染（2026-11-25）**　`beta` 的 `7369c0ad` 合入本地 `main`。[渲染脚本](../plugin/js/ake-renderer.js)用于独立模型查看器和干员详情内嵌视图，合并时以 `main` 的 `1.3.9-2` 为基线，同步 [version.json](../version.json) 中站点、两个模块及渲染脚本的缓存版本至 `1.3.9-2-pre1`。未运行浏览器验证。
+
+- **影拓丰碑与牌局（2026-11-25）**　main 工作区：丰碑按 hdId 合并系列，兼容原系列深链；本期两个 Boss 用各自开放时段和共同活动结束时间。新增普通入口「牌局」，教学、结算、牌型、遗物、商店和多人房间数据及搜索接入见[模块说明](modules/cardgame/SKILL.md)。配置快照 12026241-3，静态审阅，未运行页面或测试。
+
+- **新会话按任务读取 skill（2026-11-25）**　`main` 工作区未提交。根 [AGENTS.md](../AGENTS.md) 与[开发 skill](akedatabase-development/SKILL.md)改为按用户问题定位模块、规则与历史段落，取数、前端、搜索和版本规则已拆入独立参考页。已静态复核入口，未做新会话实测。
+
+- **Json 逐项跳过（2026-11-25）**　`main` 工作区未提交。`json-job-20261125-063040-820711.log` 对应的宿主报告选中 24,634 项，写出 24,633 项，`GameplayConfig/MultiTriggerTable.json` 在 UTF-8 解码时失败，父进程因退出码 1 拒绝整批。现接受有成功输出且计数自洽的完成报告，失败仍保留诊断。本地发布保留同路径旧文件，`json_publish_skips` 将失败路径排除在 R2 比较与同步的文件和索引变更之外。未重跑解析、发布或上传。
+
+- **1.7.2 桌面运行时下载与图片解析（2026-11-25）**　Json、GlobalBuff 和图片共用 [runtime_download.py](../tools/ake-data-tool/ake_tool/runtime_download.py)。缺少完整本地运行时时，使用已准备状态的官方包地址和 `game_files` 清单逐文件校验并缓存。`image-job-20261125-062738-032925.log` 显示图片运行时九项下载校验完成，两个 Bundle 报 `Endfield payload exceeds bounds`，但 VFS MD5 均匹配。补读 `0x80` 标志对应的四字节扩展后边界吻合。UnityPy 已支持按区间读取节点，[image_parallel.py](../tools/ake-data-tool/ake_tool/image_parallel.py) 记录实际触及未知块的资源。此前对 11 个 Bundle 的内存验证覆盖 2,425 个路径，其中 2,404 个通过 PNG 完整性检查，剩余 21 个涉及 `0x85` 扩展块。本轮按用户提供的算法，在 `main` 检出的 UnityPy 子模块中修改 `EndfieldCipher.py`、`EndfieldBundle.py` 和 `EndfieldBundleFile.py`，接入两种 `KEY_ID` 的逐段 XOR 和 LZ4Inv，并在 `tests/test_endfield.py` 加入给定密钥流向量的回归用例。父仓库文档和子模块改动均在工作区，未运行用例、重跑图片解析或发布。详见 [AKE Data Tool](ake-data-tool/SKILL.md)。
+
+- **1.3.9 工作区正式版（2026-11-24）**　main 未提交。网站版本及本轮资源缓存号为 1.3.9，AKEGF 规范仍为 v0.3 草案。根 README 与 public/<语言>/tip.md 同步更新，tipversion 已递增。AKEGF 按站点语言读取 public/<语言>/akegf 四份正文和界面翻译，覆盖 14 个语言目录。已静态核对资源、目录及文档入口，未执行运行验证；按用户指定仅完成工作区正式版。
+
 - **站位图等比例修复**　`beta` 网站资源版本为 `1.3.8-1`。正方形绘图区原先分别按 X/Z 范围缩放。[ake-combat-data.js](../plugin/js/ake-combat-data.js) 的 `spawnMapProjection` 现在为两轴选用共同范围，[v2-dungeon.js](../plugin/js/v2-dungeon.js)、[v2-cc.js](../plugin/js/v2-cc.js) 和 [season-tower.js](../plugin/js/season-tower.js) 用同一比例绘制网格和标记。同步 [version.json](../version.json) 和对应模块说明。已对照脚本加载入口及绘制公式，未运行测试或浏览器验证。
 - **网站基线**　2026-11-21 整理时，本地 `beta` 为 `9486b859`，`version.json.appversion` 为 `1.3.8`。该版本的提交为 `fb22b1e0`，已含中英文公告及 README。11 月 20 日的 `9486b859` 只改数据更新倒计时和说明。文中的版本均指网站版本，另有说明的除外。
 - **证据范围**　下列里程碑按本地提交和[中文更新日志](../public/CH/tip.md)整理。提交可用 `git show <短哈希>` 查阅，某版本的完整交付要连同前一版本以来的改动一起看。本轮未核验线上部署或浏览器表现。
 - **待核验 · 合约与怪物**　第二期仍有缺少 Buff 对应关系的指标，见下文「合约与属性」。属性值上下限的完整实现和游戏内结果仍待核验。参考样例有明确期望值，可用于以后获授权的验证。
+
+## AKEGF 工具认证与接入说明
+
+2026-11-25，main 工作区 1.3.9-pre7。公钥目录首页与 /v1/providers.json 由 registry.py 从已有单键记录生成，登记和撤销时更新。首页已部署至 verify.akedata.wiki，公网发现 akegf-example 与 starward-ake 共两把有效公钥，HTML 及允许跨域读取的 JSON 已与逐键接口核对。AKEGF 合作页底部读取同一列表，沿用文章样式展示指纹、状态、有效公钥 PEM 和逐键链接。主站改动仍在工作区，未执行浏览器视觉验收。
+
+2026-11-25，main 工作区 1.3.9-pre6。添加 v0.4 未签名和签名多角色示例的下载入口，独立校验器目录同步签名档案。示例专用提供方 akegf-example 的 3072 位 PS256 公钥已部署，kid 为 8cOMDGbXz6FFT7xjWXaCU2vGAT9LoIM8LQjxWGlYh_o。运行部署检查时比对两版数据相同，OpenSSL 验证原签名通过、改星级后失败，公网接口返回对应有效公钥。签名示例只用于测试，校验器独立提示，不纳入正式历史、同步或排行。未运行浏览器验证。
+
+2026-11-25，main 工作区 1.3.9-pre5。Starward 移除 AKEGF 签名实现与导出时的私钥访问，只输出未签名 v0.4，已重建到原 win-x64 Debug 目录。v0.4 标准明确两种信任状态。通过格式检查且使用目录中有效公钥验签成功的档案可用于持久历史和排行。未验证档案只允许当前会话的查看、筛选和统计，禁止持久保存、同步到账号或用于进阶服务。站内校验分别显示格式和信任状态，合作页及工具说明已同步。独立校验器标注仅做格式检查。未运行站内或独立浏览器验证。
+
+2026-11-25，main 工作区 1.3.9-pre4。v0.4 Schema 仅对 draw 强制卡池、获得物、星级和时间，赠礼和 unknown 等非抽取流水可省略缺失项。同步站内与独立 Schema、14 个语言首页及标准字段表，并在示例保留一条缺星级的赠礼。Starward 导出器保留旧缓存可用字段，省略无可靠值的字段，抽取记录继续按四项必填校验。已在原 win-x64 Debug 路径重建并用生成的 Starward.dll 验证合成的缺项流水、部分历史与抽取缺项拒绝。站内和独立浏览器包未运行验证。
+
+2026-11-25，按用户更正，将 Starward 签名改回 Windows 客户端。保留已登记的 starward-ake 公钥及 kid。私钥由当前 Windows 用户的 DPAPI 加密文件提供，客户端使用 PS256 自动签署 AKEGF v0.4；缺少私钥时提示未签名。上海服务恢复只读公钥查询，移除签名端点、服务单元及服务器留存的签名私钥和授权码。已验证公钥在线、旧 POST 返回 405，以及本地代码生成的测试档案能用登记公钥验签，改 UID 后失败。站内合作页版本为 1.3.9-pre3。真实账号的 WinUI 导出未实测。
+
+2026-11-25，AKEGF 规范升为 v0.4，站内缓存版本为 1.3.9-pre2。站内校验器按 info.version 选 v0.3 或 v0.4 Schema；签名字段只属于 v0.4。同步各语言的当前版本、示例及下载入口，合作项目原有版本按实际记录保留。独立 AKEGF-SchemaVerify 同步规则、示例和签名档案保留原字段的逻辑，独立浏览器包待重新生成。
+
+上海服务器新建 3072 位 starward-ake RSA 密钥并登记公钥，kid 为 gYv-VQSVBIRSHiKqxACp8Y52-pHeaf0mnjRRdUtPaV4。私钥由 systemd 载入，公网 HTTPS 签名路径需要操作者授权码。部署中以公开 v0.4 文件取得签名，OpenSSL 验签成功，修改 UID 后验签失败。公网公钥查询成功，签名无授权为 401，有授权为 200。Starward 的 NagiYume 分支工作区新增所选国服角色的本地导出与授权签名导出，使用 RoleId、真实服务器 ID 和缓存双类流水。缓存无法判定的事件以 unknown 导出，缺少必填数据时报告并中止。Starward 使用本机 10.0.302 SDK 在隔离输出路径完成 x64 Debug 构建。真实账号数据和 WinUI 交互验收待用户执行。
+
+2026-11-25，main 工作区未提交，网站资源版本 1.3.9-pre1。AKEGF v0.3 在 info 中增加成对可选的 export_provider 和 rsa_signature，沿用旧多角色示例作为无签名样例。签名覆盖带前缀的 RFC 8785 规范化档案，浏览器通过 Web Crypto 验证 PS256。14 个语言首页的 Schema 与各标准字段表已同步，中英文补齐签名协议、登记流程和校验文案。独立 AKEGF-SchemaVerify 同步 Schema，仍负责格式检查。
+
+[公钥目录](akegf-verify/SKILL.md)已部署至上海服务器。verify.akedata.wiki 通过 nginx 提供只读 HTTPS 查询，管理员以 registry.py 登记和撤销。已检查公网靶域证书、健康接口 200、未知公钥 404、跨域与禁止缓存响应头、写请求 405、HTTP 到 HTTPS 308，并确认续期定时器已启用。生产尚无经认证的项目公钥，真实签名往返和浏览器校验待验收。网站资源仍在工作区。
+
+main 工作区（未提交），1.3.8-1-pre6。中英文 validator.md 在格式校验工具页内说明文件校验与导入导出往返认证，侧栏保持四项。标准文档明确字段读写规则，事件含义与卡池观察分列；合作页按指定版本 v0.3 展示，未确认的导入导出能力单列。已更新导航和搜索元数据，theme/light.css 限定本模块表格换行与目录链接样式。仅静态审阅，未作浏览器或运行验证。
+
+## AKEGF 子页路由与 Markdown 引用
+
+main 工作区（未提交），1.3.8-1-pre4。AKEGF 四页使用文档基名作为 id，桌面和移动目录共用链接与站内 URL 同步设置。theme/light.css 在研究、AKEGF 和公告的引用段落保留换行。本轮只读审阅中文正文。仅静态核对，未运行浏览器或测试。
+
+## 站内 Markdown 渲染
+
+main 工作区（未提交），1.3.8-1-pre3。研究、AKEGF 与公告通过 index-app.js 按需加载 article-markdown.js，共用 marked.js、DOMPurify 和 highlight.js。两项渲染依赖使用固定版本的 jsDelivr 浏览器模块，并在导入失败时读取同版本站内副本。保留研究目录、站点图片路径、灯箱和公告版本已读逻辑。仅静态审阅；实际显示、CDN 回退、主题与移动端待用户验收。
+
+## AKEGF 模块迁移
+
+main 工作区（未提交），1.3.8-1-pre2。AKEGF 公开模块沿用研究模块的文章排版和共享解析器，四页正文分别放在 public/CH/akegf、public/EN/akegf。plugin/js/akegf.js 读取本站 v0.3 Schema，对粘贴及本地文件执行格式和重复键检查。合作项目页记录本站与配套校验器。按仓库规则仅静态审阅，切页、窄屏、语言、主题及有效/无效档案待用户验收。
+
+开发规范、模块创建、页面风格 skill 和 AGENTS.md 已统一为适配新功能可自行编写 CSS，沿用三主题与整体风格约定。
 
 ## 版本里程碑
 

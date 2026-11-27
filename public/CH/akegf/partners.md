@@ -1,0 +1,39 @@
+# 合作项目
+
+| 项目 | 支持版本 | AKEGF 导入 | AKEGF 导出 |
+| --- | --- | --- | --- |
+| AKEData | v0.4 | 不适用（文件校验） | 不适用（规范与示例下载） |
+| Starward（NagiYume 分支） | v0.4 | — | 未签名导出 |
+| 终末地寻访记录分析 | v0.3 | 待确认 | 待确认 |
+| otae bot | v0.3 | 待确认 | 待确认 |
+| 终末地·抽卡记录评分 | v0.3 | 待确认 | 待确认 |
+
+## AKEData
+
+本站维护 AKEGF 的规范文档、多角色示例与浏览器格式校验入口。
+
+## Starward（NagiYume 分支）
+
+所选国服角色的本地干员和武器记录可导出为未签名的 v0.4 档案。导入工具可在当前会话查看和统计这些记录。项目入口见 [Starward 分支仓库](https://github.com/NagiYume/Starward)。
+
+## 终末地寻访记录分析
+
+终末地寻访记录分析工具。据项目介绍，累计查询用户近 1 万人，寻访记录超过 500 万条（统计日期待补充）。
+
+项目地址：[endgacha.kwer.top](https://endgacha.kwer.top/)
+
+项目作者：[呱行次比猫](https://space.bilibili.com/38238808)
+
+## otae bot
+
+终末地 QQ 机器人，支持查询游戏数据、账号数据与寻访记录。
+
+项目作者：待补充。
+
+## 终末地·抽卡记录评分
+
+分析从小黑盒导出的抽卡记录并给出欧/非评价
+
+项目地址：[shixincro.top](https://shixincro.top/)
+
+项目作者：[小鳄鱼释心](https://github.com/shixincro/)

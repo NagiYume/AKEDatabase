@@ -22,7 +22,7 @@ monumentPeriodData 从高难活动、阶段、完成条件、HighDifficultyGameI
 
 ## 修改与排查
 
-期次或排序不对时查阶段 → 玩法 → 系列 → 开放时间。关卡、奖励、怪物卡或横幅则查 v2-dungeon.js 中的丰碑分支。
+期次或排序不对时查活动阶段的 `timeId` 及活动结束时间。条件参数中的关卡用 HighDifficultyGameIdToSeriesIdTable 或 DungeonTable.dungeonSeriesId 映射。专题按 HighDifficultySeriesTable.hdId 合并系列，取字典序首个系列为目录 ID，其余系列 ID 仍能深链；普通副本保持原始系列。可选的 HighDifficultyBossGroupTable.openTimeId 和 HighDifficultyBossGameTable.gameList 决定详情内各 Boss 的开放时间和关卡顺序。关卡、奖励、怪物卡或横幅则查 v2-dungeon.js 中的丰碑分支。
 
 站位图也复用副本控制器的 `renderSpawnMap`。要排查网格或标记的位置，查看[副本模块的站位换算](../v3-dungeon/SKILL.md#修改与排查)。
 

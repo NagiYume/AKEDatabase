@@ -5,6 +5,16 @@
 <section class="ake-ui-detail" id="searchModule">
     <form class="ake-ui-toolbar ake-ui-tabs" data-sticky="true" id="searchForm" role="search">
         <input id="globalSearchQuery" class="ake-ui-control" type="search" autocomplete="off" required aria-label="搜索" data-i18n-aria-label="modules.search.title" data-i18n-placeholder="modules.search.placeholder">
+        <details id="searchAdvanced" class="ake-ui-details" hidden>
+            <summary>
+                <span data-i18n="modules.search.advanced">高级搜索</span>
+                <svg class="ake-ui-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg>
+            </summary>
+            <div class="ake-ui-details__body">
+                <label for="searchModuleFilter" data-i18n="modules.search.moduleFilter">匹配模块</label>
+                <select id="searchModuleFilter" class="ake-ui-control ake-ui-control--select"></select>
+            </div>
+        </details>
     </form>
     <p id="searchSummary" role="status" aria-live="polite"></p>
     <div id="searchResults"></div>

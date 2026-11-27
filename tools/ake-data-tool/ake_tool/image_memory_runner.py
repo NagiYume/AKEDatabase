@@ -9,7 +9,7 @@ from pathlib import Path
 
 _unity_root = Path(__file__).resolve().parent.parent / 'vendor' / 'UnityPy'
 if not (_unity_root / 'UnityPy' / '__init__.py').is_file():
-    raise RuntimeError('UnityPy 子模块未初始化，请运行 git submodule update --init --recursive')
+    raise RuntimeError('缺少仓库自带的 UnityPy，请检查 AKEDatabase 检出是否完整')
 sys.path.insert(0, str(_unity_root))
 os.environ['PYTHONPATH'] = str(_unity_root) + os.pathsep + os.environ.get('PYTHONPATH', '')
 

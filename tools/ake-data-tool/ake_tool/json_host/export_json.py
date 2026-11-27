@@ -191,11 +191,6 @@ def worker(args):
                             result = host.serialize(value).encode('utf-8')
                         # The managed JSON serializer already produced JSON.
                         # Avoid constructing a second full Python object tree.
-                    atomic_write(target, result)
-                    error_file.unlink(missing_ok=True)
-                    count['written'] += 1
-                    print(f'OK {entry.name}', flush=True)
-                    break
                 except Exception:
                     if attempt == 0:
                         continue
@@ -203,6 +198,12 @@ def worker(args):
                     failed.append(entry.name)
                     atomic_write(error_file, traceback.format_exc().encode('utf-8'))
                     print(f'FAILED {entry.name}: see {error_file}', file=sys.stderr, flush=True)
+                else:
+                    atomic_write(target, result)
+                    error_file.unlink(missing_ok=True)
+                    count['written'] += 1
+                    print(f'OK {entry.name}', flush=True)
+                    break
     report = {'datasets': counts, 'failed': failed, 'selected': len(entries),
               'unsupported': unsupported, 'auxiliary': auxiliary,
               'gameAssembly': str(host.root / 'GameAssembly.dll')}

@@ -79,6 +79,7 @@ def main():
     worker_cache_stats = {}
     builtin_excluded = Counter()
     missing_cabs = Counter()
+    skipped_bundles = []
     skipped = 0
     workers = int(os.environ.get('AKE_IMAGE_PARSE_WORKERS', '4'))
     if not 1 <= workers <= 32:
@@ -87,8 +88,8 @@ def main():
     cache_bytes = int(os.environ.get('AKE_IMAGE_BUNDLE_CACHE_GIB', '16')) * 1024**3
     scratch = args.run / 'parallel-png'
     scratch.mkdir(parents=True, exist_ok=True)
-    jobs = iter((number, [asset.path for asset in assets])
-                for number, assets in enumerate(groups.values(), 1))
+    jobs = iter((number, bundle_index, [asset.path for asset in assets])
+                for number, (bundle_index, assets) in enumerate(groups.items(), 1))
     print(f'[image-stage] 并行解析进程 {workers}，Bundle 缓存总预算 {cache_bytes / 1024**3:g} GiB', flush=True)
     with ProcessPoolExecutor(max_workers=workers, mp_context=multiprocessing.get_context('spawn'),
                              initializer=initialize,
@@ -99,17 +100,23 @@ def main():
             job = next(jobs, None)
             if job is None:
                 break
-            pending.append((job[0], pool.submit(parse_bundle, job)))
+            pending.append((job, pool.submit(parse_bundle, job)))
         while pending:
-            number, future = pending.pop(0)
-            records, observed, worker_id, cache_stats, builtin_counts, missing_counts = future.result()
+            (number, bundle_index, paths), future = pending.pop(0)
+            job = next(jobs, None)
+            if job is not None:
+                pending.append((job, pool.submit(parse_bundle, job)))
+            records, observed, worker_id, cache_stats, builtin_counts, missing_counts, failures = future.result()
+            if failures:
+                bundle = vfs.catalog.bundles[bundle_index].name
+                skipped_bundles.append({'bundle': bundle, 'assets': list(failures),
+                                        'error': next(iter(failures.values())), 'errors': failures})
+                print(f'[image-stage] Bundle {number}/{len(groups)} {bundle} 有 '
+                      f'{len(failures)}/{len(paths)} 个资源路径读到不支持的存储块', flush=True)
             worker_cache_stats[worker_id] = cache_stats
             observed_types.update(observed)
             builtin_excluded.update(builtin_counts)
             missing_cabs.update(missing_counts)
-            job = next(jobs, None)
-            if job is not None:
-                pending.append((job[0], pool.submit(parse_bundle, job)))
             for entry, temporary in records:
                 identity = (entry.container.casefold(), entry.source.casefold(), entry.offset, entry.path_id, entry.type)
                 prior = seen.get(identity)
@@ -156,6 +163,11 @@ def main():
     print(f'[image-stage] 工作进程 Bundle 缓存命中 {sum(v[0] for v in worker_cache_stats.values())} 次，'
           f'当前缓存 {sum(v[1] for v in worker_cache_stats.values()) / 1024**2:.1f} MiB', flush=True)
     args.run.mkdir(parents=True, exist_ok=True)
+    if skipped_bundles:
+        (args.run / 'skipped-bundles.json').write_text(
+            json.dumps(skipped_bundles, ensure_ascii=False, indent=2), encoding='utf-8')
+        if sum(len(group['assets']) for group in skipped_bundles) == len(selected):
+            raise ValueError(f'所有选中资源均无法解析，详见 {args.run / "skipped-bundles.json"}')
     write_map(args.run / 'assets.full.map', 35, all_entries)
     write_map(args.run / 'assets.delta.map', 35, delta)
     write_map(args.remote, 35, all_entries)
@@ -179,7 +191,8 @@ def main():
               '详见 output-collisions.json', flush=True)
     print(f'AKE_MAP_RESULT|full={len(all_entries)}|old={old_count}'
           f'|oldHashes={len(old)}|delta={len(delta)}|skipped={skipped}'
-          f'|invalidCurrent=0|normalizedSources=0|warnings={sum(missing_cabs.values())}|failures=0', flush=True)
+          f'|invalidCurrent=0|normalizedSources=0|warnings={sum(missing_cabs.values())}'
+          f'|skippedBundles={len(skipped_bundles)}|failures=0', flush=True)
 
 
 if __name__ == '__main__':

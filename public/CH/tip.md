@@ -1,6 +1,6 @@
 # 特别公告
 
-AKEData `v1.3.8`：完善第二期危机合约指标和怪物属性展示，调整怪物属性计算，并支持自定义显示项目。
+AKEData 1.3.9 新增 [AKEGF 抽卡记录交换格式](/?plugin=akegf&id=home)。可下载多角色示例，或在浏览器本地校验自己的记录文件。
 
 AKEData已迁移至域名：www.akedata.wiki，原先的akedata.top现已重定向至此
 
@@ -9,6 +9,13 @@ AKEData已迁移至域名：www.akedata.wiki，原先的akedata.top现已重定�
 欢迎您填写该问卷来向我们进行反馈：[问卷链接](https://v.wjx.cn/vm/tU0gAXM.aspx#)
 
 # AKEData版本更新日志
+
+### v1.3.9
+
+- 新增 AKEGF v0.3 草案的[标准化文档](/?plugin=akegf&id=standard)、JSON Schema 与多角色示例，覆盖干员寻访、武器申领和独立赠礼。
+- [格式校验工具](/?plugin=akegf&id=validator)支持粘贴 JSON 或选择本地文件，显示字段路径并检查重复分组与流水号。同页列出工具认证的导入导出检查步骤。
+- [合作项目](/?plugin=akegf&id=partners)可查看各项目的格式版本与接入情况。四个子页面均支持直达链接，正文随站点语言切换。
+- 研究文章、AKEGF 与公告共用 Markdown 渲染和代码高亮，引用段落保留换行。
 
 ### v1.3.8
 

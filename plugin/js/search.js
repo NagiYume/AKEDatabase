@@ -8,20 +8,22 @@
     const t = (key, params) => window.akeI18n.t(`modules.search.${key}`, params);
     const h = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const queryInput = root.querySelector('#globalSearchQuery');
+    const advanced = root.querySelector('#searchAdvanced');
+    const moduleFilter = root.querySelector('#searchModuleFilter');
     const resultsElement = root.querySelector('#searchResults');
     const summary = root.querySelector('#searchSummary');
     const pagination = root.querySelector('#searchPagination');
     const pageSize = 30;
     const storageKey = 'akedata-search-session-v1';
     let generation = 0, request = null, timer = null, destroyed = false, inputTimer = null, composing = false;
-    let state = { query: '', results: [], diagnostics: null, phase: 'idle', page: 0, context: '' };
+    const idleState = { query: '', results: [], diagnostics: null, phase: 'idle', page: 0, context: '', moduleFilter: '' };
+    let state = { ...idleState };
+    let grouped = null;
     const hidden = () => window.akeData.getConfig().showHidden === true;
     const modules = () => window.akeData.getModules().filter(module => !module.special && !module.disabled);
     const available = module => (!module.hidden || hidden()) && window.akeData.isTokenUnlocked(module.token);
-    const moduleName = id => {
-        const module = modules().find(module => module.id === id);
-        return module ? window.akeI18n.t(module.title, null, module.title) : t('unassigned');
-    };
+    const moduleName = module => window.akeI18n.t(module.title, null, module.title);
+    const priority = module => module.priority === undefined ? 999 : Number(module.priority);
     const accessKey = () => JSON.stringify([window.AKESearchData.contextKey(), modules().filter(available).map(module => module.id)]);
     const stateHtml = (key, kind = 'empty') => `<div class="ake-ui-state" data-state="${kind}">${h(t(key))}</div>`;
     function save() {
@@ -59,29 +61,55 @@
     }
 
     function groupedResults() {
-        const visible = new Set(modules().filter(available).map(module => module.id));
-        const registered = new Set(modules().map(module => module.id));
-        const groups = new Map();
+        const registered = modules();
+        const ordered = registered.filter(available).sort((a, b) => priority(a) - priority(b));
+        const entriesByModule = new Map(ordered.map(module => [module.id, new Map()]));
+        const visibleTables = new Set();
+        const restrictedTables = new Set();
+        for (const module of registered) {
+            const tables = entriesByModule.has(module.id) ? visibleTables : restrictedTables;
+            for (const table of window.AKESearchIndex[module.id]?.tables || []) tables.add(table);
+        }
+        const unassigned = [];
         let restricted = 0;
         for (const result of state.results) {
-            const owners = Object.entries(window.AKESearchIndex).filter(([id, definition]) => registered.has(id) && definition.tables.includes(result.Table)).map(([id]) => id);
-            if (owners.length && !owners.some(id => visible.has(id))) { restricted++; continue; }
-            const targets = result.targets.filter(target => visible.has(target.module));
-            const candidates = result.candidates.filter(id => visible.has(id));
-            const destinations = targets.length ? targets : [null];
-            for (const target of destinations) {
-                const key = target ? JSON.stringify([target.module, target.id]) : JSON.stringify([result.Table, result.Path, result.Id]);
-                if (!groups.has(key)) groups.set(key, { target, name: target?.title || result.name, matches: [], candidates });
-                groups.get(key).matches.push(result);
+            if (restrictedTables.has(result.Table) && !visibleTables.has(result.Table)) { restricted++; continue; }
+            const targets = result.targets.filter(target => entriesByModule.has(target.module));
+            if (!targets.length) {
+                const candidates = ordered.filter(module => result.candidates.includes(module.id));
+                unassigned.push({ name: result.name, matches: [result], candidates });
+            }
+            for (const target of targets) {
+                const entries = entriesByModule.get(target.module);
+                if (!entries.has(target.id)) entries.set(target.id, { target, name: target.title || result.name, matches: [] });
+                entries.get(target.id).matches.push(result);
             }
         }
-        return { groups: [...groups.values()], restricted };
+        const groups = ordered.filter(module => entriesByModule.get(module.id).size).map(module => ({
+            id: module.id, title: moduleName(module), entries: [...entriesByModule.get(module.id).values()]
+        }));
+        if (unassigned.length) groups.push({ id: null, title: t('uncategorized'), entries: unassigned });
+        return { groups, restricted };
+    }
+
+    function renderEntry(entry) {
+        const name = entry.name || t('unnamed');
+        const heading = entry.target ? window.AKEUI.entryLinkHtml({ plugin: entry.target.module, id: entry.target.id, label: name, contentHtml: h(name) }) : h(name);
+        const affiliation = entry.candidates?.length ? `<p>${h(t('candidateModules', { modules: entry.candidates.map(moduleName).join(' / ') }))}</p>` : '';
+        return `<article class="ake-ui-card"><div class="ake-ui-card__body"><h3>${heading}</h3>${affiliation}${entry.matches.map(result => {
+            const field = t(`fields.${result.field}`);
+            const label = field === `modules.search.fields.${result.field}` ? t('fields.other') : field;
+            const technical = hidden() ? `<details><summary>${h(t('source'))}</summary><pre>${h(JSON.stringify({ Table: result.Table, Path: result.Path, Id: result.Id }, null, 2))}</pre></details>` : '';
+            return `<div><span class="ake-ui-badge">${h(label)}</span>${result.status !== 'resolved' ? ` <span class="ake-ui-badge">${h(t(result.status))}</span>` : ''}<p>${result.text ? highlighted(result.text) : h(t('textUnavailable'))}</p>${technical}</div>`;
+        }).join('')}</div></article>`;
     }
 
     function render() {
         if (destroyed) return;
         root.setAttribute('aria-busy', String(state.phase === 'loading'));
         pagination.hidden = true;
+        advanced.hidden = true;
+        grouped = null;
         if (state.phase === 'idle') { summary.textContent = ''; resultsElement.innerHTML = stateHtml('start'); return; }
         if (state.phase === 'loading') { resultsElement.innerHTML = stateHtml('loading', 'loading'); return; }
         if (['error', 'cancelled', 'timeout'].includes(state.phase)) {
@@ -89,29 +117,49 @@
             resultsElement.innerHTML = `${stateHtml(state.phase, state.phase === 'error' ? 'error' : 'empty')}<button class="ake-ui-button" type="button" data-search-retry>${h(t('retry'))}</button>`;
             return;
         }
-        const { groups, restricted } = groupedResults();
-        const pages = Math.max(1, Math.ceil(groups.length / pageSize));
+        grouped = groupedResults();
+        const matchedModules = grouped.groups.filter(group => group.id !== null);
+        if (!matchedModules.some(group => group.id === state.moduleFilter)) state.moduleFilter = '';
+        if (matchedModules.length) {
+            advanced.hidden = false;
+            moduleFilter.replaceChildren(new Option(t('allModules'), ''), ...matchedModules.map(group => new Option(group.title, group.id)));
+            moduleFilter.value = state.moduleFilter;
+            window.AKEUI.refreshSelect(moduleFilter);
+        }
+        renderResults();
+    }
+
+    function renderResults() {
+        if (!grouped) return;
+        const { groups, restricted } = grouped;
+        const selected = groups.find(group => group.id === state.moduleFilter);
+        const shownGroups = selected ? [selected] : groups;
+        const entryCount = shownGroups.reduce((count, group) => count + group.entries.length, 0);
+        const pages = Math.max(1, Math.ceil(entryCount / pageSize));
         state.page = Math.min(state.page, pages - 1);
-        const unresolved = state.results.filter(result => !result.targets.length).length;
-        summary.textContent = t('summary', { hits: state.results.length, groups: groups.length, unresolved, restricted });
+        if (selected) {
+            summary.textContent = t('filteredSummary', { module: selected.title, count: entryCount });
+        } else {
+            const unresolved = state.results.filter(result => !result.targets.length).length;
+            summary.textContent = t('summary', { hits: state.results.length, groups: entryCount, unresolved, restricted });
+        }
         if (state.diagnostics.invalid) summary.textContent += ' ' + t('invalid', { count: state.diagnostics.invalid });
         if (state.results.some(result => result.status === 'loadFailed')) {
             summary.append(' ');
             const retry = document.createElement('button'); retry.type = 'button'; retry.className = 'ake-ui-button';
             retry.dataset.searchRetry = ''; retry.textContent = t('retry'); summary.append(retry);
         }
-        const shown = groups.slice(state.page * pageSize, (state.page + 1) * pageSize);
-        resultsElement.innerHTML = shown.map(group => {
-            const name = group.name || t('unnamed');
-            const heading = group.target ? window.AKEUI.entryLinkHtml({ plugin: group.target.module, id: group.target.id, label: name, contentHtml: h(name) }) : h(name);
-            const affiliation = group.target ? h(moduleName(group.target.module))
-                : h(group.candidates.length ? t('candidateModules', { modules: group.candidates.map(moduleName).join(' / ') }) : t('unassigned'));
-            return `<article class="ake-ui-card"><div class="ake-ui-card__body"><h2>${heading}</h2><p>${affiliation}</p>${group.matches.map(result => {
-                const field = t(`fields.${result.field}`);
-                const label = field === `modules.search.fields.${result.field}` ? t('fields.other') : field;
-                const technical = hidden() ? `<details><summary>${h(t('source'))}</summary><pre>${h(JSON.stringify({ Table: result.Table, Path: result.Path, Id: result.Id }, null, 2))}</pre></details>` : '';
-                return `<div><span class="ake-ui-badge">${h(label)}</span>${result.status !== 'resolved' ? ` <span class="ake-ui-badge">${h(t(result.status))}</span>` : ''}<p>${result.text ? highlighted(result.text) : h(t('textUnavailable'))}</p>${technical}</div>`;
-            }).join('')}</div></article>`;
+        const start = state.page * pageSize;
+        const end = start + pageSize;
+        let offset = 0;
+        resultsElement.innerHTML = shownGroups.map(group => {
+            const entries = group.entries.slice(Math.max(0, start - offset), Math.max(0, end - offset));
+            offset += group.entries.length;
+            if (!entries.length) return '';
+            return `<section class="ake-ui-section">
+                <header class="ake-ui-section__header"><h2 class="ake-ui-section__title">${h(group.title)}</h2></header>
+                <div class="ake-ui-section__body ake-ui-card-grid" data-size="full">${entries.map(renderEntry).join('')}</div>
+            </section>`;
         }).join('') || stateHtml(state.results.length ? 'noFilteredResults' : 'noResults');
         pagination.hidden = pages <= 1;
         root.querySelector('#searchPrevious').disabled = state.page === 0;
@@ -128,15 +176,16 @@
 
     function clearSearch() {
         stop();
-        state = { query: '', results: [], diagnostics: null, phase: 'idle', page: 0, context: '' };
+        state = { ...idleState };
         try { sessionStorage.removeItem(storageKey); } catch { /* Optional session state. */ }
         render();
     }
 
     function scheduleSearch() {
         stop();
-        if (!queryInput.value.trim()) { clearSearch(); return; }
-        state = { query: queryInput.value.trim(), results: [], diagnostics: null, phase: 'loading', page: 0, context: accessKey() };
+        const query = queryInput.value.trim();
+        if (!query) { clearSearch(); return; }
+        state = { ...idleState, query, phase: 'loading', context: accessKey(), moduleFilter: state.query === query ? state.moduleFilter : '' };
         summary.textContent = t('loading'); render();
         if (!composing) inputTimer = setTimeout(() => { inputTimer = null; submit(); }, 300);
     }
@@ -150,7 +199,7 @@
         const signal = request.signal;
         let timedOut = false;
         timer = setTimeout(() => { timedOut = true; request?.abort(); }, 90000);
-        state = { query, results: [], diagnostics: null, phase: 'loading', page: 0, context: accessKey() };
+        state = { ...idleState, query, phase: 'loading', context: accessKey(), moduleFilter: state.query === query ? state.moduleFilter : '' };
         summary.textContent = t('loading'); render();
         try {
             const response = await window.AKESearchData.search(query, {
@@ -172,13 +221,20 @@
     listen(queryInput, 'compositionend', () => { composing = false; scheduleSearch(); });
     listen(queryInput, 'input', scheduleSearch);
     listen(root, 'click', event => { if (event.target.closest('[data-search-retry]')) submit(true); });
-    listen(root.querySelector('#searchPrevious'), 'click', () => { state.page--; render(); resultsElement.scrollIntoView({ block: 'start' }); });
-    listen(root.querySelector('#searchNext'), 'click', () => { state.page++; render(); resultsElement.scrollIntoView({ block: 'start' }); });
+    listen(moduleFilter, 'change', () => {
+        if (!grouped) return;
+        state.moduleFilter = moduleFilter.value;
+        state.page = 0;
+        renderResults();
+        document.querySelector('.main-content')?.scrollTo(0, 0);
+    });
+    listen(root.querySelector('#searchPrevious'), 'click', () => { state.page--; renderResults(); resultsElement.scrollIntoView({ block: 'start' }); });
+    listen(root.querySelector('#searchNext'), 'click', () => { state.page++; renderResults(); resultsElement.scrollIntoView({ block: 'start' }); });
     listen(window, 'pagehide', save);
     listen(root, 'click', event => { if (event.target.closest('a[data-ake-entry-plugin]')) save(); });
     function configChanged() {
         if (state.query && state.context !== accessKey()) {
-            stop(); state = { query: '', results: [], diagnostics: null, phase: 'idle', page: 0, context: '' };
+            stop(); state = { ...idleState };
         }
         render();
     }
@@ -203,8 +259,9 @@
     let saved;
     try { saved = JSON.parse(sessionStorage.getItem(storageKey) || 'null'); } catch { /* Optional session state. */ }
     if (typeof window.__akePendingSearchQuery !== 'string' && saved?.state?.context === accessKey() && Array.isArray(saved.state.results)) {
-        state = saved.state;
+        state = { ...idleState, ...saved.state };
         queryInput.value = state.query;
+        advanced.open = Boolean(state.moduleFilter);
         if (saved.repeat || Date.now() - saved.savedAt >= 120000) submit();
         else requestAnimationFrame(() => { if (root.isConnected) document.querySelector('.main-content')?.scrollTo(0, saved.scroll || 0); });
     }

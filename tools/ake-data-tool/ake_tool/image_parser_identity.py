@@ -14,7 +14,7 @@ def image_parser_digest() -> str:
     root = Path(__file__).resolve().parent
     unity_root = root.parent / 'vendor' / 'UnityPy' / 'UnityPy'
     if not (unity_root / '__init__.py').is_file():
-        raise ValidationError('UnityPy 子模块未初始化，请运行 git submodule update --init --recursive')
+        raise ValidationError('缺少仓库自带的 UnityPy，请检查 AKEDatabase 检出是否完整')
     for path in sorted(unity_root.rglob('*.py')):
         digest.update(path.relative_to(unity_root).as_posix().encode('utf-8') + b'\0')
         digest.update(path.read_bytes())

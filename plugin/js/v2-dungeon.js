@@ -503,11 +503,12 @@
             });
 
             if (window.__deepLinkId) {
-                const deepItem = filtered.find(c => c.templateId === window.__deepLinkId);
+                const matchesDeepLink = c => c.templateId === window.__deepLinkId || c.seriesIds?.includes(window.__deepLinkId);
+                const deepItem = filtered.find(matchesDeepLink);
                 if (deepItem) {
                     activeSeriesId = deepItem.templateId;
                 } else {
-                    const existsInRaw = rawAllSeries.some(c => c.templateId === window.__deepLinkId);
+                    const existsInRaw = rawAllSeries.some(matchesDeepLink);
                     if (window.__akeRouter && window.__akeRouter.onDeepLinkNotFound) {
                         window.__akeRouter.onDeepLinkNotFound(window.__deepLinkId, existsInRaw);
                     }
@@ -546,7 +547,7 @@
                 const buffIds = collectBuffIds(data);
                 if (buffIds.length > 0) await loadAllBuffs(buffIds);
                 container.innerHTML = renderDetail(data, seriesItem);
-                window.AKEModuleOverview?.renderVersionDiff(container, data, data.__versionDiff?.baseline ? renderDetail(data.__versionDiff.baseline, seriesItem) : '');
+                window.AKEModuleOverview?.renderVersionDiff(container, data, data.__versionDiff?.baseline ? renderDetail(data.__versionDiff.baseline, data.__versionDiff.baselineSeries || seriesItem) : '');
             } catch (err) {
                 container.innerHTML = `<div class="ake-ui-state" data-state="error">${t('loadFailed', { message: err.message })}</div>`;
             }
@@ -931,9 +932,18 @@
             const roleSrc = roleImg ? `/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/monstericonbig/${roleImg}.png` : '';
 
             let dungeonsHtml = '';
-            orderedIds.forEach(id => {
-                dungeonsHtml += renderDungeonCard(id, dungeons[id]);
-            });
+            const remaining = new Set(orderedIds);
+            for (const boss of seriesItem.bossGroups || []) {
+                const ids = boss.dungeonIds.filter(id => remaining.has(id));
+                if (!ids.length) continue;
+                const dates = [boss.openTime, boss.closeTime].filter(Boolean).map(value => formatMonumentDate(value)).join(' – ');
+                dungeonsHtml += `<div class="ake-ui-section__header"><h3 class="ake-ui-section__title">${escH(boss.name)}</h3><span class="ake-ui-section__meta">${escH(dates)}</span></div>`;
+                for (const id of ids) {
+                    remaining.delete(id);
+                    dungeonsHtml += renderDungeonCard(id, dungeons[id]);
+                }
+            }
+            for (const id of remaining) dungeonsHtml += renderDungeonCard(id, dungeons[id]);
 
             if (moduleId === 'monument') {
                 const status = getMonumentStatus(seriesItem);

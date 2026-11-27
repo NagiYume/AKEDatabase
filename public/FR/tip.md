@@ -2,6 +2,10 @@ AKEData a été transféré vers le domaine www.akedata.wiki. L'ancien domaine a
 
 # Journal des mises à jour d'AKEData
 
+### v1.3.9
+
+Ajout du projet de norme [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) v0.3, de son exemple et du [Validateur AKEGF](/?plugin=akegf&id=validator). Les articles de recherche, les documents AKEGF et les annonces partagent le rendu Markdown et la coloration syntaxique.
+
 ### v1.2.11
 
 #### Navigation secondaire et interface commune

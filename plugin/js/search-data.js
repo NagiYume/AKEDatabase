@@ -201,6 +201,42 @@
             if (!suits.length) add('v3_equip', 'suit_none', label);
             for (const [id] of suits) add('v3_equip', id, label);
         }
+        if (has('cardgame')) {
+            const sections = {
+                CardGameBlackjackEffectTable: ['effects', 'desc'],
+                CardGameCardChangTable: ['changes', 'name', 'desc'],
+                CardGameShopGoodsTable: ['shop', 'name', 'desc'],
+                CardGameDoudizhuCardTypeTable: ['hands', 'cardTypeName', 'cardTypeDesc'],
+                MultiplayerEmojiInfoTable: ['emoji', 'emojiDesc'],
+                MultiplayerEmojiTabTable: ['emoji', 'emojiTabName'],
+                MultiplayerNpcPoolInfoTable: ['npcs', 'nickname', 'signature'],
+                MultiplayerGameCenterTable: ['room', 'name', 'desc']
+            };
+            const [section, ...fields] = sections[source] || [];
+            const jump = id => add('cardgame', id, window.akeI18n.t(`modules.cardgame.${id}`));
+            if (fields.includes(field)) jump(section);
+            if (source === 'CardGameRelicInfoTable' && ['relicName', 'relicDesc'].includes(field)) add('cardgame', 'relic:' + key, plain(row.relicName));
+            if (source === 'CardGameCardEnhanceTable' && ['name', 'desc'].includes(field)) add('cardgame', 'enhance:' + key, title(row));
+            if (source === 'AchievementTable' && (field === 'name' || parts.includes('completeDesc'))
+                && (await table('MultiplayerGameConst', true)).achievementIds?.includes(key)) jump('room');
+            if (source === 'CharacterTable' && field === 'name'
+                && Object.values(await table('MultiplayerNpcPoolInfoTable', true)).some(npc => npc.templateId === key)) jump('npcs');
+            if (source === 'TextTable' && key.startsWith('guide_text_')) {
+                for (const [id, guide] of entries(await table('GameplayGuideTable', true))) {
+                    if (!id.startsWith('cardgame-')) continue;
+                    if (guide.guideGroups.some(({ guideGroupId }) => {
+                        const stem = /^guide_group_(\w+?_newbie_\d+)(?:_|$)/.exec(guideGroupId)?.[1];
+                        return stem && key.startsWith(`guide_text_${stem}_`);
+                    })) add('cardgame', 'guide:' + id, window.akeI18n.t('modules.cardgame.guide'));
+                }
+            }
+        }
+        if (source === 'HighDifficultyBossGroupTable' && field === 'bossName' && has('monument')) {
+            const series = await table('DungeonSeriesTable');
+            const ids = entries(await table('HighDifficultySeriesTable')).filter(([id, r]) =>
+                r.hdId === row.hdId && series[id]?.gameCategory === 'dungeon_highdifficulty').map(([id]) => id).sort();
+            if (ids.length) add('monument', ids[0], title(series[ids[0]]));
+        }
         if (source === 'AchievementTable' && has('v3_achievement')) {
             for (const [id, type] of entries(await table('AchievementTypeTable'))) {
                 if ((type.achievementGroupData || []).some(group => group.groupId === row.groupId)) add('v3_achievement', id, title(type));
@@ -418,10 +454,11 @@
             }
         }
         const loads = new Map();
-        const table = name => {
+        const table = (name, optional = false) => {
             abortCheck(signal);
-            if (!loads.has(name)) loads.set(name, window.AKEV3.table(name));
-            return wait(loads.get(name), signal);
+            const key = optional ? name + ':optional' : name;
+            if (!loads.has(key)) loads.set(key, window.AKEV3.table(name, undefined, { optional }));
+            return wait(loads.get(key), signal);
         };
         let textMaps;
         const fallbackText = async id => {

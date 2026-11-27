@@ -2,6 +2,10 @@ AKEData ist auf die Domain www.akedata.wiki umgezogen. Die bisherige Domain aked
 
 # AKEData-Versionsprotokoll
 
+### v1.3.9
+
+Neu sind der Entwurf von [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) v0.3, ein Beispielarchiv und die [AKEGF-Formatprüfung](/?plugin=akegf&id=validator). Forschungsartikel, AKEGF und Mitteilungen verwenden denselben Markdown-Renderer mit Syntaxhervorhebung.
+
 ### v1.2.11
 
 #### Sekundärnavigation und gemeinsame Oberfläche

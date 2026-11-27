@@ -11,283 +11,8 @@
         const mobileOverlay = document.getElementById('researchMobileListOverlay');
         const mobileContent = document.getElementById('researchMobileListContent');
 
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        }
-
-        function highlightCode(code, lang) {
-            var escaped = escapeHtml(code);
-            if (lang === 'json' || lang === 'JSON') {
-                escaped = escaped.replace(/(&quot;[^&]*?&quot;)(\s*:)/g, '<span class="hl-key">$1</span>$2');
-                escaped = escaped.replace(/:\s*(&quot;.*?&quot;)/g, ': <span class="hl-string">$1</span>');
-                escaped = escaped.replace(/:\s*(-?\d+\.?\d*)/g, ': <span class="hl-number">$1</span>');
-                escaped = escaped.replace(/:\s*(true|false|null)/g, ': <span class="hl-keyword">$1</span>');
-                escaped = escaped.replace(/\b(true|false|null)\b/g, '<span class="hl-keyword">$1</span>');
-                return escaped;
-            }
-            if (lang === 'plain' || lang === 'text' || lang === 'plaintext' || !lang) {
-                return escaped;
-            }
-            escaped = escaped.replace(/\b(function|var|let|const|return|if|else|for|while|do|switch|case|break|continue|new|this|class|extends|import|export|from|default|try|catch|finally|throw|async|await|yield|typeof|instanceof|in|of|void|delete|with|debugger)\b/g, '<span class="hl-keyword">$1</span>');
-            escaped = escaped.replace(/\b(true|false|null|undefined|NaN|Infinity)\b/g, '<span class="hl-keyword">$1</span>');
-            escaped = escaped.replace(/\b(\d+\.?\d*)\b/g, '<span class="hl-number">$1</span>');
-            escaped = escaped.replace(/(&quot;.*?&quot;)/g, '<span class="hl-string">$1</span>');
-            escaped = escaped.replace(/(&#39;.*?&#39;)/g, '<span class="hl-string">$1</span>');
-            escaped = escaped.replace(/(\/\/.*?)$/gm, '<span class="hl-comment">$1</span>');
-            escaped = escaped.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="hl-comment">$1</span>');
-            escaped = escaped.replace(/#(.*?)$/gm, '<span class="hl-comment">#$1</span>');
-            return escaped;
-        }
-
-        function slugify(text) {
-            return text
-                .replace(/<[^>]+>/g, '')
-                .replace(/[^\w\u4e00-\u9fff\- ]/g, '')
-                .trim()
-                .replace(/\s+/g, '-')
-                .toLowerCase();
-        }
-
-        var ESCAPE_RE = /\\([*_#`~\[\]()!.\-+=>{}|\\])/g;
-
-        function parseInline(text) {
-            if (!text) return '';
-            var result = text;
-            result = result.replace(ESCAPE_RE, function(m, ch) {
-                return '\u0000' + ch.charCodeAt(0) + '\u0001';
-            });
-            result = result.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, function(m, alt, src) {
-                if (src.charAt(0) !== '/' && !src.startsWith('http://') && !src.startsWith('https://')) {
-                    src = '/' + src;
-                }
-                return '<img src="' + src + '" alt="' + escapeHtml(alt) + '" class="md-img">';
-            });
-            result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(m, label, href) {
-                if (href.charAt(0) === '#') {
-                    var anchorId = 'heading-' + slugify(decodeURIComponent(href.substring(1)));
-                    return '<a href="#' + anchorId + '" class="anchor-link">' + label + '</a>';
-                }
-                return '<a href="' + href + '" target="_blank" rel="noopener">' + label + '</a>';
-            });
-            result = result.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            result = result.replace(/\*(.+?)\*/g, '<em>$1</em>');
-            result = result.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
-            result = result.replace(/~~(.+?)~~/g, '<del>$1</del>');
-            result = result.replace(/\u0000(\d+)\u0001/g, function(m, code) {
-                return String.fromCharCode(parseInt(code, 10));
-            });
-            return result;
-        }
-
-        function parseMarkdown(md) {
-            if (!md) return '';
-            var html = '';
-            var lines = md.split('\n');
-            var i = 0;
-            var inTable = false;
-            var tableHeaders = [];
-            var tableAligns = [];
-            var inCodeBlock = false;
-            var codeBlockLang = '';
-            var codeBlockLines = [];
-            var inBlockquote = false;
-            var blockquoteContent = '';
-            var inList = false;
-            var listType = '';
-            var listItems = [];
-
-            function flushBlockquote() {
-                if (inBlockquote && blockquoteContent) {
-                    html += '<blockquote>' + parseInline(blockquoteContent.trim()) + '</blockquote>\n';
-                    blockquoteContent = '';
-                    inBlockquote = false;
-                }
-            }
-
-            function flushList() {
-                if (inList && listItems.length > 0) {
-                    var tag = listType === 'ol' ? 'ol' : 'ul';
-                    html += '<' + tag + '>';
-                    for (var li = 0; li < listItems.length; li++) {
-                        html += '<li>' + parseInline(listItems[li]) + '</li>';
-                    }
-                    html += '</' + tag + '>\n';
-                    listItems = [];
-                    inList = false;
-                    listType = '';
-                }
-            }
-
-            function flushTable() {
-                if (inTable) {
-                    html += '</tbody></table>\n';
-                    inTable = false;
-                    tableHeaders = [];
-                    tableAligns = [];
-                }
-            }
-
-            while (i < lines.length) {
-                var line = lines[i];
-                var trimmed = line.trim();
-
-                if (trimmed.startsWith('```')) {
-                    if (inCodeBlock) {
-                        html += highlightCode(codeBlockLines.join('\n'), codeBlockLang) + '</code></pre>\n';
-                        inCodeBlock = false;
-                        codeBlockLines = [];
-                        codeBlockLang = '';
-                    } else {
-                        flushBlockquote();
-                        flushList();
-                        flushTable();
-                        inCodeBlock = true;
-                        codeBlockLang = trimmed.substring(3).trim();
-                        html += '<pre class="code-block' + (codeBlockLang ? ' lang-' + escapeHtml(codeBlockLang) : '') + '"><code>';
-                    }
-                    i++;
-                    continue;
-                }
-
-                if (inCodeBlock) {
-                    codeBlockLines.push(line);
-                    i++;
-                    continue;
-                }
-
-                if (trimmed === '') {
-                    flushBlockquote();
-                    flushList();
-                    flushTable();
-                    i++;
-                    continue;
-                }
-
-                var headerMatch = trimmed.match(/^(#{1,6})\s+(.+)$/);
-                if (headerMatch) {
-                    flushBlockquote();
-                    flushList();
-                    flushTable();
-                    var level = headerMatch[1].length;
-                    var headerText = parseInline(headerMatch[2]);
-                    var slug = slugify(headerMatch[2]);
-                    html += '<h' + level + ' id="heading-' + slug + '">' + headerText + '</h' + level + '>\n';
-                    i++;
-                    continue;
-                }
-
-                if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
-                    flushBlockquote();
-                    flushList();
-                    var cells = trimmed.split('|').slice(1, -1).map(function(c) { return c.trim(); });
-
-                    if (!inTable) {
-                        inTable = true;
-                        tableHeaders = cells;
-                        html += '<table class="ake-ui-table"><thead><tr>';
-                        for (var ci = 0; ci < cells.length; ci++) {
-                            html += '<th>' + parseInline(cells[ci]) + '</th>';
-                        }
-                        html += '</tr></thead><tbody>\n';
-                        i++;
-                        continue;
-                    }
-
-                    var isSeparator = cells.every(function(c) {
-                        return /^:?-+:?$/.test(c.trim());
-                    });
-                    if (isSeparator) {
-                        tableAligns = cells.map(function(c) {
-                            var s = c.trim();
-                            if (s.startsWith(':') && s.endsWith(':')) return 'center';
-                            if (s.endsWith(':')) return 'right';
-                            return 'left';
-                        });
-                        i++;
-                        continue;
-                    }
-
-                    html += '<tr>';
-                    for (var ci2 = 0; ci2 < cells.length; ci2++) {
-                        var align = tableAligns[ci2] || 'left';
-                        html += '<td data-align="' + align + '">' + parseInline(cells[ci2]) + '</td>';
-                    }
-                    html += '</tr>\n';
-                    i++;
-                    continue;
-                }
-
-                if (inTable) {
-                    flushTable();
-                }
-
-                if (trimmed.startsWith('>')) {
-                    flushList();
-                    var quoteText = trimmed.substring(1).trim();
-                    if (!inBlockquote) {
-                        inBlockquote = true;
-                        blockquoteContent = quoteText;
-                    } else {
-                        blockquoteContent += '\n' + quoteText;
-                    }
-                    i++;
-                    continue;
-                }
-
-                if (inBlockquote) {
-                    flushBlockquote();
-                }
-
-                var olMatch = trimmed.match(/^(\d+)\.\s+(.+)$/);
-                if (olMatch) {
-                    flushBlockquote();
-                    flushTable();
-                    if (!inList || listType !== 'ol') {
-                        flushList();
-                        inList = true;
-                        listType = 'ol';
-                    }
-                    listItems.push(olMatch[2]);
-                    i++;
-                    continue;
-                }
-
-                var ulMatch = trimmed.match(/^[-*+]\s+(.+)$/);
-                if (ulMatch) {
-                    flushBlockquote();
-                    flushTable();
-                    if (!inList || listType !== 'ul') {
-                        flushList();
-                        inList = true;
-                        listType = 'ul';
-                    }
-                    listItems.push(ulMatch[1]);
-                    i++;
-                    continue;
-                }
-
-                flushBlockquote();
-                flushList();
-
-                if (/^[-*_]{3,}\s*$/.test(trimmed)) {
-                    html += '<hr>\n';
-                    i++;
-                    continue;
-                }
-
-                html += '<p>' + parseInline(trimmed) + '</p>\n';
-                i++;
-            }
-
-            flushBlockquote();
-            flushList();
-            flushTable();
-            if (inCodeBlock) {
-                html += highlightCode(codeBlockLines.join('\n'), codeBlockLang) + '</code></pre>\n';
-            }
-
-            return html;
+        function escapeHtml(text) {
+            return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
         function isItemUnlocked(doc) {
@@ -430,8 +155,7 @@
             for (var i = 0; i < headings.length; i++) {
                 var h = headings[i];
                 var level = parseInt(h.tagName.charAt(1), 10);
-                var id = h.id || ('heading-' + slugify(h.textContent));
-                if (!h.id) h.id = id;
+                var id = h.id;
                 var text = h.textContent;
                 html += '<a class="ake-ui-toc__link" data-level="' + level + '" href="#' + id + '" data-target="' + id + '">' + escapeHtml(text) + '</a>';
             }
@@ -484,8 +208,10 @@
                 const res = await (window.akeFetch || fetch)(doc.contentFile);
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 const mdText = await res.text();
-                const rendered = parseMarkdown(mdText);
-                container.innerHTML = '<div class="research-article"><div class="article-content">' + rendered + '</div></div>';
+                const fragment = await window.akeRenderMarkdown(mdText, doc.contentFile);
+                if (activeDocId !== doc.id) return;
+                container.innerHTML = '<div class="research-article"><div class="article-content"></div></div>';
+                container.querySelector('.article-content').replaceChildren(fragment);
                 container.scrollTop = 0;
                 container.querySelectorAll('.anchor-link').forEach(function(a) {
                     a.addEventListener('click', function(e) {
@@ -507,6 +233,7 @@
                     });
                 });
             } catch (err) {
+                if (activeDocId !== doc.id) return;
                 container.innerHTML = '<div class="ake-ui-state" data-state="error">' + escapeHtml(t('document.loadFailed', { message: err.message })) + '</div>';
             }
         }

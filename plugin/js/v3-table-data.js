@@ -456,7 +456,8 @@
                 }
                 if (!changeType) return publicRow;
                 const changedRow = { ...publicRow, changeType, changeBaseVersion: comparison.baseline.id };
-                moduleEntries.set(manifestId(module, row), changedRow);
+                moduleEntries.set(manifestId(module, row), module === 'monument' && baseline
+                    ? { ...changedRow, baselineSeries: publicManifestRow(baseline) } : changedRow);
                 return changedRow;
             }).sort((a, b) => {
                 const rank = { added: 0, modified: 1 };
@@ -495,6 +496,7 @@
             const [current, baseline] = await Promise.all([buildDetail(id), buildDetail(id, comparison.baseline)]);
             if (window.akeMissingData?.hasMissing()) return current;
             current.__versionDiff = { baseVersion: comparison.baseline.id, baseline };
+            if (entry.baselineSeries) current.__versionDiff.baselineSeries = entry.baselineSeries;
             return attachAddedEntityIds(current);
         } catch (error) {
             console.warn(`无法计算 ${module}/${id} 的字段差异`, error);
@@ -1013,10 +1015,10 @@
     }
 
     async function monumentPeriodData(version) {
-        const [activities, multiStages, stageConditions, gameSeries, times] = await Promise.all([
+        const [activities, multiStages, stageConditions, gameSeries, times, dungeons] = await Promise.all([
             table('ActivityTable', version), table('ActivityConditionalMultiStageTable', version),
             table('ActivityConditionalMultiStageCompleteConditionTable', version),
-            table('HighDifficultyGameIdToSeriesIdTable', version), table('TimeRangeTable', version)
+            table('HighDifficultyGameIdToSeriesIdTable', version), table('TimeRangeTable', version), table('DungeonTable', version)
         ]);
         const seriesTimes = new Map();
         const unmappedStages = [];
@@ -1032,7 +1034,7 @@
                 const conditionRows = stageConditions[stage.stageId]?.conditionList || [];
                 const seriesIds = new Set(conditionRows.flatMap(condition => condition.parameters || [])
                     .flatMap(parameter => parameter.valueStringList || [])
-                    .map(gameId => gameSeries[gameId]?.seriesId).filter(Boolean));
+                    .map(gameId => gameSeries[gameId]?.seriesId || dungeons[gameId]?.dungeonSeriesId).filter(Boolean));
                 if (!seriesIds.size) {
                     unmappedStages.push(stage.stageId);
                     return;
@@ -1060,27 +1062,57 @@
         return { seriesTimes, unmappedStages };
     }
 
+    function monumentGroups(series, highDifficulty) {
+        const groups = new Map();
+        for (const id of Object.keys(series).sort()) {
+            if (series[id].gameCategory !== 'dungeon_highdifficulty') continue;
+            const key = highDifficulty[id]?.hdId || id;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(id);
+        }
+        return groups;
+    }
+
     async function monumentManifest(version) {
-        const [rows, periodData, highDifficultySeries] = await Promise.all([
+        const [rows, periods, series, highDifficulty, bosses, games, times] = await Promise.all([
             dungeonManifest(version, row => row.gameCategory === 'dungeon_highdifficulty', 'monument'),
-            monumentPeriodData(version), table('HighDifficultySeriesTable', version)
+            monumentPeriodData(version), table('DungeonSeriesTable', version), table('HighDifficultySeriesTable', version),
+            table('HighDifficultyBossGroupTable', version, { optional: true }),
+            table('HighDifficultyBossGameTable', version, { optional: true }), table('TimeRangeTable', version)
         ]);
-        return rows.map(row => {
-            const period = periodData.seriesTimes.get(row.templateId);
-            const poster = highDifficultySeries[row.templateId]?.bgImg;
-            return { ...row,
+        const byId = new Map(rows.map(row => [row.templateId, row]));
+        return Array.from(monumentGroups(series, highDifficulty), ([hdId, seriesIds]) => {
+            const row = byId.get(seriesIds[0]);
+            const ranges = seriesIds.map(id => periods.seriesTimes.get(id)).filter(Boolean);
+            const start = ranges.filter(r => r.openValue !== null).sort((a, b) => a.openValue - b.openValue)[0];
+            const end = ranges.filter(r => r.closeValue !== null).sort((a, b) => b.closeValue - a.closeValue)[0];
+            const bossGroups = Object.entries(bosses).filter(([, boss]) => boss.hdId === hdId)
+                .sort(([, a], [, b]) => a.sortId - b.sortId).map(([id, boss]) => {
+                    const range = times[boss.openTimeId]?.timeRangeList?.[0];
+                    return { name: text(boss.bossName), openTime: range?.openTime || '', closeTime: range?.closeTime || end?.closeTime || '',
+                        dungeonIds: [...(games[id]?.gameList || [])].sort((a, b) => a.sortId - b.sortId).map(game => game.gameId) };
+                });
+            const poster = highDifficulty[row.templateId]?.bgImg;
+            return { ...row, seriesIds, bossGroups,
+                dungeonCount: new Set(seriesIds.flatMap(id => series[id].includeDungeonIds || [])).size,
                 image: poster ? `/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/activity/${poster}.png` : row.image,
-                openTime: period?.openTime || '', closeTime: period?.closeTime || '',
-                __diffSignature: diffSignature([row.__diffSignature, poster, period?.openTime, period?.closeTime]) };
+                openTime: start?.openTime || '', closeTime: end?.closeTime || '',
+                __diffSignature: diffSignature([seriesIds.map(id => byId.get(id).__diffSignature), poster, start?.openTime, end?.closeTime, bossGroups]) };
         });
     }
 
-    async function dungeonDetail(id, version) {
+    async function monumentDetail(id, version) {
+        const [series, highDifficulty] = await Promise.all([table('DungeonSeriesTable', version), table('HighDifficultySeriesTable', version)]);
+        const ids = monumentGroups(series, highDifficulty).get(highDifficulty[id]?.hdId || id) || [id];
+        return dungeonDetail(ids[0], version, ids);
+    }
+
+    async function dungeonDetail(id, version, seriesIds = [id]) {
         const [series, dungeons, rewards, items, enemies, display, attrs] = await Promise.all([
             table('DungeonSeriesTable', version), table('DungeonTable', version), table('RewardTable', version), table('ItemTable', version),
             table('EnemyTable', version), table('EnemyTemplateDisplayInfoTable', version), table('EnemyAttributeTemplateTable', version)
         ]);
-        const seriesRow = series[id] || {};
+        const seriesRow = seriesIds.length > 1 ? { ...series[id], includeDungeonIds: [...new Set(seriesIds.flatMap(key => series[key]?.includeDungeonIds || []))] } : series[id] || {};
         const dungeonRows = pick(dungeons, seriesRow.includeDungeonIds || []);
         const rewardIds = new Set();
         const enemyIds = new Set();
@@ -1433,7 +1465,7 @@
     const adapters = {
         character: [characterManifest, characterDetail], weapon: [weaponManifest, weaponDetail], enemy: [enemyManifest, enemyDetail],
         equip: [equipManifest, equipDetail], item: [itemManifest, itemDetail], dungeon: [dungeonManifest, dungeonDetail],
-        monument: [monumentManifest, dungeonDetail],
+        monument: [monumentManifest, monumentDetail],
         achievement: [achievementManifest, achievementDetail], activity: [activityManifest, activityDetail], cc: [ccManifest, ccDetail]
     };
 
@@ -1499,7 +1531,7 @@
                 const rows = await adapters[module][0]();
                 const included = new Set(module === 'equip'
                     ? rows.flatMap(row => (row.equipmentIndex || []).map(item => item.itemId))
-                    : rows.map(row => manifestId(module, row)));
+                    : rows.flatMap(row => row.seriesIds || [manifestId(module, row)]));
                 const expectedEntries = Object.entries(source).filter(([, row]) => module !== 'monument' || row.gameCategory === 'dungeon_highdifficulty');
                 const expected = expectedEntries.map(([id, row]) => module === 'cc' ? String(row.gameId) : id);
                 const excluded = module === 'dungeon'

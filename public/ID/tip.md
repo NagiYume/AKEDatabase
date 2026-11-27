@@ -2,6 +2,10 @@ AKEData telah pindah ke domain www.akedata.wiki. Domain lama, akedata.top, kini 
 
 # Catatan Pembaruan Versi AKEData
 
+### v1.3.9
+
+Menambahkan draf [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) v0.3, contoh beberapa karakter, dan [Pemeriksa format AKEGF](/?plugin=akegf&id=validator). Artikel riset, AKEGF, dan pengumuman memakai perender Markdown dan penyorotan sintaks yang sama.
+
 ### v1.2.11
 
 #### Navigasi tingkat kedua dan antarmuka bersama

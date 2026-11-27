@@ -33,9 +33,9 @@
 
 - TableCfg 的桌面实现位于 `tools/ake-data-tool/ake_tool/tablecfg_parser.py`、`unpacker.py`；服务端在 `tools/ake-server-tool/ake_server/vendor/` 保留副本，由 `tablecfg_extract.py` 独立进程调用。修复协议或错误处理时核对两套调用方。完整解析成功后才替换正式导出，取消或失败不能暴露半成品；服务健康、进程退出成功、文件数相同均不能单独证明解析内容等价。
 - 服务端 `worker.py` 的计划和完成记录绑定 `parser_sha256`，`replay.py` 同样需要当前解析器身份。迁移时允许已发布且未变化版本的旧 SDK 完成记录通过既有检查，以免仅更换解析器就重复发布；新任务或显式 replay 仍按 Python 指纹生成计划。查 `legacy_completed` 的全部条件，不要把旧记录兼容扩展为绕过校验。发布状态应读取 `Storage.commit()` 返回的实际远端 manifest，历史版本发布不一定改变远端 `latest`。
-- Json 的 Python 入口是 Windows x64 IL2CPP 宿主：`json_unpacker.py::resolve_json_runtime()` 要求唯一且完整的版本运行时；`REQUIRED_RUNTIME` 包含 `GameAssembly.dll`、`UnityPlayer.dll`、`baselib.dll`、`Endfield.exe`、metadata 与资源文件。`json_host/icalls.json` 也属于必要宿主资源。去除 Java/JAR 不等于去除游戏 DLL，不能据此宣布 Linux 原生支持；解析格式还涉及 MemoryPack、字符串池、转换器与游戏后处理。
+- Json 的 Python 入口是 Windows x64 IL2CPP 宿主。`REQUIRED_RUNTIME` 包含 `GameAssembly.dll`、`UnityPlayer.dll`、`baselib.dll`、`Endfield.exe`、metadata 与资源文件。`json_host/icalls.json` 也是必要的宿主资源。桌面流水线通过 `runtime_download.py` 复用版本化运行时，缺失时从已准备 VFS 对应的鹰角 CDN 文件包下载。独立 worker 接收完整本地运行时后执行 MemoryPack、字符串池、转换器与游戏后处理。
 - Json 路由依据实际载荷和运行时类型维护在 `json_host/schemas.py`。未知项保留报告，StringPool 等已识别辅助输入与未支持项分开统计。扩展路由先检查解密正文格式、managed 类型及是否需要后处理；文件名不保证与类型同名。检查 native 类型时先以 `class_from_type()` 将 `Il2CppType*` 转为 class，再传 `type_name()`，混用指针曾导致诊断进程访问冲突。
-- 获得解析验证授权时，可先做每类小样本，再跑完整流水线；使用独立输出及隔离状态，记录 VFS/运行时版本、选中数、成功数、失败数、未支持与辅助项。复读产出 JSON 并检查根及关键字段，不把成功数视为完整语义证明；无实际样本的类型保留未验证状态。子进程由调用方直接管理取消和超时，完整报告成功后才提升输出并撤销旧发布授权。解析验证与上传 R2 是独立动作，本会话“不要上传 R2”适用于当次验证，不是全仓禁止发布规则。
+- 获得解析验证授权时，可先做每类小样本，再跑完整流水线；使用独立输出及隔离状态，记录 VFS/运行时版本、选中数、成功数、失败数、未支持与辅助项。复读产出 JSON 并检查根及关键字段，不把成功数视为完整语义证明；无实际样本的类型保留未验证状态。子进程由调用方直接管理取消和超时。桌面 Json 允许逐项失败，要求宿主报告计数自洽且有成功导出才提升运行目录。失败路径在本地发布时保留旧文件，并排除在后续 R2 文件与索引差异之外。解析验证与上传 R2 是独立动作，本会话“不要上传 R2”适用于当次验证，不是全仓禁止发布规则。
 
 ## 桌面增量发布与历史保留
 

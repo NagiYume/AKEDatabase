@@ -5,4 +5,4 @@ description: Review and develop AKEDatabase using the repository-owned TableCfg,
 
 # AKEDatabase
 
-先读取项目根 `AGENTS.md`，然后读取 [项目开发 skill](../../../skills/akedatabase-development/SKILL.md)。仓库文件是规则维护源；此入口不复制正文。
+遵循项目根 [AGENTS.md](../../../AGENTS.md)。仓库审阅或开发按[项目开发 skill](../../../skills/akedatabase-development/SKILL.md)的任务索引选读。

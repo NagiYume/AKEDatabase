@@ -138,7 +138,7 @@
             const HOME_CONTENT = `
                 <div class="welcome-home">
                     <button class="ake-ui-button ake-ui-button--secondary welcome-home__announcement" id="homeTipButton" type="button" data-i18n="home.announcement">Announcement</button>
-                    <img src="/public/images/assets/beyond/arts/ui/sprites/activity/activityendcheck16/bg_sign_v1d6.png"
+                    <img src="/public/images/index/main.webp"
                          alt="home.heroImageAlt"
                          data-i18n-alt="home.heroImageAlt"
                          class="home-image">
@@ -399,105 +399,14 @@
                 return window.akeI18n?.t(key, params, fallback) ?? fallback ?? key;
             }
 
-            function appendTipInlineMarkdown(parent, source) {
-                const text = String(source || '');
-                const tokenPattern = /(`[^`\n]+`|\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*\n]+)\*\*|__([^_\n]+)__|~~([^~\n]+)~~|\*([^*\n]+)\*|_([^_\n]+)_)/g;
-                let offset = 0;
-                for (const match of text.matchAll(tokenPattern)) {
-                    if (match.index > offset) parent.append(document.createTextNode(text.slice(offset, match.index)));
-                    let element;
-                    if (match[0].startsWith('`')) {
-                        element = document.createElement('code');
-                        element.textContent = match[0].slice(1, -1);
-                    } else if (match[2] !== undefined) {
-                        let url;
-                        try { url = new URL(match[3], window.location.href); } catch { url = null; }
-                        if (url && ['http:', 'https:', 'mailto:'].includes(url.protocol)) {
-                            element = document.createElement('a');
-                            element.href = url.href;
-                            element.target = '_blank';
-                            element.rel = 'noopener noreferrer';
-                            appendTipInlineMarkdown(element, match[2]);
-                        } else {
-                            element = document.createTextNode(match[0]);
-                        }
-                    } else {
-                        const strong = match[4] ?? match[5];
-                        const strike = match[6];
-                        const emphasis = match[7] ?? match[8];
-                        element = document.createElement(strong !== undefined ? 'strong' : strike !== undefined ? 'del' : 'em');
-                        appendTipInlineMarkdown(element, strong ?? strike ?? emphasis);
-                    }
-                    parent.append(element);
-                    offset = match.index + match[0].length;
-                }
-                if (offset < text.length) parent.append(document.createTextNode(text.slice(offset)));
-            }
-
-            function renderTipMarkdown(markdown) {
-                const fragment = document.createDocumentFragment();
-                const lines = String(markdown || '').replace(/\r\n?/g, '\n').split('\n');
-                let list = null;
-                let code = null;
-                const closeList = () => { list = null; };
-                lines.forEach(line => {
-                    const fence = line.match(/^```\s*([\w-]+)?\s*$/);
-                    if (fence) {
-                        closeList();
-                        if (code) {
-                            fragment.append(code.pre);
-                            code = null;
-                        } else {
-                            const pre = document.createElement('pre');
-                            const element = document.createElement('code');
-                            if (fence[1]) element.className = `language-${fence[1]}`;
-                            pre.append(element);
-                            code = { pre, element, lines: [] };
-                        }
-                        return;
-                    }
-                    if (code) {
-                        code.lines.push(line);
-                        code.element.textContent = code.lines.join('\n');
-                        return;
-                    }
-                    const heading = line.match(/^(#{1,6})\s+(.+)$/);
-                    const item = line.match(/^\s*([-*+] |\d+\. )(.+)$/);
-                    const quote = line.match(/^>\s?(.*)$/);
-                    let element = null;
-                    if (heading) {
-                        closeList();
-                        element = document.createElement(`h${heading[1].length}`);
-                        appendTipInlineMarkdown(element, heading[2]);
-                    } else if (/^\s*(?:---+|___+|\*\*\*+)\s*$/.test(line)) {
-                        closeList();
-                        element = document.createElement('hr');
-                    } else if (item) {
-                        const type = /\d/.test(item[1]) ? 'ol' : 'ul';
-                        if (!list || list.tagName.toLowerCase() !== type) {
-                            list = document.createElement(type);
-                            fragment.append(list);
-                        }
-                        element = document.createElement('li');
-                        appendTipInlineMarkdown(element, item[2]);
-                        list.append(element);
-                        element = null;
-                    } else if (quote) {
-                        closeList();
-                        element = document.createElement('blockquote');
-                        appendTipInlineMarkdown(element, quote[1]);
-                    } else if (line.trim()) {
-                        closeList();
-                        element = document.createElement('p');
-                        appendTipInlineMarkdown(element, line.trim());
-                    } else {
-                        closeList();
-                    }
-                    if (element) fragment.append(element);
-                });
-                if (code) fragment.append(code.pre);
-                return fragment;
-            }
+            window.akeRenderMarkdown = async function (source, documentUrl, headingPrefix) {
+                const path = 'plugin/js/article-markdown.js';
+                const url = new URL('/' + path, location.href);
+                url.searchParams.set('v', configuredJsVersions[path] || bootstrapVersion.appversion || '');
+                if (window.__akeForceRefreshTimestamp) url.searchParams.set('t', window.__akeForceRefreshTimestamp);
+                const { renderMarkdown } = await import(url.href);
+                return renderMarkdown(source, documentUrl, headingPrefix);
+            };
 
             function hideTip() {
                 if (tipModal) tipModal.hidden = true;
@@ -517,7 +426,7 @@
                     });
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     const markdown = await response.text();
-                    tipModalBody.replaceChildren(renderTipMarkdown(markdown));
+                    tipModalBody.replaceChildren(await window.akeRenderMarkdown(markdown, url.href, 'tip-heading-'));
                     tipModal.hidden = false;
                     closeTipModal?.focus();
                     if (tipVersion) storage.set('akedata-tipversion', tipVersion);
@@ -791,7 +700,12 @@
                     : currentVersion && changedVersions.has(key)
                         ? 'reload'
                         : 'force-cache';
-                const response = await (window.akeFetch || fetch)(url.href, { cache });
+                const fetchResource = window.akeFetch || fetch;
+                let response = await fetchResource(url.href, { cache });
+                if (response.status === 525) {
+                    const retryCache = cache === 'no-store' ? 'no-store' : 'reload';
+                    response = await fetchResource(url.href, { cache: retryCache });
+                }
                 if (response.ok) {
                     rememberResourceVersion(storageKey, versions, key, currentVersion);
                     changedVersions.delete(key);
@@ -1623,6 +1537,10 @@
             window.__akeRouter = {
                 updateUrl(plugin, id) {
                     const normalizedPlugin = normalizeModuleRouteId(plugin);
+                    // A document directory can already be showing its default or cached page.
+                    if (!id && mountedModuleId === normalizedPlugin) {
+                        id = contentArea.querySelector('[data-ake-current-page]')?.dataset.akeCurrentPage;
+                    }
                     currentTitleRoute = { plugin: normalizedPlugin, id: id ? String(id) : '' };
                     scheduleDocumentTitleRefresh();
                     moduleViewState?.route(normalizedPlugin, id);

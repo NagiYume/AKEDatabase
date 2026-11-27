@@ -2,7 +2,7 @@
 chcp 65001 >nul
 cd /d "%~dp0"
 if not exist "vendor\UnityPy\pyproject.toml" (
-    echo UnityPy 子模块未初始化，请先运行 git submodule update --init --recursive。
+    echo 缺少仓库自带的 UnityPy，请检查 AKEDatabase 检出是否完整。
     exit /b 1
 )
 if not exist ".venv\Scripts\python.exe" python -m venv .venv
