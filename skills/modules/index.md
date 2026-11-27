@@ -70,6 +70,7 @@
 | [研究](research/SKILL.md) | `research` | 普通入口 |
 | [关于](about/SKILL.md) | `about` | 普通入口 |
 | [模型查看器](model-viewer/SKILL.md) | `model-viewer` | 隐藏 |
+| [名片预览](businesscard/SKILL.md) | `businesscard` | 隐藏 |
 | [隐藏模块示例](hidden-example/SKILL.md) | `hidden-example` | 隐藏 |
 | [杂项](misc/SKILL.md) | `misc` | 普通入口 |
 
