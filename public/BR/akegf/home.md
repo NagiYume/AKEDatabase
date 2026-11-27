@@ -1,6 +1,6 @@
 # AKEGF · Início
 
-> ArKnights: Endfield Gachalog Format · v0.4
+> ArKnights: Endfield Gachalog Format · v1.2
 
 O AKEGF transfere históricos de recrutamento, pedidos de armas e presentes de Arknights: Endfield em JSON UTF-8. Inspirado no [UIGF](https://uigf.org/), reúne vários personagens e servidores no mesmo arquivo para que o jogador possa trocar de ferramenta e levar seu histórico.
 
@@ -10,12 +10,12 @@ Informe a versão compatível no aplicativo e inclua um link para [AKEGF](https:
 
 ## JSON Schema
 
-[Baixar o esquema JSON v0.4](/plugin/data/akegf/akegf-v0.4.schema.json) · [Exemplo com vários personagens](/plugin/data/akegf/example.json)
+[Baixar o esquema JSON v1.2](/plugin/data/akegf/akegf-v1.2.schema.json) · [Exemplo com vários personagens](/plugin/data/akegf/example.json)
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AKEGF v0.4",
+  "title": "AKEGF v1.2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -43,11 +43,13 @@ Informe a versão compatível no aplicativo e inclua um link para [AKEGF](https:
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "version"
+        "version",
+        "export_provider",
+        "rsa_signature"
       ],
       "properties": {
         "version": {
-          "const": "v0.4"
+          "const": "v1.2"
         },
         "export_app": {
           "$ref": "#/$defs/text"
@@ -71,10 +73,6 @@ Informe a versão compatível no aplicativo e inclua um link para [AKEGF](https:
           "maximum": 9999999999999,
           "description": "Unix 毫秒"
         }
-      },
-      "dependentRequired": {
-        "export_provider": ["rsa_signature"],
-        "rsa_signature": ["export_provider"]
       }
     },
     "account": {
@@ -271,5 +269,4 @@ Informe a versão compatível no aplicativo e inclua um link para [AKEGF](https:
     }
   }
 }
-
 ```

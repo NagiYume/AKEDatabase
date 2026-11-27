@@ -1,0 +1,23 @@
+[Unit]
+Description=AKEGF key management
+
+[Service]
+Type=simple
+User=akegf-admin
+Group=akegf-admin
+ExecStart=/usr/bin/python3 /opt/akegf-verify/admin.py
+LoadCredential=status-token:/etc/ake-tablecfg/status-token
+StateDirectory=akegf-verify-private
+StateDirectoryMode=0700
+ReadWritePaths=/var/lib/akegf-verify
+UMask=0022
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+Environment=PYTHONDONTWRITEBYTECODE=1
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

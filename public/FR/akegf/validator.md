@@ -1,6 +1,6 @@
 # AKEGF · Certification des outils
 
-La certification exige l’importation et l’exportation de v0.4. Afficher la version prise en charge et un lien vers [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) dans l’application.
+La certification exige l’importation et l’exportation de v1.1 / v1.2. Afficher la version prise en charge et un lien vers [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) dans l’application.
 
 Les projets compatibles peuvent proposer leur ajout aux [Projets partenaires](/?plugin=akegf&id=partners) par une [Pull Request](https://github.com/NagiYume/AKEDatabase/pulls).
 

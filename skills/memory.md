@@ -31,6 +31,12 @@
 
 ## AKEGF 工具认证与接入说明
 
+2026-11-27，上海服务器启用 `https://verify.akedata.wiki/admin`。nginx 提供管理页与静态资源，将 `/admin/v1/` 的 API 请求转发给同一回环管理服务。已通过 `nginx -t`，HTTPS 页面和资源返回 200，旧口令鉴权机制在新入口实测有效，无口令或错误口令返回 401。通过无效 PEM 和缺失指纹分别核对了 POST、DELETE 转发，公开目录 GET 返回 200、POST 返回 405。未做浏览器交互或修改生产密钥。nginx 部署前备份为 `/opt/akegf-verify/backups/admin-https-20261127T075134Z.cZxMeL1o`。
+
+2026-11-27，`beta` 工作区，网站缓存版本 1.3.9-5-pre3。中英文 `public/*/akegf/validator.md` 增加签名公钥登记 PR 模板。[管理后端](../tools/akegf-verify/admin.py) 配合同目录的 systemd unit，通过 AKE Server Tool 的 status-token 认证，在回环地址提供公钥登记与撤销、私钥添加与删除及元数据列表。公钥 API 与 CLI 共用 registry.py 的目录写入逻辑，私钥路径独立于公开目录。按用户要求部署到上海服务器，`akegf-verify-admin.service` 已运行并启用，实际监听 127.0.0.1:8768。隔离验证覆盖公私钥添加、私钥删除、撤销和重试。生产验证共享 token 返回 200，无 token 和错误 token 返回 401，公钥目录和两条单键响应一致，公网管理请求返回 404 或 405。生产密钥记录未修改。部署前备份为 `/opt/akegf-verify/backups/admin-20261127T074603Z.LYTdqsV0`。部署说明见 [OPERATIONS.md](../tools/akegf-verify/OPERATIONS.md)。
+
+2026-11-27，`beta` 工作区，网站缓存版本 1.3.9-5-pre2。AKEGF 发布规范为 v1.1 和 v1.2 两种档案。v1.1 无签名，读取同主版本两种档案。v1.2 必填提供方和签名，导入要求验签通过。站内工具按声明版本选择 Schema，并提供导入资格检查。两份多角色示例使用相同记录，v1.2 示例使用随包发布的专用公钥。已静态核对源码和资源差异，未运行测试、构建或浏览器，也未部署。独立校验器同步格式校验源码和示例，浏览器产物待重新构建。
+
 2026-11-25，main 工作区 1.3.9-pre7。公钥目录首页与 /v1/providers.json 由 registry.py 从已有单键记录生成，登记和撤销时更新。首页已部署至 verify.akedata.wiki，公网发现 akegf-example 与 starward-ake 共两把有效公钥，HTML 及允许跨域读取的 JSON 已与逐键接口核对。AKEGF 合作页底部读取同一列表，沿用文章样式展示指纹、状态、有效公钥 PEM 和逐键链接。主站改动仍在工作区，未执行浏览器视觉验收。
 
 2026-11-25，main 工作区 1.3.9-pre6。添加 v0.4 未签名和签名多角色示例的下载入口，独立校验器目录同步签名档案。示例专用提供方 akegf-example 的 3072 位 PS256 公钥已部署，kid 为 8cOMDGbXz6FFT7xjWXaCU2vGAT9LoIM8LQjxWGlYh_o。运行部署检查时比对两版数据相同，OpenSSL 验证原签名通过、改星级后失败，公网接口返回对应有效公钥。签名示例只用于测试，校验器独立提示，不纳入正式历史、同步或排行。未运行浏览器验证。

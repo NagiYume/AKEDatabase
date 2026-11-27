@@ -1,6 +1,6 @@
 # AKEGF · ホーム
 
-> ArKnights: Endfield Gachalog Format · v0.4
+> ArKnights: Endfield Gachalog Format · v1.2
 
 AKEGF は『アークナイツ：エンドフィールド』のスカウト・武器調達・贈呈の履歴を UTF-8 JSON で交換するための形式です。[UIGF](https://uigf.org/) を参考に、複数キャラクターやサーバーの履歴を一つのファイルにまとめ、ツールを乗り換えても履歴を引き継げるようにしました。
 
@@ -10,12 +10,12 @@ AKEGF は『アークナイツ：エンドフィールド』のスカウト・�
 
 ## JSON Schema
 
-[v0.4 JSON Schema をダウンロード](/plugin/data/akegf/akegf-v0.4.schema.json) · [複数キャラクターのサンプル](/plugin/data/akegf/example.json)
+[v1.2 JSON Schema をダウンロード](/plugin/data/akegf/akegf-v1.2.schema.json) · [複数キャラクターのサンプル](/plugin/data/akegf/example.json)
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AKEGF v0.4",
+  "title": "AKEGF v1.2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -43,11 +43,13 @@ AKEGF は『アークナイツ：エンドフィールド』のスカウト・�
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "version"
+        "version",
+        "export_provider",
+        "rsa_signature"
       ],
       "properties": {
         "version": {
-          "const": "v0.4"
+          "const": "v1.2"
         },
         "export_app": {
           "$ref": "#/$defs/text"
@@ -71,10 +73,6 @@ AKEGF は『アークナイツ：エンドフィールド』のスカウト・�
           "maximum": 9999999999999,
           "description": "Unix 毫秒"
         }
-      },
-      "dependentRequired": {
-        "export_provider": ["rsa_signature"],
-        "rsa_signature": ["export_provider"]
       }
     },
     "account": {
@@ -271,5 +269,4 @@ AKEGF は『アークナイツ：エンドフィールド』のスカウト・�
     }
   }
 }
-
 ```

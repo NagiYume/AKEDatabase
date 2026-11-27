@@ -1,6 +1,6 @@
 # AKEGF · หน้าหลัก
 
-> ArKnights: Endfield Gachalog Format · v0.4
+> ArKnights: Endfield Gachalog Format · v1.2
 
 AKEGF ใช้ JSON แบบ UTF-8 เพื่อย้ายประวัติการรับสมัครโอเปอเรเตอร์ การเบิกอาวุธ และของขวัญใน Arknights: Endfield โดยอ้างอิงแนวคิดจาก [UIGF](https://uigf.org/) ผู้เล่นสามารถเก็บหลายตัวละครและหลายเซิร์ฟเวอร์ในไฟล์เดียวและย้ายประวัติไปยังเครื่องมืออื่นได้
 
@@ -10,12 +10,12 @@ AKEGF ใช้ JSON แบบ UTF-8 เพื่อย้ายประวั�
 
 ## JSON Schema
 
-[ดาวน์โหลด JSON Schema v0.4](/plugin/data/akegf/akegf-v0.4.schema.json) · [ตัวอย่างหลายตัวละคร](/plugin/data/akegf/example.json)
+[ดาวน์โหลด JSON Schema v1.2](/plugin/data/akegf/akegf-v1.2.schema.json) · [ตัวอย่างหลายตัวละคร](/plugin/data/akegf/example.json)
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AKEGF v0.4",
+  "title": "AKEGF v1.2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -43,11 +43,13 @@ AKEGF ใช้ JSON แบบ UTF-8 เพื่อย้ายประวั�
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "version"
+        "version",
+        "export_provider",
+        "rsa_signature"
       ],
       "properties": {
         "version": {
-          "const": "v0.4"
+          "const": "v1.2"
         },
         "export_app": {
           "$ref": "#/$defs/text"
@@ -71,10 +73,6 @@ AKEGF ใช้ JSON แบบ UTF-8 เพื่อย้ายประวั�
           "maximum": 9999999999999,
           "description": "Unix 毫秒"
         }
-      },
-      "dependentRequired": {
-        "export_provider": ["rsa_signature"],
-        "rsa_signature": ["export_provider"]
       }
     },
     "account": {
@@ -271,5 +269,4 @@ AKEGF ใช้ JSON แบบ UTF-8 เพื่อย้ายประวั�
     }
   }
 }
-
 ```

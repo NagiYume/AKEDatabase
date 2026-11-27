@@ -1,6 +1,6 @@
 # AKEGF · Sertifikasi alat
 
-Sertifikasi mengharuskan aplikasi mendukung impor dan ekspor v0.4. Tampilkan versi yang didukung beserta tautan ke [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home).
+Sertifikasi mengharuskan aplikasi mendukung impor dan ekspor v1.1 / v1.2. Tampilkan versi yang didukung beserta tautan ke [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home).
 
 Proyek yang mendukung AKEGF dapat mengirim [Pull Request](https://github.com/NagiYume/AKEDatabase/pulls) untuk ditambahkan ke [Proyek mitra](/?plugin=akegf&id=partners).
 

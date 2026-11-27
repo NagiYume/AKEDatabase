@@ -1,6 +1,17 @@
-# AKEGF v0.4 · Specification
+# AKEGF v1.2 · Specification
 
-Draft v0.4. Store headhunting, Arsenal Issues and gifts in a UTF-8 JSON file to exchange records across tools, characters and servers. v0.4 adds optional signatures. The site validator still checks older files against the v0.3 schema.
+Store headhunting, Arsenal Issues and gifts in a UTF-8 JSON file to exchange records across tools, characters and servers.
+
+## Versions and import compatibility
+
+Each major version uses `vx.1` for unsigned archives and `vx.2` for archives that require signature verification. Both variants share the same character and record structures within that major version.
+
+| Importer | `vx.1` archive of the same major version | `vx.2` archive of the same major version |
+| --- | --- | --- |
+| `vx.1` | Accept well-formed archives | Accept well-formed archives and ignore signature metadata when reading records |
+| `vx.2` | Reject | Accept after format validation and successful RSA verification |
+
+The current pair is the [v1.1 schema](/plugin/data/akegf/akegf-v1.1.schema.json) and the [v1.2 schema](/plugin/data/akegf/akegf-v1.2.schema.json). Select the schema using the archive's declared version and apply the table above.
 
 ## File structure and required fields
 
@@ -9,7 +20,7 @@ Exporters must write every required field below. Optional fields may be included
 | Level | Required fields | Rules |
 | --- | --- | --- |
 | File | info, endfield | The endfield array contains at least one character group. |
-| info | version | Set version to v0.4. Optional export_app and export_app_version are strings. Optional export_timestamp is a 13-digit Unix timestamp in milliseconds. Signed archives require both export_provider and rsa_signature. |
+| info | version | Set the export version to v1.1 or v1.2. Optional export_app and export_app_version are strings. Optional export_timestamp is a 13-digit Unix timestamp in milliseconds. v1.2 requires export_provider and rsa_signature. v1.1 omits both. |
 | endfield[] | uid, list | uid is the in-game character UID as a string. list may be empty. Optional account_uid identifies the bound account and lang identifies the language of display names. |
 | list[] | kind | Use a nonblank event kind. For `kind = "draw"`, also provide `pool_id`, `item_name`, `rarity` and `gacha_ts`. |
 
@@ -24,7 +35,7 @@ Gifts and other non-draw events can omit the pool, item name, rarity and timesta
 | `info.export_provider` | Provider ID assigned by the AKEGF public key registry. Use 1–64 lowercase ASCII letters, digits and hyphens, beginning and ending with a letter or digit. Use `export_app` for the display name. |
 | `info.rsa_signature` | `kid.signature`, with both components encoded as unpadded base64url. The 43-character `kid` is the SHA-256 fingerprint of the RSA public key's DER SubjectPublicKeyInfo. The second component encodes the raw RSA signature. |
 
-Include both fields for a signed export and omit both for an unsigned export. The signature attests to the contents signed by the registered provider and detects subsequent changes. Whether the records originated in the game depends on the provider's data source.
+The v1.2 signature attests to the contents signed by the registered provider and detects subsequent changes. Whether the records originated in the game depends on the provider's data source.
 
 1. Populate `info.export_provider` and remove `info.rsa_signature` from the complete archive. Keep every other field and the original array order. Reject duplicate JSON member names and unpaired surrogate code units.
 2. Canonicalize the remaining archive with JCS ([RFC 8785](https://www.rfc-editor.org/rfc/rfc8785.html)). Prepend the ASCII string `AKEGF-RSA-PSS-v1` and one LF byte (`0x0A`) to the canonical UTF-8 bytes. Sign the resulting byte sequence. Verify before applying defaults, rewriting fields or reordering arrays.
@@ -32,18 +43,18 @@ Include both fields for a signed export and omit both for an unsigned export. Th
 
 To verify the signature, request `GET https://verify.akedata.wiki/v1/providers/{export_provider}/keys/{kid}.json` from the fixed registry host. The response contains `provider`, `kid`, `alg` and `status`. Require the requested provider and key ID, `alg: "PS256"` and `status: "active"`. Decode `public_key` as unpadded base64url DER SubjectPublicKeyInfo, check its fingerprint and verify the signature locally. Revoked keys return `status: "revoked"` and omit `public_key`. Unknown keys return HTTP 404. Responses allow cross-origin reads and prohibit caching. Report revoked, unknown, unavailable and invalid signatures separately from verified ones. The lookup path contains only the provider ID and public key fingerprint.
 
-When editing, merging or re-exporting a file, remove both original signature fields or sign again with the exporting provider's registered key. See [tool certification](/?plugin=akegf&id=validator) for registration.
+When editing, merging or re-exporting a file, remove both original signature fields for v1.1 export. For v1.2 export, sign the final contents with the exporting provider's registered key. See [tool certification](/?plugin=akegf&id=validator) for registration.
 
 ## Trust status on import
 
 | Status | Condition | Import behavior |
 | --- | --- | --- |
 | Trusted | A production archive passes format checks and its RSA signature verifies with the registered provider's active key. | The tool may save records to its history and use them for leaderboards and other features that require trusted data. |
-| Unverified | The archive is unsigned, the signature fails, the key is unknown or revoked, or the registry is unavailable. | A well-formed archive can be viewed, filtered and counted within the current session. Label it unverified. Do not persist it in the tool's history, sync it to an account or use it for leaderboards or other features requiring trusted data. |
+| Unverified | The archive is unsigned, verification was skipped or failed, the key is unknown or revoked, or the registry is unavailable. | v1.2 importers reject it. v1.1 importers may display, filter and count compatible data within the current session. Label it unverified and exclude it from persistent history, account sync and features requiring trusted data. |
 
-Importers determine trust from the verification result. Format validity, signature fields and the application name alone cannot establish trust. Keep unverified records unverified through merges and re-exports. The same rule applies to older unsigned archives.
+Importers determine trust from the verification result. Format validity, signature fields and the application name alone cannot establish trust. Keep unverified records unverified through merges and re-exports.
 
-The provider ID `akegf-example` is reserved for examples. Verification with its key confirms example integrity. Importers must restrict its archives to test sessions and exclude them from live history, account sync and leaderboards.
+The provider ID `akegf-example` is reserved for examples. The site validator checks the v1.2 example against its bundled [example public key](/plugin/data/akegf/example-key.json). Importers must restrict its archives to test sessions and exclude them from live history, account sync and leaderboards.
 
 ## Event kinds and draw counts
 

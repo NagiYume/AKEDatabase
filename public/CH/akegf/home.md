@@ -2,7 +2,7 @@
 
 >ArKnights: Endfield Gachalog Format
 
-当前版本：v0.4
+当前版本：v1.2
 
 ## 前言
 
@@ -27,12 +27,14 @@
 
 我们也提供[AKEGF 格式校验工具](https://www.akedata.wiki/?plugin=akegf&id=validator)来帮助你校验 JSON 文件。
 
-你也可以[下载 v0.4 JSON Schema](https://www.akedata.wiki/plugin/data/akegf/akegf-v0.4.schema.json)。
+[v1.2 JSON Schema](/plugin/data/akegf/akegf-v1.2.schema.json) · [v1.2 签名示例](/plugin/data/akegf/example-signed.json)
+
+[v1.1 JSON Schema](/plugin/data/akegf/akegf-v1.1.schema.json) · [v1.1 无签名示例](/plugin/data/akegf/example.json)
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AKEGF v0.4",
+  "title": "AKEGF v1.2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -60,11 +62,13 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "version"
+        "version",
+        "export_provider",
+        "rsa_signature"
       ],
       "properties": {
         "version": {
-          "const": "v0.4"
+          "const": "v1.2"
         },
         "export_app": {
           "$ref": "#/$defs/text"
@@ -88,10 +92,6 @@
           "maximum": 9999999999999,
           "description": "Unix 毫秒"
         }
-      },
-      "dependentRequired": {
-        "export_provider": ["rsa_signature"],
-        "rsa_signature": ["export_provider"]
       }
     },
     "account": {
@@ -288,5 +288,4 @@
     }
   }
 }
-
 ```

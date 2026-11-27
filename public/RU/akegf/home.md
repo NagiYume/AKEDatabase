@@ -1,6 +1,6 @@
 # AKEGF · Главная
 
-> ArKnights: Endfield Gachalog Format · v0.4
+> ArKnights: Endfield Gachalog Format · v1.2
 
 AKEGF позволяет переносить историю найма оперативников, заказов оружия и подарков в Arknights: Endfield в виде JSON в кодировке UTF-8. По примеру [UIGF](https://uigf.org/) один архив объединяет персонажей с разных серверов, чтобы игрок мог сохранить историю при смене инструмента.
 
@@ -10,12 +10,12 @@ AKEGF позволяет переносить историю найма опер
 
 ## JSON Schema
 
-[Скачать схему JSON v0.4](/plugin/data/akegf/akegf-v0.4.schema.json) · [Пример с несколькими персонажами](/plugin/data/akegf/example.json)
+[Скачать схему JSON v1.2](/plugin/data/akegf/akegf-v1.2.schema.json) · [Пример с несколькими персонажами](/plugin/data/akegf/example.json)
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AKEGF v0.4",
+  "title": "AKEGF v1.2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -43,11 +43,13 @@ AKEGF позволяет переносить историю найма опер
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "version"
+        "version",
+        "export_provider",
+        "rsa_signature"
       ],
       "properties": {
         "version": {
-          "const": "v0.4"
+          "const": "v1.2"
         },
         "export_app": {
           "$ref": "#/$defs/text"
@@ -71,10 +73,6 @@ AKEGF позволяет переносить историю найма опер
           "maximum": 9999999999999,
           "description": "Unix 毫秒"
         }
-      },
-      "dependentRequired": {
-        "export_provider": ["rsa_signature"],
-        "rsa_signature": ["export_provider"]
       }
     },
     "account": {
@@ -271,5 +269,4 @@ AKEGF позволяет переносить историю найма опер
     }
   }
 }
-
 ```

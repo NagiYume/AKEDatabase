@@ -1,11 +1,13 @@
-# AKEGF v0.4 · Spezifikation
+# AKEGF v1.2 · Spezifikation
 
-Entwurf v0.4. Beim Export sind alle Pflichtfelder zu schreiben. Optionale Angaben ohne verlässliche Quelle werden ausgelassen. Beim Lesen gelten die Typen des Schemas. Fehlt is_free, ist der Status unbekannt; false kennzeichnet einen nachweislich nicht kostenlosen Zug.
+Beim Export sind alle Pflichtfelder zu schreiben. Optionale Angaben ohne verlässliche Quelle werden ausgelassen. Beim Lesen gelten die Typen des Schemas. Fehlt is_free, ist der Status unbekannt; false kennzeichnet einen nachweislich nicht kostenlosen Zug.
+
+Innerhalb derselben Hauptversion importiert x.1 unsignierte x.1-Dateien und x.2-Dateien ohne Signaturprüfung. x.2 importiert nur x.2-Dateien mit gültiger Signatur.
 
 | Ebene | Pflichtfelder | Regel |
 | --- | --- | --- |
 | `JSON` | info, endfield | endfield enthält mindestens eine Charaktergruppe. |
-| `info` | version | version ist v0.4; export_timestamp ist ein 13-stelliger Unix-Zeitstempel in Millisekunden. |
+| `info` | version, export_provider, rsa_signature | version ist v1.2; export_timestamp ist ein 13-stelliger Unix-Zeitstempel in Millisekunden. |
 | `endfield[]` | uid, list | uid ist eine Zeichenkette mit mindestens einem sichtbaren Zeichen; list darf leer sein. |
 | `list[]` | `kind` | `kind = "draw"` → `pool_id`, `item_name`, `rarity` (1–99), `gacha_ts` (Unix ms) |
 
@@ -13,7 +15,7 @@ Zulässig sind nur die im Schema definierten Felder. Sequenznummern und UIDs ble
 
 | Ebene | Optionale Felder |
 | --- | --- |
-| `info` | export_app, export_app_version, export_timestamp, export_provider, rsa_signature |
+| `info` | export_app, export_app_version, export_timestamp |
 | `endfield[]` | region, server_id, account_uid, lang |
 | `list[]` | record_type, seq_id, seq_id_source, pool_name, pool_type, item_id, name_text, weapon_type, is_new, is_free, gift_reward_label |
 
@@ -31,4 +33,6 @@ item_name aus charName, weaponName oder bei Geschenken nameText übernehmen; die
 
 Gruppenschlüssel ist (region, server_id, uid). Ohne region gilt cn, auf dem CN-Server ohne server_id die Zeichenkette „1“. global erfordert server_id. Innerhalb einer Gruppe identifiziert (record_type, seq_id) das Ereignis. Ohne vollständigen Schlüssel jeden Eintrag einzeln behalten. IDs als Zeichenketten erhalten.
 
-[JSON-Schema v0.4 herunterladen](/plugin/data/akegf/akegf-v0.4.schema.json) · [Beispiel mit mehreren Charakteren](/plugin/data/akegf/example.json)
+[JSON-Schema v1.2 herunterladen](/plugin/data/akegf/akegf-v1.2.schema.json)
+
+[v1.1 JSON Schema](/plugin/data/akegf/akegf-v1.1.schema.json) · [v1.1 JSON](/plugin/data/akegf/example.json) · [v1.2 JSON](/plugin/data/akegf/example-signed.json)

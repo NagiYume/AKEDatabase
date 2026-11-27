@@ -1,11 +1,13 @@
-# AKEGF v0.4 · Especificação
+# AKEGF v1.2 · Especificação
 
-Rascunho v0.4. Na exportação, preencha todos os campos obrigatórios; omita os opcionais sem fonte confiável. Na importação, respeite os tipos do esquema. A ausência de is_free indica situação desconhecida; false indica que a tentativa não foi gratuita.
+Na exportação, preencha todos os campos obrigatórios; omita os opcionais sem fonte confiável. Na importação, respeite os tipos do esquema. A ausência de is_free indica situação desconhecida; false indica que a tentativa não foi gratuita.
+
+Na mesma versão principal, x.1 importa arquivos x.1 sem assinatura e arquivos x.2 sem verificar a assinatura. x.2 só importa arquivos x.2 com assinatura válida.
 
 | Nível | Campos obrigatórios | Regra |
 | --- | --- | --- |
 | `JSON` | info, endfield | endfield precisa ter pelo menos um grupo de personagem. |
-| `info` | version | version deve ser v0.4; export_timestamp é um horário Unix de 13 dígitos em milissegundos. |
+| `info` | version, export_provider, rsa_signature | version deve ser v1.2; export_timestamp é um horário Unix de 13 dígitos em milissegundos. |
 | `endfield[]` | uid, list | uid é uma string com ao menos um caractere diferente de espaço; list pode estar vazio. |
 | `list[]` | `kind` | `kind = "draw"` → `pool_id`, `item_name`, `rarity` (1–99), `gacha_ts` (Unix ms) |
 
@@ -13,7 +15,7 @@ Só são aceitos os campos definidos no esquema. Mantenha números de sequência
 
 | Nível | Campos opcionais |
 | --- | --- |
-| `info` | export_app, export_app_version, export_timestamp, export_provider, rsa_signature |
+| `info` | export_app, export_app_version, export_timestamp |
 | `endfield[]` | region, server_id, account_uid, lang |
 | `list[]` | record_type, seq_id, seq_id_source, pool_name, pool_type, item_id, name_text, weapon_type, is_new, is_free, gift_reward_label |
 
@@ -31,4 +33,6 @@ Copie item_name de charName, weaponName ou do nameText do presente; salve o rót
 
 A chave do grupo é (region, server_id, uid). Sem region, use cn; na China, o padrão de server_id é a string “1”. global exige server_id. Em cada grupo, identifique eventos por (record_type, seq_id); mantenha as linhas separadas se faltar parte da chave. Preserve os identificadores como strings.
 
-[Baixar o esquema JSON v0.4](/plugin/data/akegf/akegf-v0.4.schema.json) · [Exemplo com vários personagens](/plugin/data/akegf/example.json)
+[Baixar o esquema JSON v1.2](/plugin/data/akegf/akegf-v1.2.schema.json)
+
+[v1.1 JSON Schema](/plugin/data/akegf/akegf-v1.1.schema.json) · [v1.1 JSON](/plugin/data/akegf/example.json) · [v1.2 JSON](/plugin/data/akegf/example-signed.json)

@@ -1,6 +1,6 @@
 # AKEGF · 홈
 
-> ArKnights: Endfield Gachalog Format · v0.4
+> ArKnights: Endfield Gachalog Format · v1.2
 
 AKEGF는 명일방주: 엔드필드의 오퍼레이터 모집, 무기 조달, 증정 기록을 UTF-8 JSON으로 교환하는 형식입니다. [UIGF](https://uigf.org/)를 참고해 여러 캐릭터와 서버의 기록을 한 파일에 담고 다른 도구로 옮길 수 있도록 했습니다.
 
@@ -10,12 +10,12 @@ AKEGF는 명일방주: 엔드필드의 오퍼레이터 모집, 무기 조달, �
 
 ## JSON Schema
 
-[v0.4 JSON Schema 다운로드](/plugin/data/akegf/akegf-v0.4.schema.json) · [다중 캐릭터 예제](/plugin/data/akegf/example.json)
+[v1.2 JSON Schema 다운로드](/plugin/data/akegf/akegf-v1.2.schema.json) · [다중 캐릭터 예제](/plugin/data/akegf/example.json)
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AKEGF v0.4",
+  "title": "AKEGF v1.2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -43,11 +43,13 @@ AKEGF는 명일방주: 엔드필드의 오퍼레이터 모집, 무기 조달, �
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "version"
+        "version",
+        "export_provider",
+        "rsa_signature"
       ],
       "properties": {
         "version": {
-          "const": "v0.4"
+          "const": "v1.2"
         },
         "export_app": {
           "$ref": "#/$defs/text"
@@ -71,10 +73,6 @@ AKEGF는 명일방주: 엔드필드의 오퍼레이터 모집, 무기 조달, �
           "maximum": 9999999999999,
           "description": "Unix 毫秒"
         }
-      },
-      "dependentRequired": {
-        "export_provider": ["rsa_signature"],
-        "rsa_signature": ["export_provider"]
       }
     },
     "account": {
@@ -271,5 +269,4 @@ AKEGF는 명일방주: 엔드필드의 오퍼레이터 모집, 무기 조달, �
     }
   }
 }
-
 ```

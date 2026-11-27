@@ -1,6 +1,6 @@
 # AKEGF · การรับรองเครื่องมือ
 
-เครื่องมือที่ขอรับรองต้องนำเข้าและส่งออก v0.4 ได้ ระบุเวอร์ชันที่รองรับและใส่ลิงก์ [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) ในแอป
+เครื่องมือที่ขอรับรองต้องนำเข้าและส่งออก v1.1 / v1.2 ได้ ระบุเวอร์ชันที่รองรับและใส่ลิงก์ [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) ในแอป
 
 โครงการที่ใช้ AKEGF สามารถส่ง [Pull Request](https://github.com/NagiYume/AKEDatabase/pulls) เพื่อขอเพิ่มรายชื่อในหน้า[โครงการพันธมิตร](/?plugin=akegf&id=partners)
 

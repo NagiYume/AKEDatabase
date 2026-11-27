@@ -1,11 +1,13 @@
-# AKEGF v0.4 · Spécification
+# AKEGF v1.2 · Spécification
 
-Projet de norme v0.4. À l’exportation, renseigner tous les champs obligatoires ; omettre les champs facultatifs sans source fiable. À l’importation, respecter les types du schéma. L’absence de is_free indique un statut inconnu ; false signifie que le tirage est effectivement payant.
+À l’exportation, renseigner tous les champs obligatoires ; omettre les champs facultatifs sans source fiable. À l’importation, respecter les types du schéma. L’absence de is_free indique un statut inconnu ; false signifie que le tirage est effectivement payant.
+
+Pour une même version majeure, x.1 importe les fichiers x.1 sans signature et les fichiers x.2 sans vérifier leur signature. x.2 importe uniquement les fichiers x.2 dont la signature est valide.
 
 | Niveau | Champs obligatoires | Règle |
 | --- | --- | --- |
 | `JSON` | info, endfield | endfield contient au moins un groupe de personnages. |
-| `info` | version | version vaut v0.4 ; export_timestamp est un horodatage Unix en millisecondes à 13 chiffres. |
+| `info` | version, export_provider, rsa_signature | version vaut v1.2 ; export_timestamp est un horodatage Unix en millisecondes à 13 chiffres. |
 | `endfield[]` | uid, list | uid est une chaîne contenant au moins un caractère autre qu’un espace ; list peut être vide. |
 | `list[]` | `kind` | `kind = "draw"` → `pool_id`, `item_name`, `rarity` (1–99), `gacha_ts` (Unix ms) |
 
@@ -13,7 +15,7 @@ Seuls les champs définis dans le schéma sont admis. Conserver les numéros de 
 
 | Niveau | Champs facultatifs |
 | --- | --- |
-| `info` | export_app, export_app_version, export_timestamp, export_provider, rsa_signature |
+| `info` | export_app, export_app_version, export_timestamp |
 | `endfield[]` | region, server_id, account_uid, lang |
 | `list[]` | record_type, seq_id, seq_id_source, pool_name, pool_type, item_id, name_text, weapon_type, is_new, is_free, gift_reward_label |
 
@@ -31,4 +33,6 @@ item_name provient de charName, weaponName ou du nameText du cadeau. Conserver l
 
 Le groupe est identifié par (region, server_id, uid). Par défaut, region vaut cn et server_id vaut « 1 » pour la Chine. global exige un server_id explicite. Dans un groupe, utiliser (record_type, seq_id) ; conserver séparément les lignes dont la clé est incomplète. Garder les identifiants sous forme de chaînes.
 
-[Télécharger le schéma JSON v0.4](/plugin/data/akegf/akegf-v0.4.schema.json) · [Exemple avec plusieurs personnages](/plugin/data/akegf/example.json)
+[Télécharger le schéma JSON v1.2](/plugin/data/akegf/akegf-v1.2.schema.json)
+
+[v1.1 JSON Schema](/plugin/data/akegf/akegf-v1.1.schema.json) · [v1.1 JSON](/plugin/data/akegf/example.json) · [v1.2 JSON](/plugin/data/akegf/example-signed.json)

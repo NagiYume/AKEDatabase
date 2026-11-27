@@ -6,6 +6,7 @@
     const keyDirectoryContent = keyDirectory.querySelector('[data-key-directory-content]');
     const form = root.querySelector('form');
     const input = form.querySelector('textarea');
+    const importVersion = form.elements.namedItem('import-version');
     const fileInput = form.querySelector('[type=file]');
     const result = form.querySelector('output');
     const downloads = root.querySelector('[data-downloads]');
@@ -22,6 +23,7 @@
     let pageRequest = 0;
     let inputRevision = 0;
     let keyDirectoryRequest;
+    const supportedVersions = new Set(['v1.1', 'v1.2']);
     const schemaChecks = new Map();
 
     async function resource(path) {
@@ -30,8 +32,7 @@
         return response;
     }
 
-    function loadCheck(version) {
-        const schemaVersion = version === 'v0.3' ? 'v0.3' : 'v0.4';
+    function loadCheck(schemaVersion) {
         if (!schemaChecks.has(schemaVersion)) {
             const check = resource(dataPath + 'akegf-' + schemaVersion + '.schema.json')
                 .then(response => response.json())
@@ -45,6 +46,10 @@
             schemaChecks.set(schemaVersion, check);
         }
         return schemaChecks.get(schemaVersion);
+    }
+
+    function acceptsVersion(target, source) {
+        return source === target || (target.endsWith('.1') && source === target.slice(0, -1) + '2');
     }
 
     function checkIdentities(groups) {
@@ -138,14 +143,20 @@
             return 'signatureInvalid';
         }
         try {
-            const url = keyUrl(info.export_provider, kid);
-            const response = await fetch(url, {
-                cache: 'no-store', credentials: 'omit', redirect: 'error',
-                referrerPolicy: 'no-referrer', signal: AbortSignal.timeout(8000)
-            });
-            if (response.status === 404) return 'unknownKey';
-            if (!response.ok) return 'registryUnavailable';
-            const entry = await response.json();
+            let entry;
+            if (info.export_provider === exampleProvider) {
+                const exampleKey = await resource(dataPath + 'example-key.json').then(response => response.json());
+                if (exampleKey.kid === kid) entry = exampleKey;
+            }
+            if (!entry) {
+                const response = await fetch(keyUrl(info.export_provider, kid), {
+                    cache: 'no-store', credentials: 'omit', redirect: 'error',
+                    referrerPolicy: 'no-referrer', signal: AbortSignal.timeout(8000)
+                });
+                if (response.status === 404) return 'unknownKey';
+                if (!response.ok) return 'registryUnavailable';
+                entry = await response.json();
+            }
             if (entry.provider !== info.export_provider || entry.kid !== kid || entry.alg !== 'PS256') {
                 return 'registryUnavailable';
             }
@@ -170,6 +181,7 @@
 
     async function validate() {
         const revision = ++inputRevision;
+        const target = importVersion.value;
         const source = input.value.replace(/^\uFEFF/, '');
         let archive;
         try {
@@ -182,9 +194,18 @@
             result.textContent = t('invalid') + '\n' + t('duplicateMember');
             return;
         }
+        const sourceVersion = archive?.info?.version;
+        if (!supportedVersions.has(sourceVersion)) {
+            result.textContent = t('invalid') + '\n' + t('unsupportedVersion');
+            return;
+        }
+        if (target && !acceptsVersion(target, sourceVersion)) {
+            result.textContent = t('importRejectedVersion', { target, source: sourceVersion });
+            return;
+        }
         result.textContent = t('checking');
         try {
-            const check = await loadCheck(archive?.info?.version);
+            const check = await loadCheck(sourceVersion);
             if (revision !== inputRevision) return;
             if (!check(archive)) {
                 const issues = check.errors.filter(error => error.keyword !== 'if').slice(0, 60).map(describeIssue);
@@ -197,17 +218,28 @@
                 return;
             }
             const summary = t('valid', {
-                version: archive.info.version,
+                version: sourceVersion,
                 groups: archive.endfield.length,
                 records: archive.endfield.reduce((sum, group) => sum + group.list.length, 0)
             });
+            const provider = archive.info.export_provider;
+            if (target.endsWith('.1')) {
+                const message = provider === exampleProvider ? 'exampleImportAllowed' : 'importAllowedUnsigned';
+                result.textContent = [summary, t(message, { target })].join('\n');
+                return;
+            }
             const status = await verifySignature(archive);
             if (revision === inputRevision) {
-                const provider = archive.info.export_provider;
                 const verified = status === 'signatureValid';
                 const message = verified && provider === exampleProvider ? 'exampleSignatureValid' : status;
                 const messages = [summary, t(message, { provider })];
-                if (!verified) messages.push(t('unverifiedUsage'));
+                if (sourceVersion.endsWith('.2') && !verified) {
+                    messages.push(t('importRejectedSignature', { target: sourceVersion }));
+                } else if (target && provider !== exampleProvider) {
+                    messages.push(t('importAllowed', { target }));
+                } else if (!verified) {
+                    messages.push(t('unverifiedUsage'));
+                }
                 result.textContent = messages.join('\n');
             }
         } catch (error) {
@@ -222,6 +254,9 @@
     input.addEventListener('input', () => {
         inputRevision++;
         result.textContent = '';
+    });
+    importVersion.addEventListener('change', () => {
+        if (input.value.trim()) validate();
     });
     fileInput.addEventListener('change', async () => {
         const file = fileInput.files[0];
