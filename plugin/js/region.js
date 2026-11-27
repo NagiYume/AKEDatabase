@@ -20,7 +20,7 @@
     const tableText = (ref, id, fallback = factoryT('unavailable')) => window.AKEV3.text(ref, (showTechnicalIds() && id) || fallback);
     const localizedNumber = new Intl.NumberFormat(window.akeI18n.getLanguageInfo().htmlLang);
     const factoryNumber = value => localizedNumber.format(value);
-    const factoryTable = (label, headers, rows, className = '') => `<div class="ake-ui-table-wrap"><table class="ake-ui-table ${className}" aria-label="${escapeHtml(label)}"><thead><tr>${headers.map(header => `<th scope="col">${escapeHtml(header)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    const factoryTable = (label, headers, rows) => `<div class="ake-ui-table-wrap"><table class="ake-ui-table" aria-label="${escapeHtml(label)}"><thead><tr>${headers.map(header => `<th scope="col">${escapeHtml(header)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
 
     function parseDensity(mine) {
         const values = Array.isArray(mine?.densityLevel) ? mine.densityLevel : [];
@@ -253,14 +253,7 @@
         const settlements = Object.values(domain.tables.settlementTable).filter(row => row.domainId === domain.domainId
             && row.domainLevelId === area.levelId && row.facRegionIndex === area.main.index);
         const subtitle = settlements.map(row => tableText(row.settlementName, row.settlementId)).join(' / ');
-        const caps = [];
-        for (const level of domain.levels) {
-            const capacity = level.row.domainDevelopmentLevelEffect?.[area.levelId]?.bandwidth;
-            if (Number.isFinite(capacity) && capacity !== caps.at(-1)?.capacity) caps.push({ level: level.level, capacity });
-        }
         const lines = values => values.length ? `<div class="region-cell-list">${values.map(value => `<div>${escapeHtml(value)}</div>`).join('')}</div>` : '–';
-        const bandwidth = caps.length ? factoryTable(factoryT('bandwidth'), [factoryT('domainLevel'), factoryT('bandwidth')], caps.map(row =>
-            `<tr><th scope="row">Lv.${row.level}</th><td>${factoryNumber(row.capacity)}</td></tr>`).join(''), 'region-factory-bandwidth') : '';
 
         const geometry = new Map((area.levelData || []).map(level => [level.level, level.levelBounds]));
         const bounds = level => {
@@ -327,7 +320,7 @@
         const busTable = busRows.length ? factoryTable(factoryT('bus'), busHeaders, busRows.map(({ good, effects, totals }) =>
             upgradeRows(good, effects, hasBusTotals ? totals : null)).join('')) : '';
         const otherTable = otherRows.length ? factoryTable(factoryT('other'), [...headers, factoryT('result'), factoryT('conditions')], otherRows.join('')) : '';
-        return `<article class="ake-ui-card" data-ake-component="card"><div class="ake-ui-card__content"><header class="ake-ui-card__header"><div class="ake-ui-card__heading"><h4 class="ake-ui-card__title">${escapeHtml(levelName)}</h4>${subtitle ? `<div class="ake-ui-card__id">${escapeHtml(subtitle)}</div>` : ''}</div></header>${bandwidth}${areaTable}${busTable}${otherTable}</div></article>`;
+        return `<article class="ake-ui-card" data-ake-component="card"><div class="ake-ui-card__content"><header class="ake-ui-card__header"><div class="ake-ui-card__heading"><h4 class="ake-ui-card__title">${escapeHtml(levelName)}</h4>${subtitle ? `<div class="ake-ui-card__id">${escapeHtml(subtitle)}</div>` : ''}</div></header>${areaTable}${busTable}${otherTable}</div></article>`;
     }
 
     function bindFactorySection(section, domain) {
