@@ -34,7 +34,7 @@
 
 项目地址：[endgacha.kwer.top](https://github.com/otae-1204/otae-bot-entari)
 
-项目作者：[简_心_](https://space.bilibili.com/8303516)
+项目作者：[花园たえ](https://space.bilibili.com/135116630)
 
 ## 终末地·抽卡记录评分
 

@@ -35,11 +35,15 @@
 提供方 ID（info.export_provider）：
 新公钥指纹（kid）：
 RSA 公钥 PEM（文件或公开下载链接）：
-v1.2 签名示例 JSON（文件或公开下载链接）：
 AKEGF 导入支持（无 / v1.1 / v1.2）：
-AKEGF 导出支持及实现或版本链接：
 轮换时填写旧 kid 和处理方式（保留 / 撤销）：
-工具认证的导入导出往返结果（同时申请认证时填写）：
+{
+  "provider": "akegf-example",
+  "kid": "GbXz6FFT7xjWXaCU2vG8cOMDAT9LoIM8LQjxWGlYh_o",
+  "alg": "PS256",
+  "status": "active",
+  "public_key": "MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEA1Hemjuapv-778_sw5x58z6L8Li4RCZcBsa69yoLWTjY9kTP0crBll9JWP4SwYaZveXOkzAvpbrYxRXyZYmzA2nBcgpooC71EdT3l5EWy3ZXzzaTccRDAp2Ta4Zju8k-mki-GjuEiRsLAQ3Kc5uUkWIm0a3K70OyO2cURjd2FDoQTNK12I0fs4V8ijmNdeqBwuPnFmJWOD4hy4_kgSsVVAzK_Abi33mCHlSHwASjGvkHvdx93NOZx92D9_IC98F72eu7fuYUHod7F9JcyHapMBeWwDZkHhmp3Sr-2X9dfnbpRCW1tddRwlk_QmhKN_KyH0Ge_8C3_r50xXvZiVKlil-lytkItOREsEXvDiNkSpR1DJChEgzki2_9bapxeGi3KSQB6h8pcSLQdmYNx6oBaJgrCpsZL7GLA6z12QBvuWS9LzfBYC_gPBRHESFsAlG_mJTfXNXVemHlELWljQQmPhDtec_0pIonSr5ayhJH5-tqu6CfFcGXu0AIyzHUdymhBAgMBAAE"
+}
 ~~~
 
 公钥使用 `BEGIN PUBLIC KEY` 格式，`kid` 按规范从公钥计算。签名示例使用公开的示例流水或自造数据，`info.export_provider` 和 `info.rsa_signature` 中的 `kid` 必须与申请一致。PR 只提交公钥和公开示例，私钥由提供方自行保管。轮换时先登记新公钥，再切换签名密钥。维护者核对申请方身份、支持范围和示例签名后，将公钥登记到 [AKEGF 公钥目录](https://verify.akedata.wiki/)。签名规则见[标准化文档](/?plugin=akegf&id=standard)。
