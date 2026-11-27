@@ -1,11 +1,13 @@
-# AKEGF v0.4 · 표준 문서
+# AKEGF v1.2 · 표준 문서
 
-v0.4 초안입니다. 내보낼 때 필수 필드를 모두 기록하고, 선택 필드는 신뢰할 수 있는 값이 있을 때 기록합니다. 읽을 때는 Schema의 자료형을 따릅니다. is_free 생략은 알 수 없음, false는 무료가 아님을 뜻합니다.
+내보낼 때 필수 필드를 모두 기록하고, 선택 필드는 신뢰할 수 있는 값이 있을 때 기록합니다. 읽을 때는 Schema의 자료형을 따릅니다. is_free 생략은 알 수 없음, false는 무료가 아님을 뜻합니다.
+
+같은 주 버전에서 x.1은 서명 없는 x.1과 서명을 검증하지 않은 x.2를 가져올 수 있습니다. x.2는 서명 검증을 통과한 x.2만 가져올 수 있습니다.
 
 | 계층 | 필수 필드 | 규칙 |
 | --- | --- | --- |
 | `JSON` | info, endfield | endfield에 캐릭터 그룹이 하나 이상 필요합니다. |
-| `info` | version | version은 v0.4입니다. export_timestamp는 13자리 밀리초 Unix 시각입니다. |
+| `info` | version, export_provider, rsa_signature | version은 v1.2입니다. export_timestamp는 13자리 밀리초 Unix 시각입니다. |
 | `endfield[]` | uid, list | uid는 공백 이외의 문자를 포함한 문자열이며 list는 빈 배열일 수 있습니다. |
 | `list[]` | `kind` | `kind = "draw"` → `pool_id`, `item_name`, `rarity` (1–99), `gacha_ts` (Unix ms) |
 
@@ -13,7 +15,7 @@ v0.4 초안입니다. 내보낼 때 필수 필드를 모두 기록하고, 선택
 
 | 계층 | 선택 필드 |
 | --- | --- |
-| `info` | export_app, export_app_version, export_timestamp, export_provider, rsa_signature |
+| `info` | export_app, export_app_version, export_timestamp |
 | `endfield[]` | region, server_id, account_uid, lang |
 | `list[]` | record_type, seq_id, seq_id_source, pool_name, pool_type, item_id, name_text, weapon_type, is_new, is_free, gift_reward_label |
 
@@ -31,4 +33,6 @@ item_name은 charName, weaponName 또는 증정 기록의 nameText에서 가져�
 
 캐릭터 키는 (region, server_id, uid)입니다. region 생략 시 cn, 중국 서버에서 server_id 생략 시 문자열 “1”을 사용하며 global에는 server_id가 필요합니다. 그룹 안에서는 (record_type, seq_id)로 식별합니다. 키가 불완전하면 개별 기록을 보존하며 ID는 문자열로 유지합니다.
 
-[v0.4 JSON Schema 다운로드](/plugin/data/akegf/akegf-v0.4.schema.json) · [다중 캐릭터 예제](/plugin/data/akegf/example.json)
+[v1.2 JSON Schema 다운로드](/plugin/data/akegf/akegf-v1.2.schema.json)
+
+[v1.1 JSON Schema](/plugin/data/akegf/akegf-v1.1.schema.json) · [v1.1 JSON](/plugin/data/akegf/example.json) · [v1.2 JSON](/plugin/data/akegf/example-signed.json)

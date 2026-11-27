@@ -1,11 +1,13 @@
-# AKEGF v0.4 · Спецификация
+# AKEGF v1.2 · Спецификация
 
-Проект спецификации v0.4. При экспорте указывайте все обязательные поля. Необязательное поле без достоверного значения следует опустить. При чтении соблюдайте типы схемы. Отсутствие is_free означает, что статус неизвестен; false означает, что попытка не была бесплатной.
+При экспорте указывайте все обязательные поля. Необязательное поле без достоверного значения следует опустить. При чтении соблюдайте типы схемы. Отсутствие is_free означает, что статус неизвестен; false означает, что попытка не была бесплатной.
+
+В пределах одной основной версии x.1 импортирует неподписанные файлы x.1 и файлы x.2 без проверки подписи. x.2 импортирует только файлы x.2 с действительной подписью.
 
 | Уровень | Обязательные поля | Требование |
 | --- | --- | --- |
 | `JSON` | info, endfield | Массив endfield содержит хотя бы одну группу персонажа. |
-| `info` | version | version равен v0.4; export_timestamp — 13-значное время Unix в миллисекундах. |
+| `info` | version, export_provider, rsa_signature | version равен v1.2; export_timestamp — 13-значное время Unix в миллисекундах. |
 | `endfield[]` | uid, list | uid — строка хотя бы с одним непробельным символом; list может быть пустым. |
 | `list[]` | `kind` | `kind = "draw"` → `pool_id`, `item_name`, `rarity` (1–99), `gacha_ts` (Unix ms) |
 
@@ -13,7 +15,7 @@
 
 | Уровень | Необязательные поля |
 | --- | --- |
-| `info` | export_app, export_app_version, export_timestamp, export_provider, rsa_signature |
+| `info` | export_app, export_app_version, export_timestamp |
 | `endfield[]` | region, server_id, account_uid, lang |
 | `list[]` | record_type, seq_id, seq_id_source, pool_name, pool_type, item_id, name_text, weapon_type, is_new, is_free, gift_reward_label |
 
@@ -31,4 +33,6 @@
 
 Ключ группы — (region, server_id, uid). Без region используется cn; для Китая server_id по умолчанию строка «1». Для global обязательно указать server_id. Внутри группы используйте (record_type, seq_id); без полного ключа сохраняйте каждую запись отдельно. Идентификаторы храните строками.
 
-[Скачать схему JSON v0.4](/plugin/data/akegf/akegf-v0.4.schema.json) · [Пример с несколькими персонажами](/plugin/data/akegf/example.json)
+[Скачать схему JSON v1.2](/plugin/data/akegf/akegf-v1.2.schema.json)
+
+[v1.1 JSON Schema](/plugin/data/akegf/akegf-v1.1.schema.json) · [v1.1 JSON](/plugin/data/akegf/example.json) · [v1.2 JSON](/plugin/data/akegf/example-signed.json)

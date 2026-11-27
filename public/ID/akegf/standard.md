@@ -1,11 +1,13 @@
-# AKEGF v0.4 · Spesifikasi
+# AKEGF v1.2 · Spesifikasi
 
-Draf v0.4. Saat mengekspor, sertakan semua kolom wajib. Abaikan kolom opsional jika sumbernya tidak dapat dipastikan. Saat mengimpor, ikuti tipe dalam skema. Jika is_free tidak ada, statusnya belum diketahui; false berarti tarikan itu diketahui tidak gratis.
+Saat mengekspor, sertakan semua kolom wajib. Abaikan kolom opsional jika sumbernya tidak dapat dipastikan. Saat mengimpor, ikuti tipe dalam skema. Jika is_free tidak ada, statusnya belum diketahui; false berarti tarikan itu diketahui tidak gratis.
+
+Dalam versi mayor yang sama, x.1 mengimpor berkas x.1 tanpa tanda tangan dan berkas x.2 tanpa memeriksa tanda tangan. x.2 hanya mengimpor berkas x.2 dengan tanda tangan yang valid.
 
 | Tingkat | Kolom wajib | Aturan |
 | --- | --- | --- |
 | `JSON` | info, endfield | endfield harus berisi setidaknya satu grup karakter. |
-| `info` | version | version harus bernilai v0.4; export_timestamp adalah waktu Unix 13 digit dalam milidetik. |
+| `info` | version, export_provider, rsa_signature | version harus bernilai v1.2; export_timestamp adalah waktu Unix 13 digit dalam milidetik. |
 | `endfield[]` | uid, list | uid berupa string dengan sedikitnya satu karakter selain spasi; list boleh kosong. |
 | `list[]` | `kind` | `kind = "draw"` → `pool_id`, `item_name`, `rarity` (1–99), `gacha_ts` (Unix ms) |
 
@@ -13,7 +15,7 @@ Hanya kolom yang ditentukan skema yang diterima. Simpan nomor urut dan UID sebag
 
 | Tingkat | Kolom opsional |
 | --- | --- |
-| `info` | export_app, export_app_version, export_timestamp, export_provider, rsa_signature |
+| `info` | export_app, export_app_version, export_timestamp |
 | `endfield[]` | region, server_id, account_uid, lang |
 | `list[]` | record_type, seq_id, seq_id_source, pool_name, pool_type, item_id, name_text, weapon_type, is_new, is_free, gift_reward_label |
 
@@ -31,4 +33,6 @@ Ambil item_name dari charName, weaponName, atau nameText untuk hadiah. Simpan la
 
 Kunci grup adalah (region, server_id, uid). Jika region tidak ada, gunakan cn; pada server Tiongkok, nilai bawaan server_id adalah string “1”. global wajib menyertakan server_id. Dalam satu grup, gunakan (record_type, seq_id) untuk mengenali peristiwa. Jika kunci tidak lengkap, simpan setiap catatan secara terpisah. Pertahankan ID sebagai string.
 
-[Unduh JSON Schema v0.4](/plugin/data/akegf/akegf-v0.4.schema.json) · [Contoh dengan beberapa karakter](/plugin/data/akegf/example.json)
+[Unduh JSON Schema v1.2](/plugin/data/akegf/akegf-v1.2.schema.json)
+
+[v1.1 JSON Schema](/plugin/data/akegf/akegf-v1.1.schema.json) · [v1.1 JSON](/plugin/data/akegf/example.json) · [v1.2 JSON](/plugin/data/akegf/example-signed.json)

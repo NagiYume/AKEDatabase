@@ -2,6 +2,11 @@
 // Shared I18nTextTable_<language> hydration is infrastructure, not module ownership.
 // Maintain alongside module adapters; see the repository development skill.
 window.AKESearchIndex = {
+  "businesscard": {
+    "tables": ["BusinessCardTopicTable", "ItemTable", "CharacterTable"],
+    "sources": ["plugin/businesscard.html", "plugin/js/businesscard.js", "plugin/js/ake-catalog.js"],
+    "coverage": "Theme names displayed from ItemTable via BusinessCardTopicTable.itemId. CharacterTable supplies the fixed preview operators and does not define theme search results."
+  },
   "inn": {
     "tables": ["ItemTable", "RewardTable", "InnDishTable", "InnDrinkTable", "InnTopicTable", "InnCharSkillTable", "InnSkillTable", "InnLevelTable", "InnExpansionTable", "InnMilestoneTable", "InnMilestoneLevelTable", "InnRequirementTable", "InnAffixTable", "InnDishCategoryTable", "InnRandomRuleTable", "InnDescribeTable", "InnGoodsRandomTable", "InnManagementConst", "CharacterTable", "CropObtainWayTable", "InnRanchAnimalTable", "ShopGoodsTable", "InnRanchFeedTable", "InnRanchStableGroupTable", "SoilMgrTable", "SoilMgrFeatureTable", "InnRanchStateTable", "InnRanchStableId2GroupId", "RanchConst", "FactorySoilConst"],
     "sources": ["plugin/inn.html", "plugin/js/inn.js", "plugin/js/life-catalog.js", "plugin/js/ake-catalog.js"],

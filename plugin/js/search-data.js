@@ -168,6 +168,11 @@
         }
 
         if (source === 'ItemTable') {
+            if (has('businesscard') && field === 'name') {
+                for (const [id, topic] of entries(await table('BusinessCardTopicTable', true))) {
+                    if (topic.itemId === key) add('businesscard', id, title(row));
+                }
+            }
             // The character profile displays its own item description, not material descriptions.
             if (['name', 'desc'].includes(field)) await from('CharacterTable', key, 'v3_character');
             if (['name', 'desc', 'decoDesc'].includes(field)) {

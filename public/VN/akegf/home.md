@@ -1,6 +1,6 @@
 # AKEGF · Trang chủ
 
-> ArKnights: Endfield Gachalog Format · v0.4
+> ArKnights: Endfield Gachalog Format · v1.2
 
 AKEGF dùng JSON UTF-8 để chuyển lịch sử tuyển dụng, nhận vũ khí và quà tặng trong Arknights: Endfield. Lấy cảm hứng từ [UIGF](https://uigf.org/), định dạng này lưu nhiều nhân vật và máy chủ trong một tệp, giúp người chơi giữ lại lịch sử khi đổi công cụ.
 
@@ -10,12 +10,12 @@ Ghi phiên bản hỗ trợ và đặt liên kết đến [AKEGF](https://www.ak
 
 ## JSON Schema
 
-[Tải JSON Schema v0.4](/plugin/data/akegf/akegf-v0.4.schema.json) · [Ví dụ nhiều nhân vật](/plugin/data/akegf/example.json)
+[Tải JSON Schema v1.2](/plugin/data/akegf/akegf-v1.2.schema.json) · [Ví dụ nhiều nhân vật](/plugin/data/akegf/example.json)
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AKEGF v0.4",
+  "title": "AKEGF v1.2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -43,11 +43,13 @@ Ghi phiên bản hỗ trợ và đặt liên kết đến [AKEGF](https://www.ak
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "version"
+        "version",
+        "export_provider",
+        "rsa_signature"
       ],
       "properties": {
         "version": {
-          "const": "v0.4"
+          "const": "v1.2"
         },
         "export_app": {
           "$ref": "#/$defs/text"
@@ -71,10 +73,6 @@ Ghi phiên bản hỗ trợ và đặt liên kết đến [AKEGF](https://www.ak
           "maximum": 9999999999999,
           "description": "Unix 毫秒"
         }
-      },
-      "dependentRequired": {
-        "export_provider": ["rsa_signature"],
-        "rsa_signature": ["export_provider"]
       }
     },
     "account": {
@@ -271,5 +269,4 @@ Ghi phiên bản hỗ trợ và đặt liên kết đến [AKEGF](https://www.ak
     }
   }
 }
-
 ```

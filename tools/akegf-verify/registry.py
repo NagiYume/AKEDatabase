@@ -10,6 +10,7 @@ import os
 import re
 import subprocess
 import tempfile
+from contextlib import contextmanager
 from pathlib import Path
 from string import Template
 from textwrap import wrap
@@ -24,7 +25,10 @@ def base64url(data):
 
 
 def read_public_key(path):
-    pem = path.read_bytes()
+    return parse_public_key(path.read_bytes())
+
+
+def parse_public_key(pem):
     if not re.fullmatch(
         rb"-----BEGIN PUBLIC KEY-----\r?\n(?:[A-Za-z0-9+/=]+\r?\n)+"
         rb"-----END PUBLIC KEY-----\r?\n?", pem
@@ -34,7 +38,7 @@ def read_public_key(path):
     def rsa(*args):
         result = subprocess.run(
             ["openssl", "rsa", "-pubin", *args],
-            input=pem, capture_output=True, check=True,
+            input=pem, capture_output=True, check=True, timeout=10,
         )
         return result.stdout
 
@@ -49,14 +53,14 @@ def read_public_key(path):
     return der
 
 
-def write_public_file(path, content):
+def write_file(path, content, mode=0o644):
     path.parent.mkdir(parents=True, exist_ok=True)
     output = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent, delete=False)
     staged = Path(output.name)
     try:
         with output:
             output.write(content)
-            os.fchmod(output.fileno(), 0o644)
+            os.fchmod(output.fileno(), mode)
             output.flush()
             os.fsync(output.fileno())
         staged.replace(path)
@@ -65,7 +69,7 @@ def write_public_file(path, content):
 
 
 def publish(path, entry):
-    write_public_file(path, json.dumps(entry, ensure_ascii=True, indent=2) + "\n")
+    write_file(path, json.dumps(entry, ensure_ascii=True, indent=2) + "\n")
 
 
 def key_card(entry):
@@ -87,8 +91,7 @@ def key_card(entry):
     )
 
 
-def publish_directory(root):
-    providers = {}
+def key_entries(root):
     for path in sorted((root / "v1" / "providers").glob("*/keys/*.json")):
         provider = path.parent.parent.name
         entry = json.loads(path.read_text(encoding="utf-8"))
@@ -98,7 +101,13 @@ def publish_directory(root):
                 entry.get("alg") != "PS256" or entry.get("status") not in ("active", "revoked") or
                 (entry["status"] == "active" and not isinstance(entry.get("public_key"), str))):
             raise ValueError(f"Invalid registry entry: {path}")
-        providers.setdefault(provider, []).append(entry)
+        yield entry
+
+
+def publish_directory(root):
+    providers = {}
+    for entry in key_entries(root):
+        providers.setdefault(entry["provider"], []).append(entry)
 
     sections = [
         f"<section><h2>{html.escape(provider)}</h2>{''.join(map(key_card, keys))}</section>"
@@ -111,7 +120,60 @@ def publish_directory(root):
     publish(root / "v1" / "providers.json", {
         "providers": [{"provider": provider, "keys": keys} for provider, keys in providers.items()],
     })
-    write_public_file(root / "index.html", page)
+    write_file(root / "index.html", page)
+
+
+@contextmanager
+def registry_lock(root):
+    descriptor = os.open(root / ".registry.lock", os.O_CREAT | os.O_WRONLY, 0o600)
+    with os.fdopen(descriptor, "a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        yield
+
+
+def fingerprint(der):
+    return base64url(hashlib.sha256(der).digest())
+
+
+class KeyConflict(ValueError):
+    pass
+
+
+def public_key_path(root, provider, kid):
+    if not PROVIDER_ID.fullmatch(provider) or not KEY_ID.fullmatch(kid):
+        raise ValueError("Invalid provider ID or public key fingerprint")
+    return root / "v1" / "providers" / provider / "keys" / f"{kid}.json"
+
+
+def register_key(root, provider, der):
+    kid = fingerprint(der)
+    path = public_key_path(root, provider, kid)
+    entry = {
+        "provider": provider, "kid": kid, "alg": "PS256",
+        "status": "active", "public_key": base64url(der),
+    }
+    with registry_lock(root):
+        if path.exists():
+            if json.loads(path.read_text(encoding="utf-8")) != entry:
+                raise KeyConflict("Existing entry differs or has been revoked")
+        else:
+            publish(path, entry)
+        publish_directory(root)
+    return entry
+
+
+def revoke_key(root, provider, kid):
+    path = public_key_path(root, provider, kid)
+    with registry_lock(root):
+        if not path.is_file():
+            return False
+        entry = json.loads(path.read_text(encoding="utf-8"))
+        if entry["status"] != "revoked":
+            publish(path, {
+                "provider": provider, "kid": kid, "alg": "PS256", "status": "revoked",
+            })
+        publish_directory(root)
+    return True
 
 
 def main():
@@ -127,45 +189,18 @@ def main():
     commands.add_parser("rebuild", help="Regenerate the public directory from existing key records")
     args = parser.parse_args()
 
-    if args.action != "rebuild" and not PROVIDER_ID.fullmatch(args.provider):
-        parser.error("Invalid provider ID")
-
     try:
         os.umask(0o022)
         if args.action == "register":
-            der = read_public_key(args.pem)
-            kid = base64url(hashlib.sha256(der).digest())
+            print(register_key(args.root, args.provider, read_public_key(args.pem))["kid"])
         elif args.action == "revoke":
-            kid = args.kid
-            if not KEY_ID.fullmatch(kid):
-                raise ValueError("Invalid public key fingerprint")
-
-        descriptor = os.open(args.root / ".registry.lock", os.O_CREAT | os.O_WRONLY, 0o600)
-        with os.fdopen(descriptor, "a") as lock:
-            fcntl.flock(lock, fcntl.LOCK_EX)
-            if args.action == "rebuild":
+            if not revoke_key(args.root, args.provider, args.kid):
+                raise ValueError("Unknown public key")
+            print(args.kid)
+        else:
+            with registry_lock(args.root):
                 publish_directory(args.root)
-                return
-            path = args.root / "v1" / "providers" / args.provider / "keys" / f"{kid}.json"
-            if args.action == "register":
-                entry = {
-                    "provider": args.provider, "kid": kid, "alg": "PS256",
-                    "status": "active", "public_key": base64url(der),
-                }
-                if path.exists():
-                    if json.loads(path.read_text(encoding="utf-8")) != entry:
-                        raise ValueError("Existing entry differs or has been revoked")
-                else:
-                    publish(path, entry)
-            else:
-                entry = json.loads(path.read_text(encoding="utf-8"))
-                if entry["status"] != "revoked":
-                    publish(path, {
-                        "provider": args.provider, "kid": kid, "alg": "PS256", "status": "revoked",
-                    })
-            publish_directory(args.root)
-        print(kid)
-    except (OSError, ValueError, subprocess.CalledProcessError) as error:
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
         parser.exit(1, f"{error}\n")
 
 

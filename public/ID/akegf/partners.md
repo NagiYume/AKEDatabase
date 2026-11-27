@@ -2,10 +2,10 @@
 
 | Proyek | Versi | Impor | Ekspor |
 | --- | --- | --- | --- |
-| AKEData | v0.4 | Tidak berlaku | Tidak berlaku |
-| 终末地寻访记录分析 | v0.3 | Menunggu konfirmasi | Menunggu konfirmasi |
-| otae bot | v0.3 | Menunggu konfirmasi | Menunggu konfirmasi |
-| 终末地·抽卡记录评分 | v0.3 | Menunggu konfirmasi | Menunggu konfirmasi |
+| AKEData | v1.1 / v1.2 | Tidak berlaku | Tidak berlaku |
+| 终末地寻访记录分析 | Menunggu konfirmasi | Menunggu konfirmasi | Menunggu konfirmasi |
+| otae bot | Menunggu konfirmasi | Menunggu konfirmasi | Menunggu konfirmasi |
+| 终末地·抽卡记录评分 | Menunggu konfirmasi | Menunggu konfirmasi | Menunggu konfirmasi |
 
 ## AKEData
 

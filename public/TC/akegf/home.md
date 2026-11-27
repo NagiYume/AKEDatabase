@@ -1,6 +1,6 @@
 # AKEGF · 首頁
 
-> ArKnights: Endfield Gachalog Format · v0.4
+> ArKnights: Endfield Gachalog Format · v1.2
 
 AKEGF 將《明日方舟：終末地》的幹員尋訪、武器申領與贈禮逐筆保存為 UTF-8 JSON。參考 [UIGF](https://uigf.org/) 的經驗，一份檔案可涵蓋多個角色與伺服器，方便玩家更換工具時帶走完整紀錄。
 
@@ -10,12 +10,12 @@ AKEGF 將《明日方舟：終末地》的幹員尋訪、武器申領與贈禮�
 
 ## JSON Schema
 
-[下載 v0.4 JSON Schema](/plugin/data/akegf/akegf-v0.4.schema.json) · [多角色範例](/plugin/data/akegf/example.json)
+[下載 v1.2 JSON Schema](/plugin/data/akegf/akegf-v1.2.schema.json) · [多角色範例](/plugin/data/akegf/example.json)
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AKEGF v0.4",
+  "title": "AKEGF v1.2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -43,11 +43,13 @@ AKEGF 將《明日方舟：終末地》的幹員尋訪、武器申領與贈禮�
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "version"
+        "version",
+        "export_provider",
+        "rsa_signature"
       ],
       "properties": {
         "version": {
-          "const": "v0.4"
+          "const": "v1.2"
         },
         "export_app": {
           "$ref": "#/$defs/text"
@@ -71,10 +73,6 @@ AKEGF 將《明日方舟：終末地》的幹員尋訪、武器申領與贈禮�
           "maximum": 9999999999999,
           "description": "Unix 毫秒"
         }
-      },
-      "dependentRequired": {
-        "export_provider": ["rsa_signature"],
-        "rsa_signature": ["export_provider"]
       }
     },
     "account": {
@@ -271,5 +269,4 @@ AKEGF 將《明日方舟：終末地》的幹員尋訪、武器申領與贈禮�
     }
   }
 }
-
 ```

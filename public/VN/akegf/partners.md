@@ -2,10 +2,10 @@
 
 | Dự án | Phiên bản | Nhập | Xuất |
 | --- | --- | --- | --- |
-| AKEData | v0.4 | Không áp dụng | Không áp dụng |
-| 终末地寻访记录分析 | v0.3 | Chờ xác nhận | Chờ xác nhận |
-| otae bot | v0.3 | Chờ xác nhận | Chờ xác nhận |
-| 终末地·抽卡记录评分 | v0.3 | Chờ xác nhận | Chờ xác nhận |
+| AKEData | v1.1 / v1.2 | Không áp dụng | Không áp dụng |
+| 终末地寻访记录分析 | Chờ xác nhận | Chờ xác nhận | Chờ xác nhận |
+| otae bot | Chờ xác nhận | Chờ xác nhận | Chờ xác nhận |
+| 终末地·抽卡记录评分 | Chờ xác nhận | Chờ xác nhận | Chờ xác nhận |
 
 ## AKEData
 

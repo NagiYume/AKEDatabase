@@ -1,6 +1,6 @@
 # AKEGF · Endfield gacha record exchange format
 
-Draft v0.4. Store headhunting, Arsenal Issues and gifts in a UTF-8 JSON file to exchange records across tools, characters and servers.
+Current version v1.2. Store headhunting, Arsenal Issues and gifts in a UTF-8 JSON file to exchange records across tools, characters and servers.
 
 ## Why AKEGF exists
 
@@ -12,14 +12,18 @@ An archive can hold several characters and servers. Original sequence IDs and mi
 
 See the [specification](/?plugin=akegf&id=standard) for field requirements and [tool certification](/?plugin=akegf&id=validator) for the import and export checks. When declaring support in an application, link to the [AKEGF home page](https://www.akedata.wiki/?plugin=akegf&id=home).
 
-The design draws on [UIGF](https://uigf.org/). Use the field types in the [v0.4 JSON Schema](/plugin/data/akegf/akegf-v0.4.schema.json) and check an import/export round trip with the [multi-character example](/plugin/data/akegf/example.json).
+The design draws on [UIGF](https://uigf.org/). Check an import and export round trip with the schema and example for the version your tool supports.
+
+[v1.2 JSON Schema](/plugin/data/akegf/akegf-v1.2.schema.json) · [v1.2 signed example](/plugin/data/akegf/example-signed.json)
+
+[v1.1 JSON Schema](/plugin/data/akegf/akegf-v1.1.schema.json) · [v1.1 unsigned example](/plugin/data/akegf/example.json)
 
 ## JSON Schema
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AKEGF v0.4",
+  "title": "AKEGF v1.2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -47,11 +51,13 @@ The design draws on [UIGF](https://uigf.org/). Use the field types in the [v0.4 
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "version"
+        "version",
+        "export_provider",
+        "rsa_signature"
       ],
       "properties": {
         "version": {
-          "const": "v0.4"
+          "const": "v1.2"
         },
         "export_app": {
           "$ref": "#/$defs/text"
@@ -75,10 +81,6 @@ The design draws on [UIGF](https://uigf.org/). Use the field types in the [v0.4 
           "maximum": 9999999999999,
           "description": "Unix 毫秒"
         }
-      },
-      "dependentRequired": {
-        "export_provider": ["rsa_signature"],
-        "rsa_signature": ["export_provider"]
       }
     },
     "account": {
@@ -275,5 +277,4 @@ The design draws on [UIGF](https://uigf.org/). Use the field types in the [v0.4 
     }
   }
 }
-
 ```

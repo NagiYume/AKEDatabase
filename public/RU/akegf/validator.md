@@ -1,6 +1,6 @@
 # AKEGF · Сертификация инструментов
 
-Для сертификации приложение должно поддерживать импорт и экспорт v0.4, указывать поддерживаемую версию и давать ссылку на [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home).
+Для сертификации приложение должно поддерживать импорт и экспорт v1.1 / v1.2, указывать поддерживаемую версию и давать ссылку на [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home).
 
 Чтобы добавить совместимый проект в раздел «[Проекты-партнёры](/?plugin=akegf&id=partners)», отправьте [Pull Request](https://github.com/NagiYume/AKEDatabase/pulls).
 

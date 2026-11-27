@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AKEGF 密钥管理</title>
+    <link rel="stylesheet" href="/directory.css">
+    <link rel="stylesheet" href="/admin/admin.css">
+    <script src="/admin/admin.js" defer></script>
+</head>
+<body>
+    <main>
+        <header>
+            <h1>AKEGF 密钥管理</h1>
+            <p><a href="/">公开公钥目录</a></p>
+        </header>
+        <p id="notice" role="status" hidden></p>
+        <form id="login">
+            <fieldset id="login-controls" class="form-row">
+                <label>管理口令
+                    <input id="token" type="password" required autocomplete="off"
+                        placeholder="AKE Server Tool 的访问口令">
+                </label>
+                <button type="submit">登录</button>
+            </fieldset>
+        </form>
+        <section id="management" hidden>
+            <fieldset id="management-controls">
+                <div class="actions">
+                    <button id="refresh" type="button">刷新列表</button>
+                    <button id="logout" type="button">退出</button>
+                </div>
+                <h2>添加密钥</h2>
+                <form id="upload" class="form-row">
+                    <label>提供方 ID
+                        <input id="provider" required maxlength="64" autocapitalize="none"
+                            spellcheck="false" pattern="[a-z0-9](?:[a-z0-9\-]{0,62}[a-z0-9])?">
+                    </label>
+                    <label>密钥类型
+                        <select id="kind">
+                            <option value="public-keys">公钥</option>
+                            <option value="private-keys">私钥</option>
+                        </select>
+                    </label>
+                    <label>PEM 文件
+                        <input id="pem" type="file" accept=".pem,.key,.pub" required>
+                    </label>
+                    <button type="submit">添加</button>
+                </form>
+                <h2>公钥</h2>
+                <div id="public-keys"></div>
+                <h2>私钥</h2>
+                <div id="private-keys"></div>
+            </fieldset>
+        </section>
+    </main>
+</body>
+</html>

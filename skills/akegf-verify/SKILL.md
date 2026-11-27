@@ -11,6 +11,8 @@ description: 维护 AKEGF RSA 公钥目录的登记、撤销、HTTPS 查询和�
 
 公开首页和 `/v1/providers.json` 由 registry.py 从单键记录同步生成。登记、撤销或运行 `rebuild` 后更新。首页模板和样式位于 `tools/akegf-verify/web`，JSON 列表同时供合作页使用。
 
-Starward 当前仅导出未签名档案。历史 `starward-ake` 签名档案通过原目录查询公钥。导入后的信任与使用规则见 v0.4 标准。
+[管理后端](../../tools/akegf-verify/admin.py) 监听 `127.0.0.1:8768`，通过 systemd credential 使用 AKE Server Tool 的 `status-token`。nginx 提供 `https://verify.akedata.wiki/admin` 管理页面和同源 `/admin/v1/` API，页面源码位于 `tools/akegf-verify/web/admin.*`。API 和 registry.py 的 CLI 共用公钥登记、撤销和文件锁。私钥文件单独放在 `/var/lib/akegf-verify-private`，删除私钥和撤销公钥分别处理。管理 API 仅返回密钥元数据。部署与口令轮换见运维说明。
 
-`akegf-example` 为示例保留。使用 [示例公钥](../../tools/akegf-verify/keys/akegf-example.pem) 恢复已发布样例对应条目。更新样例时另行签发示例密钥，导入工具仅将该提供方用于测试。
+正式 v1.2 档案通过公钥目录取得有效公钥。导入后的信任与使用规则见[标准文档](../../public/CH/akegf/standard.md)。
+
+`akegf-example` 为示例保留。站内工具使用随示例发布的[专用公钥](../../plugin/data/akegf/example-key.json)。更新样例时另行签发一次性示例密钥，导入工具仅将该提供方用于测试。

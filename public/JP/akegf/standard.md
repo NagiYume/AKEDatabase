@@ -1,11 +1,13 @@
-# AKEGF v0.4 · 仕様書
+# AKEGF v1.2 · 仕様書
 
-v0.4 草案。エクスポート時は必須項目をすべて記録し、任意項目は値が判明している場合に記録します。読み込み時は Schema の型に従ってください。is_free の省略は不明、false は無料ではないことを表します。
+エクスポート時は必須項目をすべて記録し、任意項目は値が判明している場合に記録します。読み込み時は Schema の型に従ってください。is_free の省略は不明、false は無料ではないことを表します。
+
+同じメジャーバージョンでは、x.1 は署名のない x.1 と、署名を検証せずに x.2 を読み込めます。x.2 は署名の検証に成功した x.2 のみ読み込めます。
 
 | 階層 | 必須フィールド | 制約 |
 | --- | --- | --- |
 | `JSON` | info, endfield | endfield は一つ以上のキャラクターグループを含みます。 |
-| `info` | version | version は v0.4 固定。export_timestamp はミリ秒単位の13桁の Unix 時刻です。 |
+| `info` | version, export_provider, rsa_signature | version は v1.2 固定。export_timestamp はミリ秒単位の13桁の Unix 時刻です。 |
 | `endfield[]` | uid, list | uid は空白以外を含む文字列。list は空配列でも構いません。 |
 | `list[]` | `kind` | `kind = "draw"` → `pool_id`, `item_name`, `rarity` (1–99), `gacha_ts` (Unix ms) |
 
@@ -13,7 +15,7 @@ v0.4 草案。エクスポート時は必須項目をすべて記録し、任意
 
 | 階層 | 任意項目 |
 | --- | --- |
-| `info` | export_app, export_app_version, export_timestamp, export_provider, rsa_signature |
+| `info` | export_app, export_app_version, export_timestamp |
 | `endfield[]` | region, server_id, account_uid, lang |
 | `list[]` | record_type, seq_id, seq_id_source, pool_name, pool_type, item_id, name_text, weapon_type, is_new, is_free, gift_reward_label |
 
@@ -31,4 +33,6 @@ item_name は charName、weaponName、贈呈の nameText から取得し、贈�
 
 キャラクターのキーは (region, server_id, uid) です。region 省略時は cn、中国版の server_id 省略時は文字列「1」。global では server_id が必須です。同一グループでは (record_type, seq_id) が一致する履歴を識別できます。キーが欠ける場合は各履歴を保持します。ID は文字列として桁を保ちます。
 
-[v0.4 JSON Schema をダウンロード](/plugin/data/akegf/akegf-v0.4.schema.json) · [複数キャラクターのサンプル](/plugin/data/akegf/example.json)
+[v1.2 JSON Schema をダウンロード](/plugin/data/akegf/akegf-v1.2.schema.json)
+
+[v1.1 JSON Schema](/plugin/data/akegf/akegf-v1.1.schema.json) · [v1.1 JSON](/plugin/data/akegf/example.json) · [v1.2 JSON](/plugin/data/akegf/example-signed.json)

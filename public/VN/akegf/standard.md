@@ -1,11 +1,13 @@
-# AKEGF v0.4 · Đặc tả
+# AKEGF v1.2 · Đặc tả
 
-Bản dự thảo v0.4. Khi xuất, phải ghi đủ các trường bắt buộc. Bỏ qua trường tùy chọn nếu không có nguồn đáng tin cậy. Khi đọc, tuân theo kiểu dữ liệu trong Schema. Thiếu is_free nghĩa là chưa rõ; false xác nhận lượt đó không miễn phí.
+Khi xuất, phải ghi đủ các trường bắt buộc. Bỏ qua trường tùy chọn nếu không có nguồn đáng tin cậy. Khi đọc, tuân theo kiểu dữ liệu trong Schema. Thiếu is_free nghĩa là chưa rõ; false xác nhận lượt đó không miễn phí.
+
+Trong cùng phiên bản chính, x.1 nhập tệp x.1 không có chữ ký và tệp x.2 mà không kiểm tra chữ ký. x.2 chỉ nhập tệp x.2 có chữ ký hợp lệ.
 
 | Cấp | Trường bắt buộc | Quy tắc |
 | --- | --- | --- |
 | `JSON` | info, endfield | endfield chứa ít nhất một nhóm nhân vật. |
-| `info` | version | version là v0.4; export_timestamp là thời gian Unix 13 chữ số tính bằng mili giây. |
+| `info` | version, export_provider, rsa_signature | version là v1.2; export_timestamp là thời gian Unix 13 chữ số tính bằng mili giây. |
 | `endfield[]` | uid, list | uid là chuỗi có ít nhất một ký tự không phải khoảng trắng; list có thể rỗng. |
 | `list[]` | `kind` | `kind = "draw"` → `pool_id`, `item_name`, `rarity` (1–99), `gacha_ts` (Unix ms) |
 
@@ -13,7 +15,7 @@ Chỉ dùng những trường có trong Schema. Giữ số thứ tự và UID d�
 
 | Cấp | Trường tùy chọn |
 | --- | --- |
-| `info` | export_app, export_app_version, export_timestamp, export_provider, rsa_signature |
+| `info` | export_app, export_app_version, export_timestamp |
 | `endfield[]` | region, server_id, account_uid, lang |
 | `list[]` | record_type, seq_id, seq_id_source, pool_name, pool_type, item_id, name_text, weapon_type, is_new, is_free, gift_reward_label |
 
@@ -31,4 +33,6 @@ Lấy item_name từ charName, weaponName hoặc nameText của quà; lưu tên 
 
 Khóa nhóm là (region, server_id, uid). Nếu thiếu region, dùng cn; tại máy chủ Trung Quốc, server_id mặc định là chuỗi “1”. global bắt buộc có server_id. Trong nhóm, dùng (record_type, seq_id) để nhận diện sự kiện; giữ riêng từng dòng khi thiếu khóa. Lưu mã định danh dưới dạng chuỗi.
 
-[Tải JSON Schema v0.4](/plugin/data/akegf/akegf-v0.4.schema.json) · [Ví dụ nhiều nhân vật](/plugin/data/akegf/example.json)
+[Tải JSON Schema v1.2](/plugin/data/akegf/akegf-v1.2.schema.json)
+
+[v1.1 JSON Schema](/plugin/data/akegf/akegf-v1.1.schema.json) · [v1.1 JSON](/plugin/data/akegf/example.json) · [v1.2 JSON](/plugin/data/akegf/example-signed.json)
