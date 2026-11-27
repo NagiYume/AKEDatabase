@@ -1,10 +1,16 @@
 # Special Announcement
 
-AKEData 1.3.9 adds [AKEGF](/?plugin=akegf&id=home), an exchange format for Endfield gacha records. Download a multi-character example or check an archive locally in your browser.
+AKEData 1.3.10 releases [AKEGF v1.0](/?plugin=akegf&id=home), an exchange format for Endfield gacha records. Download signed and unsigned multi-character examples and check archive format and import compatibility in your browser.
 
 AKEData has moved to www.akedata.wiki. The former domain, akedata.top, now redirects here.
 
 # AKEData Version Changelog
+
+### v1.3.10 · AKEGF v1.0
+
+- Added JSON Schemas and multi-character examples for unsigned v1.1 and signed v1.2 archives. [Specification](/?plugin=akegf&id=standard)
+- v1.1 importers accept both v1.1 and v1.2. v1.2 importers require a v1.2 archive with a valid RSA signature. Select an import version to check compatibility. [Format validator](/?plugin=akegf&id=validator)
+- Added a pull request template for registering a signing key. The public directory lists registered providers, key fingerprints and status. [Registration guide](/?plugin=akegf&id=validator) · [Public key registry](https://verify.akedata.wiki/)
 
 ### v1.3.9
 

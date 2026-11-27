@@ -31,6 +31,8 @@
 
 ## AKEGF 工具认证与接入说明
 
+2026-11-27，网站 1.3.10 的发布主题为 AKEGFv1.0，档案格式为 v1.1 和 v1.2。同步版本清单、README、中英文公告与更新日志。该版本随完整 beta 合并包含此前的隐藏名片和搜索入口更新。仅核对发布差异，未运行测试、构建或浏览器。
+
 2026-11-27，上海服务器启用 `https://verify.akedata.wiki/admin`。nginx 提供管理页与静态资源，将 `/admin/v1/` 的 API 请求转发给同一回环管理服务。已通过 `nginx -t`，HTTPS 页面和资源返回 200，旧口令鉴权机制在新入口实测有效，无口令或错误口令返回 401。通过无效 PEM 和缺失指纹分别核对了 POST、DELETE 转发，公开目录 GET 返回 200、POST 返回 405。未做浏览器交互或修改生产密钥。nginx 部署前备份为 `/opt/akegf-verify/backups/admin-https-20261127T075134Z.cZxMeL1o`。
 
 2026-11-27，`beta` 工作区，网站缓存版本 1.3.9-5-pre3。中英文 `public/*/akegf/validator.md` 增加签名公钥登记 PR 模板。[管理后端](../tools/akegf-verify/admin.py) 配合同目录的 systemd unit，通过 AKE Server Tool 的 status-token 认证，在回环地址提供公钥登记与撤销、私钥添加与删除及元数据列表。公钥 API 与 CLI 共用 registry.py 的目录写入逻辑，私钥路径独立于公开目录。按用户要求部署到上海服务器，`akegf-verify-admin.service` 已运行并启用，实际监听 127.0.0.1:8768。隔离验证覆盖公私钥添加、私钥删除、撤销和重试。生产验证共享 token 返回 200，无 token 和错误 token 返回 401，公钥目录和两条单键响应一致，公网管理请求返回 404 或 405。生产密钥记录未修改。部署前备份为 `/opt/akegf-verify/backups/admin-20261127T074603Z.LYTdqsV0`。部署说明见 [OPERATIONS.md](../tools/akegf-verify/OPERATIONS.md)。

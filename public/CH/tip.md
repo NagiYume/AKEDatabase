@@ -1,6 +1,6 @@
 # 特别公告
 
-AKEData 1.3.9 新增 [AKEGF 抽卡记录交换格式](/?plugin=akegf&id=home)。可下载多角色示例，或在浏览器本地校验自己的记录文件。
+AKEData 1.3.10 正式发布 [AKEGF v1.0](/?plugin=akegf&id=home)。可下载无签名和签名两种多角色示例，并在浏览器检查档案格式和导入资格。
 
 AKEData已迁移至域名：www.akedata.wiki，原先的akedata.top现已重定向至此
 
@@ -9,6 +9,12 @@ AKEData已迁移至域名：www.akedata.wiki，原先的akedata.top现已重定�
 欢迎您填写该问卷来向我们进行反馈：[问卷链接](https://v.wjx.cn/vm/tU0gAXM.aspx#)
 
 # AKEData版本更新日志
+
+### v1.3.10 · AKEGF v1.0
+
+- 提供 v1.1 无签名档案与 v1.2 签名档案的 JSON Schema 和多角色示例。[标准化文档](/?plugin=akegf&id=standard)
+- v1.1 导入方可读取 v1.1 和 v1.2，v1.2 导入方只接受通过 RSA 验签的 v1.2。站内工具可选择导入版本检查。[格式校验工具](/?plugin=akegf&id=validator)
+- 提供签名公钥登记 PR 模板，可查询已登记的提供方、公钥指纹和状态。[登记说明](/?plugin=akegf&id=validator) · [公钥目录](https://verify.akedata.wiki/)
 
 ### v1.3.9
 

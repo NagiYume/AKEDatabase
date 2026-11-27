@@ -14,14 +14,12 @@ AKEData 为玩家提供角色、武器、敌人、装备、物品、活动、副
 
 ## 最新版本
 
-当前版本：**1.3.9**
+当前版本 **1.3.10**
 
-新增 [AKEGF](https://www.akedata.wiki/?plugin=akegf&id=home) 模块。玩家可以用一份 UTF-8 JSON 在工具间迁移多个角色、区服的寻访、武器申领与赠礼记录。本次发布采用 AKEGF v0.3 草案。首页、标准化文档、格式校验工具和合作项目四页均提供站点支持的 14 种语言版本。
+[AKEGF v1.0](https://www.akedata.wiki/?plugin=akegf&id=home) 正式发布。玩家可以用一份 UTF-8 JSON 在工具间迁移多个角色、区服的寻访、武器申领与赠礼记录。
 
-- [标准化文档](https://www.akedata.wiki/?plugin=akegf&id=standard)说明字段、事件类型和合并规则，并提供 JSON Schema 与多角色示例。
-- [格式校验工具](https://www.akedata.wiki/?plugin=akegf&id=validator)在浏览器本地读取粘贴的 JSON 或文件，定位字段错误和重复流水。同页提供工具认证的导入、导出往返检查方法。
-- [合作项目](https://www.akedata.wiki/?plugin=akegf&id=partners)列出各项目支持的格式版本和导入、导出情况。
-- 研究文章、AKEGF 文档与站内公告统一使用 marked.js 渲染 Markdown，代码块使用 highlight.js 高亮。
+- v1.1 档案不带签名，v1.2 档案必须带 RSA 签名。v1.1 导入方可读取两种档案，v1.2 导入方只接受验签通过的 v1.2 档案。[标准化文档](https://www.akedata.wiki/?plugin=akegf&id=standard)
+- 站内工具可检查档案结构、签名和指定版本的导入资格。同页提供签名公钥登记 PR 模板。[格式校验与工具认证](https://www.akedata.wiki/?plugin=akegf&id=validator)
 
 完整更新记录见[站内更新日志](./public/CH/tip.md)。
 
