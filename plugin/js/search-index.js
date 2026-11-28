@@ -230,6 +230,11 @@ window.AKESearchIndex = {
     "sources": ["plugin/akegf.html", "plugin/js/akegf.js"],
     "coverage": "Markdown page IDs home, standard, validator and partners address static documents; no TableCfg record routes."
   },
+  "akeblueprint": {
+    "tables": [],
+    "sources": ["plugin/manifest.json"],
+    "coverage": "External navigation link with no local entries or TableCfg record routes."
+  },
   "about": {
     "tables": [],
     "sources": [

@@ -10,7 +10,7 @@ AKEDatabase（站名 AKEData）是《明日方舟：终末地》的非官方静�
 
 | 要回答的问题 | 从哪里读 | 需要追踪的关系 |
 | --- | --- | --- |
-| 页面怎样启动，某个模块为何可见？ | [首页](../index.html)、[应用控制器](../plugin/js/index-app.js)、[模块清单](../plugin/manifest.json) | 首页读取网站版本与公共脚本；路由按模块 ID 定位 HTML 片段，清单记录入口、顺序和可见性。杂项另有[子模块清单](../plugin/misc/manifest.json)。 |
+| 页面怎样启动，某个模块为何可见？ | [首页](../index.html)、[应用控制器](../plugin/js/index-app.js)、[模块清单](../plugin/manifest.json) | 首页读取网站版本与公共脚本。模块清单记录入口、顺序和可见性，路由按模块 ID 加载 HTML 片段或跳转到 `externalUrl`。杂项另有[子模块清单](../plugin/misc/manifest.json)。 |
 | 一个条目由谁取数、谁渲染？ | [v3 数据适配器](../plugin/js/v3-table-data.js)、对应的 `plugin/*.html` 与其加载的脚本 | 角色、敌人等 v3 入口复用既有控制器。商店、档案等有独立控制器。应由实际 HTML 追踪依赖，同名或同前缀不足以判断归属。 |
 | 游戏表、补充配置、素材各在哪里？ | [数据源](../plugin/js/ake-data-source.js)、[公共加载器](../plugin/js/ake-data-loader.js)、[资产索引](../plugin/js/ake-asset-index.js)、[数据调用指南](../DATA_API.md) | 数据域根清单选出游戏版本及 Hotfix 的 TableCfg 目录；Json 与图片按资产索引定位。表外数据如危机合约指标需核对专用文件与索引。 |
 | 为什么换版本或刷新后看见旧内容？ | [网站版本清单](../version.json)、[缓存实现](../plugin/js/ake-cache.js)、[Service Worker](../ake-sw.js) | 网站模块、脚本、CSS 的版本用于站点资源刷新；游戏 Hotfix、根清单 sharedRevision、资产索引 revision 各有独立语义。首页 CDN 缓存另见开发规则。 |

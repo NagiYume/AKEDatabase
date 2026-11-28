@@ -63,6 +63,7 @@
 
 | 入口 | 模块 ID | 导航 |
 | --- | --- | --- |
+| [AKEBluePrint](akeblueprint/SKILL.md) | `akeblueprint` | 公开站外入口 |
 | [AKEGF](akegf/SKILL.md) | `akegf` | 普通入口 |
 | [全站搜索](search/SKILL.md) | `search` | 置顶搜索 |
 | [全局设置](settings/SKILL.md) | `settings` | 底部设置 |

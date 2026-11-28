@@ -330,12 +330,17 @@
                 ];
                 mobileMenuList.innerHTML = '';
                 sorted.forEach(mod => {
-                    const item = document.createElement('div');
+                    const item = document.createElement(mod.externalUrl ? 'a' : 'div');
                     item.className = 'mobile-menu-item';
                     item.innerHTML = `
                         <div class="title">${mod.icon || '📦'} ${translateModuleField(mod, 'title')}</div>
                         <div class="desc">${translateModuleField(mod, 'description')}</div>
                     `;
+                    mobileMenuList.appendChild(item);
+                    if (mod.externalUrl) {
+                        item.href = mod.externalUrl;
+                        return;
+                    }
                     item.addEventListener('click', async () => {
                         closeMobileMenu();
                         const module = allModules.find(m => m.id === mod.id);
@@ -349,7 +354,6 @@
                             syncModuleNavigation(mod.id, loaded);
                         }
                     });
-                    mobileMenuList.appendChild(item);
                 });
                 return true;
             }
@@ -957,12 +961,13 @@
                     const hiddenMarker = mod.hidden
                         ? `<span class="module-hidden-marker" aria-hidden="true">${HIDDEN_MODULE_MARKER_ICON}</span>`
                         : '';
+                    const tag = mod.externalUrl ? 'a' : 'div';
                     html += `
-                        <div class="module-item" data-id="${mod.id}" data-has-icon="${hasIcon}">
+                        <${tag} class="module-item" data-id="${mod.id}" data-has-icon="${hasIcon}">
                             <div class="module-title">
                                 ${iconHtml}<span class="module-name">${title}</span>${hiddenMarker}
                             </div>
-                        </div>
+                        </${tag}>
                     `;
                 });
                 moduleListEl.innerHTML = html;
@@ -977,10 +982,14 @@
                     if (item.dataset.hasIcon === 'true') {
                         item.title = item.querySelector('.module-title')?.textContent.trim() || '';
                     }
+                    const id = item.dataset.id;
+                    const module = allModules.find(m => m.id === id);
+                    if (!module) return;
+                    if (module.externalUrl && item instanceof HTMLAnchorElement) {
+                        item.href = module.externalUrl;
+                        return;
+                    }
                     item.addEventListener('click', async (e) => {
-                        const id = item.dataset.id;
-                        const module = allModules.find(m => m.id === id);
-                        if (!module) return;
                         const loaded = await loadModuleContent(module);
                         if (!loaded) return;
                         document.querySelectorAll('.module-item').forEach(el => el.classList.remove('active'));
@@ -1347,15 +1356,18 @@
                     const manifest = await response.json();
                     if (!Array.isArray(manifest)) throw new Error('Invalid module manifest');
                     return manifest
-                        .filter(m => m.id && m.title && m.contentFile)
+                        .filter(m => m?.id && m.title)
                         .map(m => ({
                             ...m,
+                            externalUrl: typeof m.externalUrl === 'string' && m.externalUrl.startsWith('https://')
+                                ? m.externalUrl
+                                : null,
                             priority: m.priority !== undefined ? m.priority : 999,
                             hidden: m.hidden === true,
                             disabled: m.disabled === true,
                             token: m.token || null
                         }))
-                        .filter(m => !m.disabled);
+                        .filter(m => !m.disabled && (m.contentFile || m.externalUrl));
                 } catch (err) {
                     window.AKEUI.setState(moduleListEl, {
                         state: 'error',
@@ -2181,6 +2193,9 @@
                         const hiddenOverviewBlocked = module.hidden && !config.showHidden && !deepId;
                         if (hiddenOverviewBlocked || (module.token && !isModuleUnlocked(module))) {
                             show404Page(false);
+                        } else if (module.externalUrl) {
+                            window.location.replace(module.externalUrl);
+                            return;
                         } else {
                             window.__deepLinkId = deepId || null;
                             if (deepId) {
