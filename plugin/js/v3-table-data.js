@@ -1107,6 +1107,35 @@
         return dungeonDetail(ids[0], version, ids);
     }
 
+    function highDifficultyBattle(row, runtime) {
+        const titleKey = `dungeon_hard_${row.dungeonId}_title`;
+        const stages = Object.values(runtime.battleLevelData?.levelScriptBriefDataDict || {});
+        const titleMatches = stages.filter(stage => (stage.properties || []).some(({ key, value }) =>
+            (key === 'subgame_Title' || key === 'task_title') && value?.type === 'LangKey' &&
+            value.valueArray?.some(entry => entry.valueString === titleKey)));
+        const scriptIds = new Set(runtime.battleStartScripts?.get(row.dungeonId));
+        titleMatches.forEach(stage => scriptIds.add(stage.scriptId));
+        if (scriptIds.size !== 1) return null;
+        const [scriptId] = scriptIds;
+        const matchingStages = stages.filter(stage => stage.scriptId === scriptId);
+        if (matchingStages.length !== 1) return null;
+        return matchingStages[0];
+    }
+
+    function battleSpawnerConfigIds(row, stage, runtime) {
+        if (!stage) return [];
+        const placements = runtime.battleLevelData?.spawners || [];
+        const configBySpawnerId = new Map(placements.map(spawner => [spawner.spawnerId, spawner.configId]));
+        const ownedConfigs = placements.filter(spawner => spawner.belongLevelScriptId === stage.scriptId)
+            .map(spawner => spawner.configId);
+        const referencedConfigs = (stage.properties || []).filter(({ value }) => value?.type === 'SpawnerPtr')
+            .flatMap(({ value }) => value.valueArray || [])
+            .map(entry => entry.valueBit64).filter(Boolean)
+            .map(id => configBySpawnerId.get(id) || window.AKECombatData.configId(row.sceneId, id));
+        const ids = [...new Set([...ownedConfigs, ...referencedConfigs])];
+        return ids.every(id => Object.hasOwn(runtime.spawners, id)) ? ids : [];
+    }
+
     async function dungeonDetail(id, version, seriesIds = [id]) {
         const [series, dungeons, rewards, items, enemies, display, attrs] = await Promise.all([
             table('DungeonSeriesTable', version), table('DungeonTable', version), table('RewardTable', version), table('ItemTable', version),
@@ -1121,9 +1150,11 @@
         const scriptEnemiesByDungeon = {};
         const levelDataByDungeon = {};
         const sceneRuntimeCache = new Map();
+        const highDifficultyScenes = new Set();
         Object.values(dungeonRows).forEach(row => {
             ['rewardId', 'firstPassRewardId', 'extraRewardId', 'customRewardId', 'hunterModeRewardId'].forEach(key => { if (row[key]) rewardIds.add(row[key]); });
             (row.enemyIds || []).forEach(enemyId => enemyIds.add(enemyId));
+            if (row.dungeonCategory === 'dungeon_highdifficulty') highDifficultyScenes.add(row.sceneId);
         });
         await Promise.all(Object.entries(dungeonRows).map(async ([dungeonId, row]) => {
             if (!row.sceneId) return;
@@ -1138,23 +1169,34 @@
                             (a.priority || 999) - (b.priority || 999) || String(a.id || '').localeCompare(String(b.id || ''), 'en'))
                             .map(entry => optionalJson(entry.contentFile || `${base}/${entry.id}.json`)))
                         : Promise.resolve([]);
-                    const [configs, scriptBuffs, scriptEnemies] = await Promise.all([
+                    const isHighDifficulty = highDifficultyScenes.has(row.sceneId);
+                    const [configs, scriptBuffs, scriptEnemies, battleLevelData, battleStartScripts] = await Promise.all([
                         loadEntries(spawnerManifest, spawnerBase),
                         window.AKECombatData?.loadSceneScriptBuffs(row.sceneId) || {},
-                        window.AKECombatData?.loadSceneScriptEnemies(row.sceneId) || []
+                        window.AKECombatData?.loadSceneScriptEnemies(row.sceneId) || [],
+                        isHighDifficulty
+                            ? optionalJson(`/public/Json/LevelData/${row.sceneId}/${row.sceneId}_lv_data_sub_battle.json`)
+                            : null,
+                        isHighDifficulty ? window.AKECombatData?.loadSceneBattleStartScripts?.(row.sceneId) : null
                     ]);
                     const spawners = {};
                     configs.filter(Boolean).forEach(config => { spawners[config.configId] = config; });
-                    return { spawners, scriptBuffs, scriptEnemies };
+                    return { spawners, scriptBuffs, scriptEnemies, battleLevelData, battleStartScripts };
                 })());
             }
             const runtime = await sceneRuntimeCache.get(row.sceneId);
+            const isHighDifficulty = row.dungeonCategory === 'dungeon_highdifficulty';
+            const stage = isHighDifficulty ? highDifficultyBattle(row, runtime) : null;
+            const scriptEnemies = isHighDifficulty
+                ? runtime.scriptEnemies.filter(enemy => stage && enemy.scriptId === stage.scriptId)
+                : runtime.scriptEnemies;
+            row.stageSpawnerConfigIds = isHighDifficulty ? battleSpawnerConfigIds(row, stage, runtime) : null;
             Object.values(runtime.spawners).forEach(config =>
                 (config.enemyLibrary || []).forEach(enemy => enemyIds.add(enemy.enemyId)));
             spawnerByDungeon[dungeonId] = runtime.spawners;
             scriptBuffsByDungeon[dungeonId] = runtime.scriptBuffs;
-            scriptEnemiesByDungeon[dungeonId] = runtime.scriptEnemies;
-            runtime.scriptEnemies.forEach(enemy => enemyIds.add(enemy.enemyId));
+            scriptEnemiesByDungeon[dungeonId] = scriptEnemies;
+            scriptEnemies.forEach(enemy => enemyIds.add(enemy.enemyId));
         }));
         const rewardRows = pick(rewards, Array.from(rewardIds));
         const itemIds = Object.values(rewardRows).flatMap(row => [

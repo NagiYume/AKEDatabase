@@ -325,6 +325,34 @@
                 if ((domain.levelGroup || []).includes(key)) add('region', id, title(domain));
             }
         }
+        if (has('region') && (
+            (source === 'FactoryPanelStoreTable' && field === 'name')
+            || (source === 'FactoryFreeBusTable' && field === 'name')
+            || (source === 'FacSTTNodeTable' && field === 'name')
+            || (source === 'FacPanelStoreActionDescTable' && field === 'actionDesc' && key !== '5122')
+            || (source === 'FacPanelStoreConditionDescTable' && field === 'conditionDesc')
+        )) {
+            const goods = source === 'FactoryPanelStoreTable' ? [row] : Object.values(await table('FactoryPanelStoreTable', true));
+            const matches = goods.filter(good => {
+                if (source === 'FactoryFreeBusTable') return (good.actions || []).some((type, index) => {
+                    const params = good.actionParamsList?.[index]?.actionParams;
+                    return type === 5122 && params?.[0] === good.regionId && params[1] === key && params[3] && Number.isFinite(Number(params[3]));
+                });
+                if (source === 'FacSTTNodeTable') return (good.conditions || []).some((type, index) =>
+                    type === 5003 && good.conditionParamsList?.[index]?.conditionParams?.[0] === key);
+                if (source === 'FacPanelStoreActionDescTable') return (good.actions || []).some(type => String(type) === key);
+                if (source === 'FacPanelStoreConditionDescTable') return (good.conditions || []).some(type => String(type) === key);
+                return true;
+            });
+            if (matches.length) {
+                const regions = await table('FactoryMainRegionTable', true);
+                for (const [id, domain] of entries(await table('DomainDataTable'))) {
+                    if ((domain.levelGroup || []).some(levelId => (regions[levelId]?.list || []).some(main =>
+                        matches.some(good => good.regionId === main.id && good.regionIndex === main.index)))) add('region', id, title(domain));
+                }
+            }
+        }
+        if (source === 'SettlementBasicDataTable' && field === 'settlementName') await from('DomainDataTable', row.domainId, 'region');
         if (['ShopGroupTable', 'CashShopGroupTable', 'ShopTable', 'CashShopTable', 'ShopGoodsTable', 'CashShopGoodsTable', 'CashShopHintTextTable'].includes(source) && has('v3_shop')) {
             const groups = await table('ShopGroupTable');
             const cash = source.startsWith('Cash');

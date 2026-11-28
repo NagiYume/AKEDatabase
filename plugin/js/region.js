@@ -16,6 +16,11 @@
     };
     const itemName = (id, itemTable) => itemTable?.[id]?.name?.text || (showTechnicalIds() ? id : t('unknownItem', null, '未命名物品'));
     const levelIdFromPath = path => String(path || '').match(/(?:^|\/)LevelData\/([^/]+)/i)?.[1] || '';
+    const factoryT = (key, params) => t(`factory.${key}`, params);
+    const tableText = (ref, id, fallback = factoryT('unavailable')) => window.AKEV3.text(ref, (showTechnicalIds() && id) || fallback);
+    const localizedNumber = new Intl.NumberFormat(window.akeI18n.getLanguageInfo().htmlLang);
+    const factoryNumber = value => localizedNumber.format(value);
+    const factoryTable = (label, headers, rows) => `<div class="ake-ui-table-wrap"><table class="ake-ui-table" aria-label="${escapeHtml(label)}"><thead><tr>${headers.map(header => `<th scope="col">${escapeHtml(header)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
 
     function parseDensity(mine) {
         const values = Array.isArray(mine?.densityLevel) ? mine.densityLevel : [];
@@ -62,11 +67,11 @@
         return [...(reward.itemBundles || []), ...(reward.probItemBundles || [])];
     }
 
-    function renderItems(items, itemTable, empty = '-') {
+    function renderItems(items, itemTable, empty = '-', displayNumber = formatNumber) {
         if (!items?.length) return empty;
         return items.map(item => {
             const name = itemName(item.id, itemTable);
-            return window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: item.id, label: name, className: 'ake-ui-badge', contentHtml: `<img class="ake-ui-inline-icon" src="${itemIcon(item.id, itemTable)}" alt="">${escapeHtml(name)}${item.count == null ? '' : ` × ${formatNumber(item.count)}`}` });
+            return window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: item.id, label: name, className: 'ake-ui-badge', contentHtml: `<img class="ake-ui-inline-icon" src="${itemIcon(item.id, itemTable)}" alt="">${escapeHtml(name)}${item.count == null ? '' : ` × ${displayNumber(item.count)}`}` });
         }).join(' ');
     }
 
@@ -167,8 +172,187 @@
         if (activeDomainId && !filtered.some(domain => domain.domainId === activeDomainId)) selectDomain(filtered[0]?.domainId || null, false);
     }
 
-    function renderCollapsibleSection(title, content) {
-        return `<details class="ake-ui-section region-mine-details"><summary class="region-section-summary"><span class="ake-ui-section__title">${title}</span><span class="region-section-summary__chevron" aria-hidden="true"></span></summary><div class="region-mine-details__body">${content}</div></details>`;
+    function renderCollapsibleSection(title, content, id = '') {
+        return `<details class="ake-ui-section region-mine-details"${id ? ` id="${id}"` : ''}><summary class="region-section-summary"><span class="ake-ui-section__title">${title}</span><span class="region-section-summary__chevron" aria-hidden="true"></span></summary><div class="region-mine-details__body">${content}</div></details>`;
+    }
+
+    async function loadFactoryAreas(domain) {
+        const names = ['FactoryMainRegionTable', 'FactoryLevelRegionTable', 'FactoryPanelStoreTable', 'FacPanelStoreActionDescTable', 'FacPanelStoreConditionDescTable', 'FactoryFreeBusTable', 'FacSTTNodeTable'];
+        const values = await Promise.all(names.map(name => window.AKEV3.table(name, undefined, { optional: true })));
+        const tables = Object.fromEntries(names.map((name, index) => [name, values[index]]));
+        const goods = Object.values(tables.FactoryPanelStoreTable);
+        const areas = [];
+        for (const levelId of domain.levelGroup || []) {
+            const mainRegions = tables.FactoryMainRegionTable[levelId]?.list || [];
+            const regionIds = tables.FactoryLevelRegionTable[levelId]?.list || [];
+            for (const main of mainRegions) {
+                const upgrades = goods.filter(good => good.regionId === main.id && good.regionIndex === main.index)
+                    .sort((a, b) => a.sortId - b.sortId);
+                areas.push({ levelId, regionIds, main, upgrades });
+            }
+        }
+        const displayedGoods = new Set(areas.flatMap(area => area.upgrades));
+        const unlinkedGoods = goods.filter(good => !displayedGoods.has(good) && good.currencyType === domain.domainGoldItemId);
+        if (unlinkedGoods.length) console.warn('Unlinked factory upgrades', domain.domainId, unlinkedGoods.map(good => good.id));
+        const sceneIds = new Set(areas.map(area => area.levelId));
+        const files = domain.factoryFiles.filter(file => sceneIds.has(levelIdFromPath(file.path)));
+        const loaded = await Promise.allSettled(files.map(async file => {
+            const response = await (window.akeFetch || fetch)(file.contentFile);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            if (!Array.isArray(data.factoryRegions)) throw new Error('Invalid factoryRegions');
+            return data.factoryRegions;
+        }));
+        const regionsByScene = new Map();
+        loaded.forEach((result, index) => {
+            const path = files[index].path;
+            const levelId = levelIdFromPath(path);
+            if (result.status === 'rejected') {
+                console.warn('Failed to load factory LevelData', path, result.reason);
+                return;
+            }
+            if (!regionsByScene.has(levelId)) regionsByScene.set(levelId, []);
+            regionsByScene.get(levelId).push(...result.value);
+        });
+        for (const area of areas) {
+            const matches = (regionsByScene.get(area.levelId) || []).filter(region => area.regionIds.includes(region.regionId))
+                .flatMap(region => (region.areas || []).filter(row => row.index === area.main.index));
+            const definitions = new Map(matches.map(match => [JSON.stringify(match.levelData), match]));
+            const levelData = definitions.size === 1 ? definitions.values().next().value.levelData : null;
+            if (Array.isArray(levelData) && levelData.length) area.levelData = levelData;
+            else console.warn('Missing or ambiguous factory area bounds', area.levelId, area.main.index, matches);
+        }
+        return { areas, tables, partial: loaded.some(result => result.status === 'rejected') };
+    }
+
+    function factoryUpgradeName(good) {
+        const name = tableText(good.name, good.id, '');
+        if (!name) return factoryT('upgrade', { stage: good.sortId });
+        return good.goodType === 2 ? factoryT('namedStage', { stage: good.sortId, name }) : name;
+    }
+
+    function factoryConditionLines(good, tables) {
+        return (good.conditions || []).map((type, index) => {
+            const [id] = good.conditionParamsList?.[index]?.conditionParams || [];
+            const description = tables.FacPanelStoreConditionDescTable[type]?.conditionDesc;
+            if (type === 5003 || type === 5046) {
+                const target = type === 5003 ? tables.FacSTTNodeTable[id] : tables.FactoryPanelStoreTable[id];
+                if (!target) console.warn('Missing factory upgrade prerequisite', good.id, type, id);
+                const fallback = factoryT(type === 5003 ? 'research' : 'purchase');
+                const template = window.AKEV3.text(description, fallback);
+                const name = type === 5046 && target ? factoryUpgradeName(target) : tableText(target?.name, id);
+                return template.replace(/%s|\{0\}/, () => name);
+            }
+            console.warn('Unsupported factory upgrade condition', good.id, type);
+            return [factoryT('unknownCondition', { type }), window.AKEV3.text(description)].filter(Boolean).join(' · ');
+        });
+    }
+
+    function renderFactoryArea(domain, area, tables) {
+        const levelName = tableText(domain.tables.levelDescTable?.[area.levelId]?.showName, area.levelId);
+        const settlements = Object.values(domain.tables.settlementTable).filter(row => row.domainId === domain.domainId
+            && row.domainLevelId === area.levelId && row.facRegionIndex === area.main.index);
+        const subtitle = settlements.map(row => tableText(row.settlementName, row.settlementId)).join(' / ');
+        const lines = values => values.length ? `<div class="region-cell-list">${values.map(value => `<div>${escapeHtml(value)}</div>`).join('')}</div>` : '–';
+
+        const geometry = new Map((area.levelData || []).map(level => [level.level, level.levelBounds]));
+        const bounds = level => {
+            const sizes = (geometry.get(level) || []).map(bound => bound.size).filter(size => size?.x > 0 && size?.z > 0);
+            return sizes.length ? sizes.map(({ x, z }) => `${factoryNumber(x)} × ${factoryNumber(z)} = ${factoryNumber(x * z)} m²`) : [factoryT('unavailable')];
+        };
+        const sizeStages = new Set();
+        const counts = new Map();
+        const upgradeRows = (good, effectLines, totalLines) => {
+            const name = factoryUpgradeName(good);
+            const cost = good.currencyType && Number.isFinite(good.cost)
+                ? renderItems([{ id: good.currencyType, count: good.cost }], domain.itemTable, '–', factoryNumber) : '–';
+            const result = totalLines ? `<td>${lines(totalLines)}</td>` : '';
+            return `<tr><th scope="row">${escapeHtml(name)}</th><td>${cost}</td><td>${lines(effectLines)}</td>${result}<td>${lines(factoryConditionLines(good, tables))}</td></tr>`;
+        };
+        const areaRows = [];
+        const busRows = [];
+        const otherRows = [];
+        for (const good of area.upgrades) {
+            const effects = [];
+            const dimensions = [];
+            let changesFreeBus = false;
+            if (good.goodType !== 1 && good.goodType !== 2) {
+                effects.push(factoryT('unknownUpgrade', { type: good.goodType }));
+                console.warn('Unsupported factory upgrade type', good.id, good.goodType);
+            }
+            (good.actions || []).forEach((type, index) => {
+                const params = good.actionParamsList?.[index]?.actionParams || [];
+                const description = tables.FacPanelStoreActionDescTable[type]?.actionDesc;
+                if (type === 3000 && params[0] === area.main.id && Number(params[2]) === area.main.index && Number(params[1]) > 0) {
+                    const level = Number(params[1]);
+                    sizeStages.add(level);
+                    dimensions.push(`Lv.${level}`, ...bounds(level));
+                    effects.push(window.AKEV3.text(description, factoryT('expand')));
+                } else if (type === 5122 && params[0] === area.main.id && params[1] && params[3] && Number.isFinite(Number(params[3]))) {
+                    const device = params[1];
+                    const name = tableText(tables.FactoryFreeBusTable[device]?.name, device);
+                    const change = Number(params[3]);
+                    const before = good.busFreeShowCounts?.[index] ?? counts.get(device)?.total;
+                    effects.push(`${name} ${change >= 0 ? '+' : ''}${factoryNumber(change)}`);
+                    counts.set(device, { name, total: Number.isFinite(before) ? before + change : null });
+                    changesFreeBus = true;
+                } else if (type === 5114 && params[0] === area.main.id && params[1]) {
+                    effects.push(window.AKEV3.text(description, factoryT('constructBus')));
+                } else {
+                    effects.push(factoryT('unknownAction', { type }));
+                    const text = window.AKEV3.text(description);
+                    if (text) effects.push(text);
+                    console.warn('Unsupported factory upgrade action', good.id, type, params);
+                }
+            });
+            const totals = changesFreeBus ? Array.from(counts.values(), ({ name, total }) => `${name} ${total == null ? '–' : factoryNumber(total)}`) : [];
+            if (good.goodType === 1) areaRows.push(upgradeRows(good, effects, dimensions));
+            else if (good.goodType === 2) busRows.push({ good, effects, totals });
+            else otherRows.push(upgradeRows(good, effects, [...dimensions, ...totals]));
+        }
+        const levels = geometry.size ? [...geometry.keys()].sort((a, b) => a - b) : [1];
+        const baseRows = levels.filter(level => !sizeStages.has(level)).map(level =>
+            `<tr><th scope="row">${escapeHtml(level === 1 ? factoryT('initial') : `Lv.${level}`)}</th><td>–</td><td>–</td><td>${lines([`Lv.${level}`, ...bounds(level)])}</td><td>–</td></tr>`);
+        const headers = [factoryT('stage'), factoryT('cost'), factoryT('effect')];
+        const areaTable = factoryTable(factoryT('area'), [...headers, factoryT('area'), factoryT('conditions')], [...baseRows, ...areaRows].join(''));
+        const hasBusTotals = busRows.some(row => row.totals.length);
+        const busHeaders = [factoryT('bus'), ...headers.slice(1), ...(hasBusTotals ? [factoryT('freeLimit')] : []), factoryT('conditions')];
+        const busTable = busRows.length ? factoryTable(factoryT('bus'), busHeaders, busRows.map(({ good, effects, totals }) =>
+            upgradeRows(good, effects, hasBusTotals ? totals : null)).join('')) : '';
+        const otherTable = otherRows.length ? factoryTable(factoryT('other'), [...headers, factoryT('result'), factoryT('conditions')], otherRows.join('')) : '';
+        return `<article class="ake-ui-card" data-ake-component="card"><div class="ake-ui-card__content"><header class="ake-ui-card__header"><div class="ake-ui-card__heading"><h4 class="ake-ui-card__title">${escapeHtml(levelName)}</h4>${subtitle ? `<div class="ake-ui-card__id">${escapeHtml(subtitle)}</div>` : ''}</div></header>${areaTable}${busTable}${otherTable}</div></article>`;
+    }
+
+    function bindFactorySection(section, domain) {
+        const body = section.querySelector('.region-mine-details__body');
+        section.addEventListener('toggle', async () => {
+            if (!section.open || !section.isConnected || section.dataset.loaded) return;
+            section.dataset.loaded = 'true';
+            body.innerHTML = `<div class="ake-ui-state" data-state="loading" data-layout="compact">${escapeHtml(factoryT('loading'))}</div>`;
+            try {
+                domain.factoryAreas ??= loadFactoryAreas(domain).catch(error => {
+                    delete domain.factoryAreas;
+                    throw error;
+                });
+                const { areas, tables, partial } = await domain.factoryAreas;
+                if (!section.isConnected) {
+                    if (partial) delete domain.factoryAreas;
+                    return;
+                }
+                const cards = areas.map(area => renderFactoryArea(domain, area, tables)).join('');
+                body.innerHTML = cards ? `<div class="ake-ui-card-grid" data-size="wide">${cards}</div>`
+                    : `<div class="ake-ui-state" data-state="empty" data-layout="compact">${escapeHtml(factoryT('empty'))}</div>`;
+                if (partial) {
+                    body.insertAdjacentHTML('afterbegin', `<div class="ake-ui-state" data-state="error" data-layout="compact">${escapeHtml(factoryT('partial'))}</div>`);
+                    delete domain.factoryAreas;
+                    delete section.dataset.loaded;
+                }
+            } catch (error) {
+                console.warn('Failed to load factory areas', error);
+                body.innerHTML = `<div class="ake-ui-state" data-state="error" data-layout="compact">${escapeHtml(factoryT('failed'))}</div>`;
+                delete section.dataset.loaded;
+            }
+        });
     }
 
     function renderLevelOutput(domain) {
@@ -229,9 +413,10 @@
                     const name = itemName(item.itemId, domain.itemTable);
                     return `<div>${window.AKEUI.entryLinkHtml({ plugin: 'v3_item', id: item.itemId, label: name, className: 'ake-ui-badge', contentHtml: `<img class="ake-ui-inline-icon" src="${itemIcon(item.itemId, domain.itemTable)}" alt="">${escapeHtml(name)} → ${formatNumber(item.rewardMoneyCount)} ${t('dispatchCoupon', null, '调度券')} / ${formatNumber(item.stmExp)} ${t('developmentValue', null, '发展值')}` })}</div>`;
                 }).join('')}</div>` : '-';
-                return `<tr><th scope="row">Lv.${escapeHtml(levelKey)}</th><td>${level.isFinalMaxLevel || Number(level.levelUpExp) <= 0 ? t('maxLevel', null, '满级') : formatNumber(level.levelUpExp)}</td><td>${tradeLines}</td><td>${escapeHtml(level.desc?.text || '-')}</td></tr>`;
+                const capacity = Number.isFinite(level.bandwidth) ? factoryNumber(level.bandwidth) : '–';
+                return `<tr><th scope="row">Lv.${escapeHtml(levelKey)}</th><td>${level.isFinalMaxLevel || Number(level.levelUpExp) <= 0 ? t('maxLevel', null, '满级') : formatNumber(level.levelUpExp)}</td><td>${capacity}</td><td>${tradeLines}</td><td>${escapeHtml(level.desc?.text || '-')}</td></tr>`;
             }).join('');
-            return `<article class="ake-ui-card" data-ake-component="card"><div class="ake-ui-card__content"><header class="ake-ui-card__header"><div class="ake-ui-card__heading"><h4 class="ake-ui-card__title">${escapeHtml(settlement.settlementName?.text || (showIds ? settlement.settlementId : t('unknownSettlement', null, '未命名据点')))}</h4><div class="ake-ui-card__badges">${traits}</div></div></header><div class="ake-ui-table-wrap"><table class="ake-ui-table region-settlement-table"><thead><tr><th>${commonT('level')}</th><th>${t('requiredDevelopment', null, '升级所需发展值')}</th><th>${t('materialExchange', null, '物资兑换调度券')}</th><th>${t('traitDescription', null, '等级说明')}</th></tr></thead><tbody>${levels}</tbody></table></div></div></article>`;
+            return `<article class="ake-ui-card" data-ake-component="card"><div class="ake-ui-card__content"><header class="ake-ui-card__header"><div class="ake-ui-card__heading"><h4 class="ake-ui-card__title">${escapeHtml(settlement.settlementName?.text || (showIds ? settlement.settlementId : t('unknownSettlement', null, '未命名据点')))}</h4><div class="ake-ui-card__badges">${traits}</div></div></header><div class="ake-ui-table-wrap"><table class="ake-ui-table region-settlement-table"><thead><tr><th>${commonT('level')}</th><th>${t('requiredDevelopment', null, '升级所需发展值')}</th><th>${escapeHtml(factoryT('settlementBandwidth'))}</th><th>${t('materialExchange', null, '物资兑换调度券')}</th><th>${t('traitDescription', null, '等级说明')}</th></tr></thead><tbody>${levels}</tbody></table></div></div></article>`;
         }).join('');
         return renderCollapsibleSection(t('settlements', null, '据点'), `<div class="ake-ui-card-grid" data-size="wide">${cards}</div>`);
     }
@@ -297,7 +482,9 @@
         const detail = document.getElementById('regionDetail');
         if (!detail) return;
         const header = window.AKEUI.detailHeader({ className: 'region-detail-hero', icon: { src: '/public/images/assets/beyond/dynamicassets/gameplay/ui/sprites/mainhud/btn_Domain.png' }, title: domain.name, badges: [t('mineCount', { count: domain.mines.length })] });
-        detail.innerHTML = `<article class="ake-ui-detail" data-detail-kind="region">${header?.outerHTML || ''}${renderLevelOutput(domain)}${renderMineDetails(domain)}${renderSettlementSection(domain)}${renderFacilitySection(domain)}</article>`;
+        const factorySection = renderCollapsibleSection(escapeHtml(factoryT('title')), '', 'regionFactoryAreas');
+        detail.innerHTML = `<article class="ake-ui-detail" data-detail-kind="region">${header?.outerHTML || ''}${factorySection}${renderLevelOutput(domain)}${renderMineDetails(domain)}${renderSettlementSection(domain)}${renderFacilitySection(domain)}</article>`;
+        bindFactorySection(detail.querySelector('#regionFactoryAreas'), domain);
     }
 
     function selectDomain(id, updateUrl = false) {
@@ -325,11 +512,13 @@
         const entries = [];
         for (const domain of Object.values(tables.domainTable || {})) {
             const levelEntries = [];
+            const factoryFiles = [];
             for (const levelId of domain.levelGroup || []) {
                 const files = await window.akeAssetIndex.listJsonFiles(`LevelData/${levelId}`);
                 files.filter(file => Array.isArray(file.meta?.factoryMines)).forEach(file => levelEntries.push(file));
+                factoryFiles.push(...files.filter(file => /_lv_data(?:_sub_(?:factory[^/]*|fac))?\.json$/i.test(file.path)));
             }
-            entries.push({ ...buildDomain(domain, levelEntries, currentVersion, tables), tables });
+            entries.push({ ...buildDomain(domain, levelEntries, currentVersion, tables), tables, factoryFiles });
         }
         domains = entries.sort((a, b) => (a.sortId || 0) - (b.sortId || 0));
         const deepId = window.__deepLinkId;

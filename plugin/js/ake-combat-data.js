@@ -130,6 +130,29 @@
         })).filter(enemy => enemy.enemyId);
     }
 
+    function battleStartScripts(scripts) {
+        const byDungeon = new Map();
+        for (const script of scripts) {
+            const nodes = actionNodes(script);
+            const byId = new Map(nodes.map(node => [Number(node._ID), node]));
+            for (const node of script.actionMap?.dataMap?.actionList || []) {
+                if (node.$type !== 'Beyond.Gameplay.Actions.SwitchString, Gameplay.Beyond') continue;
+                const source = targetNode(node._value, byId);
+                if (source?.$type !== 'Beyond.Gameplay.Actions.GetCurDungeonId, Gameplay.Beyond') continue;
+                (node._caseValueList || []).forEach((dungeonId, index) => {
+                    const action = byId.get(Number(node._caseIDList?.[index]));
+                    if (action?.$type !== 'Beyond.Gameplay.Actions.RaiseCustomScriptEvent, Gameplay.Beyond' ||
+                        constValue(action._eventKey) !== 'BattleStart') return;
+                    const scriptId = constValue(action._receiver)?.scriptId;
+                    if (!scriptId) return;
+                    if (!byDungeon.has(dungeonId)) byDungeon.set(dungeonId, new Set());
+                    byDungeon.get(dungeonId).add(scriptId);
+                });
+            }
+        }
+        return byDungeon;
+    }
+
     function staticEnemyBuffs(dungeon, enemyId, level) {
         const matches = (dungeon?.LevelScriptEnemies || []).filter(enemy => enemy.enemyId === enemyId);
         const exact = matches.filter(enemy => Number(enemy.level) === Number(level));
@@ -155,7 +178,7 @@
                     if (!response.ok) throw new Error(`LevelScript ${entry.id}: HTTP ${response.status}`);
                     return response.json();
                 }));
-                return { scriptBuffs: indexScriptBuffs(sceneId, scripts), enemies: scripts.flatMap(extractScriptEnemies) };
+                return { scripts, scriptBuffs: indexScriptBuffs(sceneId, scripts), enemies: scripts.flatMap(extractScriptEnemies) };
             })().catch(error => {
                 sceneScriptCache.delete(sceneId);
                 throw error;
@@ -168,6 +191,11 @@
         if (!sceneId) return [];
         await loadSceneScriptBuffs(sceneId);
         return (await sceneScriptCache.get(sceneId)).enemies;
+    }
+
+    async function loadSceneBattleStartScripts(sceneId) {
+        await loadSceneScriptBuffs(sceneId);
+        return battleStartScripts((await sceneScriptCache.get(sceneId)).scripts);
     }
 
     async function enrichDungeonScripts(detail) {
@@ -183,5 +211,5 @@
         return detail;
     }
 
-    window.AKECombatData = { blackboardValue, collectScriptBuffIds, configId, enrichDungeonScripts, extractScriptBuffs, extractScriptEnemies, indexScriptBuffs, loadSceneScriptBuffs, loadSceneScriptEnemies, spawnMapProjection, staticEnemyBuffs };
+    window.AKECombatData = { blackboardValue, collectScriptBuffIds, configId, enrichDungeonScripts, extractScriptBuffs, extractScriptEnemies, indexScriptBuffs, loadSceneBattleStartScripts, loadSceneScriptBuffs, loadSceneScriptEnemies, spawnMapProjection, staticEnemyBuffs };
 })();

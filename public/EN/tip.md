@@ -1,10 +1,16 @@
 # Special Announcement
 
-AKEData 1.3.10 releases [AKEGF v1.0](/?plugin=akegf&id=home), an exchange format for Endfield gacha records. Download signed and unsigned multi-character examples and check archive format and import compatibility in your browser.
+AKEData 1.3.11 adds AIC area upgrade details to [Regional Development](/?plugin=region) and fixes the boss level for Nefarious Revealed: Triaggelos Ⅷ in [Umbral Monument](/?plugin=monument&id=indie_group_h09).
 
 AKEData has moved to www.akedata.wiki. The former domain, akedata.top, now redirects here.
 
 # AKEData Version Changelog
+
+### v1.3.11
+
+- Regional Development now shows Core AIC Area dimensions, upgrade costs and prerequisites, and Depot Bus upgrades. Outpost Management shows protocol capacity by level. Related entries can be found through site search.
+- Dungeons and Umbral Monument now use the battle script to identify high-difficulty spawners. If that link is missing or ambiguous, the page shows the enemy data it can confirm.
+- Triaggelos Ⅷ is shown at level 100 with the corresponding spawn configuration. The recommended level is 90.
 
 ### v1.3.10 · AKEGF v1.0
 
