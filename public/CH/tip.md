@@ -1,6 +1,6 @@
 # 特别公告
 
-AKEData 1.3.10 正式发布 [AKEGF v1.0](/?plugin=akegf&id=home)。可下载无签名和签名两种多角色示例，并在浏览器检查档案格式和导入资格。
+AKEData 1.3.11 新增[地区建设](/?plugin=region)的基建区域升级资料，并修复[影拓丰碑](/?plugin=monument&id=indie_group_h09)中「凶行揭明·三位一体Ⅷ」的敌人等级。
 
 AKEData已迁移至域名：www.akedata.wiki，原先的akedata.top现已重定向至此
 
@@ -9,6 +9,12 @@ AKEData已迁移至域名：www.akedata.wiki，原先的akedata.top现已重定�
 欢迎您填写该问卷来向我们进行反馈：[问卷链接](https://v.wjx.cn/vm/tU0gAXM.aspx#)
 
 # AKEData版本更新日志
+
+### v1.3.11
+
+- 地区建设新增集成核心各级面积、升级费用和前置条件，以及仓库存取线升级效果。据点管理补充各级协议容量。全站搜索可定位相关地区建设条目。
+- 副本和影拓丰碑按战斗脚本关联高难刷怪器。关联缺失或冲突时，仅展示可确认的敌人数据。
+- 「凶行揭明·三位一体Ⅷ」显示 100 级 Boss 和第Ⅷ档的刷怪配置，关卡推荐等级为 90。
 
 ### v1.3.10 · AKEGF v1.0
 

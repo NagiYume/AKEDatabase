@@ -213,9 +213,13 @@
             const enemyTable = dungeon.enemyTable || {};
             const displayTable = dungeon.enemyTemplateDisplayInfoTable || {};
             const attrTable = dungeon.enemyAttributeTemplateTable || {};
+            const stageSpawnerIds = dungeon.dungeonCategory === 'dungeon_highdifficulty'
+                ? new Set(dungeon.stageSpawnerConfigIds)
+                : null;
             const dungeonLv = dungeon.recommendLv || 0;
             const allSpawners = [];
             Object.entries(sc).forEach(([configId, spawner]) => {
+                if (stageSpawnerIds && !stageSpawnerIds.has(configId)) return;
                 const libMap = {};
                 const libLevels = new Set();
                 (spawner.enemyLibrary || []).forEach(lib => {
@@ -223,7 +227,7 @@
                     libLevels.add(lib.enemyLevel);
                 });
                 if (libLevels.size === 1 && libLevels.has(0)) return;
-                if (dungeonLv > 0 && !libLevels.has(dungeonLv)) return;
+                if (!stageSpawnerIds && dungeonLv > 0 && !libLevels.has(dungeonLv)) return;
                 if (!Object.keys(libMap).length) return;
                 const waves = [];
                 Object.entries(spawner.waveMap || {}).forEach(([waveIdx, wave]) => {

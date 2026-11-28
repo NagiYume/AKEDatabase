@@ -24,6 +24,8 @@ dungeonManifest 从 DungeonSeriesTable 枚举系列，按 includeDungeonIds 取 
 
 关卡缺失先查系列到关卡的外键。怪物、等级或出生 Buff 缺失时同时查场景的 SpawnerConfig 与 LevelScriptData，脚本中可直接定义敌人或附加条件。
 
+高难关卡共用场景时，用战斗子场景的 `subgame_Title` 或 `task_title`（`dungeon_hard_<dungeonId>_title`），或者旧脚本按当前副本 ID 分派的 `BattleStart`，定位唯一战斗脚本。刷怪器按 `belongLevelScriptId` 和脚本的 `SpawnerPtr` 取数，保留同一脚本的多个刷怪器。归属冲突或刷怪资源缺失时回退到副本表的敌人及等级。脚本直接配置的怪物 Buff 只在所属脚本已确认时读取。
+
 renderDungeonCard 与影拓丰碑共用。危机合约在自己的控制器按 gameId 筛关，不要在共享 dungeonDetail 裁掉同系列其他关卡。
 
 站位图读取刷怪配置中各波次的 `action.position.x/z`。`renderSpawnMap` 调用 [AKECombatData.spawnMapProjection](../../../plugin/js/ake-combat-data.js)，按全部波次的最大坐标绝对值确定两轴共同范围。网格间距、敌人标记共用同一比例，原点在中心，正 Z 朝上。

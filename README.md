@@ -14,12 +14,10 @@ AKEData 为玩家提供角色、武器、敌人、装备、物品、活动、副
 
 ## 最新版本
 
-当前版本 **1.3.10**
+当前版本 **1.3.11**
 
-[AKEGF v1.0](https://www.akedata.wiki/?plugin=akegf&id=home) 正式发布。玩家可以用一份 UTF-8 JSON 在工具间迁移多个角色、区服的寻访、武器申领与赠礼记录。
-
-- v1.1 档案不带签名，v1.2 档案必须带 RSA 签名。v1.1 导入方可读取两种档案，v1.2 导入方只接受验签通过的 v1.2 档案。[标准化文档](https://www.akedata.wiki/?plugin=akegf&id=standard)
-- 站内工具可检查档案结构、签名和指定版本的导入资格。同页提供签名公钥登记 PR 模板。[格式校验与工具认证](https://www.akedata.wiki/?plugin=akegf&id=validator)
+- 地区建设新增基建区域的集成核心面积、升级费用和前置条件，以及仓库存取线升级效果。据点管理补充各级协议容量。[地区建设](https://www.akedata.wiki/?plugin=region)
+- 修复共用场景的高难副本串档。「凶行揭明·三位一体Ⅷ」现在显示 100 级 Boss，关卡推荐等级为 90。[影拓丰碑](https://www.akedata.wiki/?plugin=monument&id=indie_group_h09)
 
 完整更新记录见[站内更新日志](./public/CH/tip.md)。
 
